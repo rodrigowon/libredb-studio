@@ -39,6 +39,8 @@ import { GitHubRepoLink } from "@/components/github-repo-link";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { writeToClipboard } from "@/components/copy-button";
 import { toast } from "sonner";
+import { LocaleSwitcher } from "@/components/locale-switcher";
+import { useTranslations } from "next-intl";
 
 interface StudioMobileHeaderProps {
   connections: DatabaseConnection[];
@@ -119,6 +121,9 @@ export function StudioMobileHeader({
   onAskAgent,
 }: StudioMobileHeaderProps) {
   const router = useRouter();
+  const t = useTranslations("Studio.header");
+  const tConnection = useTranslations("Studio.connection");
+  const tEditor = useTranslations("Editor.toolbar");
   // Bundled so the three cannot be half-supplied, the rule QueryToolbar follows: an
   // item that BEGINs without one that COMMITs would strand the user inside a
   // transaction it cannot close.
@@ -141,7 +146,7 @@ export function StudioMobileHeader({
               >
                 <Database strokeWidth={1.5} className="w-3 h-3 text-blue-400 shrink-0" />
                 <span className="truncate text-xs font-medium">
-                  {activeConnection ? activeConnection.name : "Select DB"}
+                  {activeConnection ? activeConnection.name : tConnection("selectDatabase")}
                 </span>
                 <ChevronDown strokeWidth={1.5} className="w-3 h-3 text-fg-muted shrink-0" />
               </Button>
@@ -149,7 +154,7 @@ export function StudioMobileHeader({
             <DropdownMenuContent align="start" className="w-64 bg-raised border-hairline-strong">
               {connections.length === 0 ? (
                 <DropdownMenuItem onClick={onAddConnection} className="text-fg-tertiary cursor-pointer">
-                  <Plus strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> Add Connection
+                  <Plus strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> {tConnection("add")}
                 </DropdownMenuItem>
               ) : (
                 <>
@@ -170,7 +175,7 @@ export function StudioMobileHeader({
                     onClick={onAddConnection}
                     className="text-fg-muted cursor-pointer border-t border-hairline mt-1"
                   >
-                    <Plus strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> Add New
+                    <Plus strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> {tConnection("addNew")}
                   </DropdownMenuItem>
                 </>
               )}
@@ -178,7 +183,7 @@ export function StudioMobileHeader({
           </DropdownMenu>
 
           {activeConnection && (
-            <span className="text-xs text-emerald-500 font-medium px-1.5 py-0.5 rounded bg-emerald-500/10">Online</span>
+            <span className="text-xs text-emerald-500 font-medium px-1.5 py-0.5 rounded bg-emerald-500/10">{t("online")}</span>
           )}
         </div>
 
@@ -196,7 +201,7 @@ export function StudioMobileHeader({
           {connectionPulse && (
             <div
               className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-fill"
-              title={`Connection: ${connectionPulse}`}
+              title={t("connectionStatus", { status: connectionPulse })}
             >
               <div
                 className={cn(
@@ -218,12 +223,15 @@ export function StudioMobileHeader({
               <DropdownMenuContent align="end" className="bg-raised border-hairline-strong">
                 {isAdmin && (
                   <DropdownMenuItem onClick={() => router.push("/admin")} className="cursor-pointer">
-                    <Settings strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> Admin Dashboard
+                    <Settings strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> {t("adminDashboard")}
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={() => router.push("/monitoring")} className="cursor-pointer">
-                  <Gauge strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> Monitoring
+                  <Gauge strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> {t("monitoring")}
                 </DropdownMenuItem>
+                <div className="border-t border-hairline my-1 px-2 py-1">
+                  <LocaleSwitcher variant="menu" />
+                </div>
                 <div className="border-t border-hairline my-1" />
                 {/*
                  * A button, deliberately NOT a `DropdownMenuItem`: an item is a
@@ -235,7 +243,7 @@ export function StudioMobileHeader({
                 <ThemeToggle showLabel className="w-full px-2 py-1.5 text-sm" />
                 <div className="border-t border-hairline my-1" />
                 <DropdownMenuItem onClick={onLogout} className="text-red-400 cursor-pointer">
-                  <LogOut strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> Logout
+                  <LogOut strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> {t("logout")}
                 </DropdownMenuItem>
                 <div className="border-t border-hairline mt-1 pt-1 px-2 pb-1">
                   <span className="text-xs text-fg-muted font-mono">v{process.env.NEXT_PUBLIC_APP_VERSION}</span>
@@ -269,7 +277,7 @@ export function StudioMobileHeader({
                 onClick={onAskAgent}
               >
                 <Bot strokeWidth={1.5} className="w-3 h-3" />
-                <span className="truncate min-w-0">Ask about this query</span>
+                <span className="truncate min-w-0">{tEditor("askAboutQuery")}</span>
               </Button>
             )}
 
@@ -281,7 +289,7 @@ export function StudioMobileHeader({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="bg-raised border-hairline-strong w-48">
                 <DropdownMenuItem onClick={() => queryEditorRef.current?.format()} className="cursor-pointer text-xs">
-                  <TextAlignStart strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> Format SQL
+                  <TextAlignStart strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> {tEditor("formatSql")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
@@ -291,32 +299,32 @@ export function StudioMobileHeader({
                     // the only place left to say the clipboard is still empty.
                     const query = queryEditorRef.current?.getValue() || currentQuery;
                     void writeToClipboard(query).then((copied) => {
-                      if (!copied) toast.error("Could not copy the query — select the text and copy it yourself");
+                      if (!copied) toast.error(tEditor("copyError"));
                     });
                   }}
                   className="cursor-pointer text-xs"
                 >
-                  <Copy strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> Copy Query
+                  <Copy strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> {tEditor("copyQuery")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={onClearQuery} className="cursor-pointer text-xs text-red-400">
-                  <Trash2 strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> Clear
+                  <Trash2 strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> {tEditor("clear")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={onSaveQuery} className="cursor-pointer text-xs">
-                  <Save strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> Save Query
+                  <Save strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> {tEditor("saveQuery")}
                 </DropdownMenuItem>
 
                 {onExplain && (
                   <>
                     <DropdownMenuSeparator className="bg-fill" />
                     <DropdownMenuItem onClick={onExplain} className="cursor-pointer text-xs text-amber-400">
-                      <Zap strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> Explain Plan
+                      <Zap strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> {tEditor("explainPlan")}
                     </DropdownMenuItem>
                   </>
                 )}
 
                 <DropdownMenuSeparator className="bg-fill" />
                 <div className="px-2 py-1">
-                  <span className="text-[0.625rem] font-medium text-fg-subtle">Advanced</span>
+                  <span className="text-[0.625rem] font-medium text-fg-subtle">{tEditor("advanced")}</span>
                 </div>
 
                 {transaction !== null &&
@@ -326,7 +334,7 @@ export function StudioMobileHeader({
                       className="cursor-pointer text-xs"
                       disabled={!activeConnection}
                     >
-                      <CirclePlay strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> BEGIN Transaction
+                      <CirclePlay strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> {tEditor("beginTransaction")}
                     </DropdownMenuItem>
                   ) : (
                     <>
@@ -345,19 +353,19 @@ export function StudioMobileHeader({
                 {onTogglePlayground && (
                   <DropdownMenuItem onClick={onTogglePlayground} className="cursor-pointer text-xs">
                     <Pencil strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" />
-                    {playgroundMode ? "Disable Sandbox" : "Enable Sandbox"}
+                    {playgroundMode ? tEditor("disableSandbox") : tEditor("enableSandbox")}
                   </DropdownMenuItem>
                 )}
 
                 {onToggleEditing && (
                   <DropdownMenuItem onClick={onToggleEditing} className="cursor-pointer text-xs">
                     <PenLine strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" />
-                    {editingEnabled ? "Disable Editing" : "Enable Editing"}
+                    {editingEnabled ? tEditor("disableEditing") : tEditor("enableEditing")}
                   </DropdownMenuItem>
                 )}
 
                 <DropdownMenuItem onClick={onImport} className="cursor-pointer text-xs" disabled={!activeConnection}>
-                  <Upload strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> Import Data
+                  <Upload strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> {tEditor("importData")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -382,7 +390,7 @@ export function StudioMobileHeader({
               onClick={onCancelQuery}
             >
               <Square strokeWidth={1.5} className="w-3 h-3 fill-current" />
-              CANCEL
+              {tEditor("cancel").toUpperCase()}
             </Button>
           ) : (
             <Button
@@ -392,7 +400,7 @@ export function StudioMobileHeader({
               disabled={!activeConnection}
             >
               <Play strokeWidth={1.5} className="w-3 h-3 fill-current" />
-              RUN
+              {tEditor("run").toUpperCase()}
             </Button>
           )}
         </div>

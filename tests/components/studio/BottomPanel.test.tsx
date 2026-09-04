@@ -149,9 +149,10 @@ mock.module("@/lib/storage", () => ({
 // ---- Now import bun:test, testing-library, and the component ----
 
 import { describe, test, expect, afterEach, beforeAll } from "bun:test";
-import { render, fireEvent, cleanup, act, within } from "@testing-library/react";
+import { fireEvent, cleanup, act, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
+import { renderWithIntl as render } from "../../helpers/render-with-intl";
 
 import { BottomPanel } from "@/components/studio/BottomPanel";
 import type { BottomPanelMode } from "@/components/studio/BottomPanel";
@@ -247,7 +248,7 @@ describe("BottomPanel", () => {
     });
     const { getByText, queryByText } = render(<BottomPanel {...(props as React.ComponentProps<typeof BottomPanel>)} />);
 
-    const expectedLabels = ["Results", "Explain", "History", "Saved", "Charts", "Pivot", "Docs", "Diff", "Dashboard"];
+    const expectedLabels = ["Results", "EXPLAIN", "History", "Saved", "Charts", "Pivot", "Docs", "Diff", "Dashboard"];
     for (const label of expectedLabels) {
       const btn = getByText(label);
       expect(btn).not.toBeNull();
@@ -268,7 +269,7 @@ describe("BottomPanel", () => {
   test("Explain tab is hidden when provider metadata lacks explainFormat", () => {
     const props = createDefaultProps(); // metadata: null
     const { queryByText } = render(<BottomPanel {...(props as React.ComponentProps<typeof BottomPanel>)} />);
-    expect(queryByText("Explain")).toBeNull();
+    expect(queryByText("EXPLAIN")).toBeNull();
   });
 
   test("Explain tab is visible when provider declares explainFormat", () => {
@@ -276,7 +277,7 @@ describe("BottomPanel", () => {
       metadata: { capabilities: { explainFormat: "postgres-json", supportsExplain: true } },
     });
     const { getByText } = render(<BottomPanel {...(props as React.ComponentProps<typeof BottomPanel>)} />);
-    expect(getByText("Explain")).not.toBeNull();
+    expect(getByText("EXPLAIN")).not.toBeNull();
   });
 
   test('Results tab is active by default when mode="results"', () => {
@@ -823,5 +824,26 @@ describe("BottomPanel", () => {
       expect(queryByTestId("agent-provenance")).toBeNull();
       expect(capturedResultsGridProps.result).toEqual(TAB_RESULT);
     });
+  });
+
+  test("renders the primary tool navigation in Brazilian Portuguese", () => {
+    const props = createDefaultProps({
+      metadata: { capabilities: { explainFormat: "postgres-json", supportsExplain: true } },
+    });
+    const { getByText } = render(<BottomPanel {...(props as React.ComponentProps<typeof BottomPanel>)} />, "pt-BR");
+
+    for (const label of [
+      "Resultados",
+      "EXPLAIN",
+      "Histórico",
+      "Salvas",
+      "Gráficos",
+      "Tabela dinâmica",
+      "Documentação",
+      "Comparação",
+      "Painel",
+    ]) {
+      expect(getByText(label)).toBeTruthy();
+    }
   });
 });

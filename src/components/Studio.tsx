@@ -66,6 +66,7 @@ import { TriangleAlert, Database, Plus } from "lucide-react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -88,6 +89,8 @@ const SchemaDiagram = React.lazy(
 );
 
 export default function Studio() {
+  const tEditor = useTranslations("Editor");
+  const tStudio = useTranslations("Studio");
   const queryEditorRef = useRef<QueryEditorRef>(null);
   const router = useRouter();
   const { toast } = useToast();
@@ -353,7 +356,10 @@ export default function Studio() {
     };
     storage.saveQuery(newSavedQuery);
     setSavedKey((prev) => prev + 1);
-    toast({ title: "Query Saved", description: `"${name}" has been added to your saved queries.` });
+    toast({
+      title: tEditor("messages.querySaved"),
+      description: tEditor("messages.querySavedDescription", { name }),
+    });
   };
 
   /**
@@ -577,14 +583,14 @@ export default function Studio() {
               {activeMobileTab === "database" && (
                 <div className="md:hidden h-full bg-sunken overflow-auto p-4">
                   <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-xs font-medium text-fg-secondary">Connections</h2>
+                    <h2 className="text-xs font-medium text-fg-secondary">{tStudio("sidebar.connections")}</h2>
                     <Button
                       variant="outline"
                       size="sm"
                       className="h-8 text-xs border-hairline-strong hover:bg-fill"
                       onClick={() => setIsConnectionModalOpen(true)}
                     >
-                      <Plus strokeWidth={1.5} className="w-3 h-3 mr-1" /> Add
+                      <Plus strokeWidth={1.5} className="w-3 h-3 mr-1" /> {tStudio("connection.add")}
                     </Button>
                   </div>
                   <ConnectionsList
@@ -628,7 +634,7 @@ export default function Studio() {
                   ) : (
                     <div className="flex flex-col items-center justify-center h-full text-fg-muted">
                       <Database strokeWidth={1.5} className="w-12 h-12 mb-4 opacity-30" />
-                      <p className="text-xs">Select a connection first</p>
+                      <p className="text-xs">{tStudio("connection.selectFirst")}</p>
                     </div>
                   )}
                 </div>
@@ -842,24 +848,23 @@ export default function Studio() {
               </div>
               <div className="flex-1 min-w-0">
                 <AlertDialogTitle className="text-[0.8125rem] font-medium text-fg mb-1">
-                  Load all results?
+                  {tEditor("loadAll.title")}
                 </AlertDialogTitle>
                 <AlertDialogDescription className="text-xs text-fg-muted leading-relaxed">
-                  This may slow down your browser. Max <span className="text-fg-tertiary">100K</span> rows will be
-                  loaded.
+                  {tEditor("loadAll.description")}
                 </AlertDialogDescription>
               </div>
             </div>
           </div>
           <div className="px-6 pb-6 flex gap-2">
             <AlertDialogCancel className="flex-1 h-9 bg-fill border-0 text-fg-tertiary text-xs font-medium hover:bg-fill-strong hover:text-fg">
-              Cancel
+              {tEditor("loadAll.cancel")}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={queryExec.handleUnlimitedQuery}
               className="flex-1 h-9 bg-amber-600 border-0 text-white text-xs font-medium hover:bg-amber-500"
             >
-              Load All
+              {tEditor("loadAll.confirm")}
             </AlertDialogAction>
           </div>
         </AlertDialogContent>

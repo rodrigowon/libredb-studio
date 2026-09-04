@@ -1,0 +1,89 @@
+{
+  "header": {
+    "quickAccess": "Acesso rápido",
+    "online": "Online",
+    "slow": "Lenta",
+    "error": "Erro",
+    "connectionStatus": "Conexão: {status}",
+    "monitoring": "Monitoramento",
+    "adminDashboard": "Painel administrativo",
+    "logout": "Sair",
+    "repository": "LibreDB Studio no GitHub"
+  },
+  "status": {
+    "connected": "Conectado",
+    "disconnected": "Desconectado",
+    "connecting": "Conectando",
+    "offline": "Offline"
+  },
+  "sidebar": {
+    "connections": "Conexões",
+    "noConnections": "Nenhuma conexão com banco de dados foi criada.",
+    "addConnection": "Adicionar conexão",
+    "showErd": "Exibir diagrama ERD",
+    "explorer": "Explorador",
+    "scanningSchema": "Analisando schema...",
+    "schemaUnavailable": "Não foi possível ler o schema",
+    "schemaError": "Erro no schema",
+    "schemaFetchFailed": "Não foi possível carregar o schema",
+    "unknownError": "Erro desconhecido",
+    "noStructures": "Nenhuma estrutura encontrada",
+    "noStructuresHint": "Este banco pode estar vazio ou o usuário atual pode não ter permissão para inspecioná-lo.",
+    "maintenance": "Manutenção do banco de dados",
+    "search": "Buscar tabelas ou colunas...",
+    "createEntity": "Criar {entity}",
+    "managed": "Gerenciada pelo administrador",
+    "editConnection": "Editar {name}",
+    "deleteConnection": "Excluir {name}",
+    "clearSearch": "Limpar busca"
+  },
+  "connection": {
+    "selectDatabase": "Selecionar banco",
+    "add": "Adicionar conexão",
+    "addNew": "Adicionar nova",
+    "selectFirst": "Selecione uma conexão primeiro"
+  },
+  "navigation": {
+    "results": "Resultados",
+    "explain": "EXPLAIN",
+    "history": "Histórico",
+    "saved": "Salvas",
+    "charts": "Gráficos",
+    "pivot": "Tabela dinâmica",
+    "docs": "Documentação",
+    "diff": "Comparação",
+    "dashboard": "Painel",
+    "empty": "Execute uma consulta ou consulte o histórico",
+    "ready": "Pronto para executar consultas"
+  },
+  "commandPalette": {
+    "title": "Paleta de comandos",
+    "description": "Busque um comando para executar.",
+    "placeholder": "Buscar tabelas, conexões, consultas e ações...",
+    "noResults": "Nenhum resultado encontrado",
+    "actions": "Ações",
+    "connections": "Conexões",
+    "tables": "Tabelas",
+    "savedQueries": "Consultas salvas",
+    "recentQueries": "Consultas recentes",
+    "runQuery": "Executar consulta",
+    "formatQuery": "Formatar consulta",
+    "saveCurrentQuery": "Salvar consulta atual",
+    "askAgent": "Perguntar ao agente sobre esta consulta",
+    "newConnection": "Nova conexão",
+    "healthDashboard": "Painel de integridade",
+    "monitoring": "Monitoramento",
+    "schemaDiagram": "Diagrama do schema (ERD)",
+    "logout": "Sair",
+    "active": "Ativa",
+    "columns": "{count} colunas",
+    "rows": "{count} linhas"
+  },
+  "theme": {
+    "toggle": "Alternar tema",
+    "switchTo": "Mudar para o tema {theme}",
+    "light": "claro",
+    "dark": "escuro",
+    "system": "do sistema"
+  }
+}

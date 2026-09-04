@@ -10,6 +10,7 @@ import { SchemaExplorer } from "@/components/schema-explorer";
 import { GitHubRepoLink } from "@/components/github-repo-link";
 import { getAppVersion } from "@/lib/app-version";
 import { ConnectionsList } from "./ConnectionsList";
+import { useTranslations } from "next-intl";
 
 interface SidebarProps {
   connections: DatabaseConnection[];
@@ -58,6 +59,8 @@ export function Sidebar({
   onGenerateTestData,
 }: SidebarProps) {
   const appVersion = getAppVersion();
+  const t = useTranslations("Studio.sidebar");
+  const tStatus = useTranslations("Studio.status");
 
   return (
     <div className="flex w-full h-full border-r border-border flex-col bg-background select-none">
@@ -75,7 +78,8 @@ export function Sidebar({
             <button
               className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
               onClick={onShowDiagram}
-              title="Show ERD Diagram"
+              title={t("showErd")}
+              aria-label={t("showErd")}
             >
               <Layers strokeWidth={1.5} className="w-3.5 h-3.5" />
             </button>
@@ -83,6 +87,7 @@ export function Sidebar({
           <button
             className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
             onClick={onAddConnection}
+            aria-label={t("addConnection")}
           >
             <Plus strokeWidth={1.5} className="w-3.5 h-3.5" />
           </button>
@@ -124,7 +129,7 @@ export function Sidebar({
         <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-muted/30 border border-border/50">
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-xs font-medium text-muted-foreground">Connected</span>
+            <span className="text-xs font-medium text-muted-foreground">{tStatus("connected")}</span>
           </div>
           <div className="flex items-center gap-2">
             {/*

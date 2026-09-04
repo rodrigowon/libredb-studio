@@ -30,9 +30,10 @@ mock.module("@/components/schema-explorer/TableItem", () => ({
 }));
 
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { render, within, cleanup } from "@testing-library/react";
+import { within, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
+import { renderWithIntl as render } from "../../helpers/render-with-intl";
 
 import { SchemaExplorer } from "@/components/schema-explorer/SchemaExplorer";
 import { mockSchema, emptySchema } from "../../fixtures/schemas";

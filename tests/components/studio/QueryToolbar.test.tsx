@@ -3,8 +3,9 @@ import "../../helpers/mock-sonner";
 import "../../helpers/mock-navigation";
 
 import { describe, test, expect, mock, afterEach } from "bun:test";
-import { render, fireEvent, cleanup } from "@testing-library/react";
+import { fireEvent, cleanup } from "@testing-library/react";
 import React from "react";
+import { renderWithIntl as render } from "../../helpers/render-with-intl";
 
 import { QueryToolbar } from "@/components/studio/QueryToolbar";
 import { mockPostgresConnection } from "../../fixtures/connections";
@@ -428,5 +429,21 @@ describe("QueryToolbar", () => {
     const props3 = createDefaultProps({ metadata: null });
     const { queryByText: q3 } = render(<QueryToolbar {...props3} />);
     expect(q3("Query")).not.toBeNull();
+  });
+
+  test("renders the editor toolbar in Brazilian Portuguese", () => {
+    const { getByText } = render(<QueryToolbar {...createDefaultProps()} />, "pt-BR");
+
+    expect(getByText("Consulta")).toBeTruthy();
+    expect(getByText("EXECUTAR")).toBeTruthy();
+    expect(getByText("Salvar")).toBeTruthy();
+  });
+
+  test("renders the editor toolbar in English", () => {
+    const { getByText } = render(<QueryToolbar {...createDefaultProps()} />, "en");
+
+    expect(getByText("Query")).toBeTruthy();
+    expect(getByText("RUN")).toBeTruthy();
+    expect(getByText("Save")).toBeTruthy();
   });
 });

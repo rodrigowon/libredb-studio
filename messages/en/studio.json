@@ -1,0 +1,89 @@
+{
+  "header": {
+    "quickAccess": "Quick Access",
+    "online": "Online",
+    "slow": "Slow",
+    "error": "Error",
+    "connectionStatus": "Connection: {status}",
+    "monitoring": "Monitoring",
+    "adminDashboard": "Admin Dashboard",
+    "logout": "Logout",
+    "repository": "LibreDB Studio on GitHub"
+  },
+  "status": {
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "connecting": "Connecting",
+    "offline": "Offline"
+  },
+  "sidebar": {
+    "connections": "Connections",
+    "noConnections": "No database connections established yet.",
+    "addConnection": "Add Connection",
+    "showErd": "Show ERD Diagram",
+    "explorer": "Explorer",
+    "scanningSchema": "Scanning Schema...",
+    "schemaUnavailable": "Schema could not be read",
+    "schemaError": "Schema Error",
+    "schemaFetchFailed": "Failed to fetch schema",
+    "unknownError": "Unknown error",
+    "noStructures": "No structures found",
+    "noStructuresHint": "We couldn't find any tables or views in this connection.",
+    "maintenance": "Database Maintenance",
+    "search": "Search tables or columns...",
+    "createEntity": "Create {entity}",
+    "managed": "Managed by administrator",
+    "editConnection": "Edit {name}",
+    "deleteConnection": "Delete {name}",
+    "clearSearch": "Clear search"
+  },
+  "connection": {
+    "selectDatabase": "Select DB",
+    "add": "Add Connection",
+    "addNew": "Add New",
+    "selectFirst": "Select a connection first"
+  },
+  "navigation": {
+    "results": "Results",
+    "explain": "EXPLAIN",
+    "history": "History",
+    "saved": "Saved",
+    "charts": "Charts",
+    "pivot": "Pivot",
+    "docs": "Docs",
+    "diff": "Diff",
+    "dashboard": "Dashboard",
+    "empty": "Execute a query or check history",
+    "ready": "Ready to query"
+  },
+  "commandPalette": {
+    "title": "Command Palette",
+    "description": "Search for a command to run...",
+    "placeholder": "Search tables, connections, queries, actions...",
+    "noResults": "No results found.",
+    "actions": "Actions",
+    "connections": "Connections",
+    "tables": "Tables",
+    "savedQueries": "Saved Queries",
+    "recentQueries": "Recent Queries",
+    "runQuery": "Run Query",
+    "formatQuery": "Format Query",
+    "saveCurrentQuery": "Save Current Query",
+    "askAgent": "Ask the agent about this query",
+    "newConnection": "New Connection",
+    "healthDashboard": "Health Dashboard",
+    "monitoring": "Monitoring",
+    "schemaDiagram": "Schema Diagram (ERD)",
+    "logout": "Logout",
+    "active": "Active",
+    "columns": "{count} cols",
+    "rows": "{count} rows"
+  },
+  "theme": {
+    "toggle": "Toggle theme",
+    "switchTo": "Switch to {theme} theme",
+    "light": "light",
+    "dark": "dark",
+    "system": "system"
+  }
+}

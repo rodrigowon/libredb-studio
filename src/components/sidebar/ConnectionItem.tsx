@@ -1,10 +1,11 @@
 import React from "react";
-import { DatabaseConnection, ENVIRONMENT_LABELS } from "@/lib/types";
+import { DatabaseConnection } from "@/lib/types";
 import { Lock, Trash2, Pencil } from "lucide-react";
 import { getDBIcon } from "@/lib/db-ui-config";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 
 interface ConnectionItemProps {
   connection: DatabaseConnection;
@@ -21,6 +22,8 @@ export const ConnectionItem = React.memo(function ConnectionItem({
   onDelete,
   onEdit,
 }: ConnectionItemProps) {
+  const t = useTranslations("Studio.sidebar");
+  const tEnvironment = useTranslations("Connections.environment");
   return (
     <motion.div
       initial={false}
@@ -53,7 +56,7 @@ export const ConnectionItem = React.memo(function ConnectionItem({
                 backgroundColor: `${conn.color || "#6b7280"}15`,
               }}
             >
-              {ENVIRONMENT_LABELS[conn.environment]}
+              {tEnvironment(conn.environment)}
             </span>
           )}
         </div>
@@ -63,7 +66,7 @@ export const ConnectionItem = React.memo(function ConnectionItem({
           <div
             data-testid={`managed-lock-${conn.seedId || conn.id}`}
             className="flex items-center justify-center text-amber-500/60"
-            title="Managed by administrator"
+            title={t("managed")}
           >
             <Lock strokeWidth={1.5} className="w-3 h-3" />
           </div>
@@ -75,6 +78,7 @@ export const ConnectionItem = React.memo(function ConnectionItem({
               e.stopPropagation();
               onEdit(conn);
             }}
+            aria-label={t("editConnection", { name: conn.name })}
           >
             <Pencil strokeWidth={1.5} className="w-3 h-3" />
           </button>
@@ -86,6 +90,7 @@ export const ConnectionItem = React.memo(function ConnectionItem({
               e.stopPropagation();
               onDelete(conn.id);
             }}
+            aria-label={t("deleteConnection", { name: conn.name })}
           >
             <Trash2 strokeWidth={1.5} className="w-3 h-3" />
           </button>

@@ -14,6 +14,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { GitHubRepoLink } from "@/components/github-repo-link";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LocaleSwitcher } from "@/components/locale-switcher";
+import { useTranslations } from "next-intl";
 
 interface StudioDesktopHeaderProps {
   activeConnection: DatabaseConnection | null;
@@ -31,6 +33,8 @@ export function StudioDesktopHeader({
   onLogout,
 }: StudioDesktopHeaderProps) {
   const router = useRouter();
+  const t = useTranslations("Studio.header");
+  const tEnvironment = useTranslations("Connections.environmentLong");
 
   return (
     <header className="hidden md:flex h-14 border-b border-hairline items-center justify-between px-4 bg-surface/80 backdrop-blur-xl sticky top-0 z-30">
@@ -40,20 +44,20 @@ export function StudioDesktopHeader({
         </div>
         <div>
           <h1 className="text-xs font-medium text-fg truncate max-w-[120px]">
-            {activeConnection ? activeConnection.name : "Quick Access"}
+            {activeConnection ? activeConnection.name : t("quickAccess")}
           </h1>
           {activeConnection && (
             <p className="text-xs text-fg-muted font-mono uppercase leading-none mt-0.5">
               {activeConnection.type}
               {activeConnection.environment && activeConnection.environment !== "other" && (
                 <span className="ml-1 font-medium" style={{ color: activeConnection.color || "#22c55e" }}>
-                  • {activeConnection.environment}
+                  • {tEnvironment(activeConnection.environment)}
                 </span>
               )}
               {!activeConnection.environment && (
                 <span>
                   {" "}
-                  • <span className="text-emerald-500/80">Online</span>
+                  • <span className="text-emerald-500/80">{t("online")}</span>
                 </span>
               )}
             </p>
@@ -65,7 +69,7 @@ export function StudioDesktopHeader({
         {connectionPulse && (
           <div
             className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-fill mr-2"
-            title={`Connection: ${connectionPulse}`}
+            title={t("connectionStatus", { status: connectionPulse })}
           >
             <div
               className={cn(
@@ -76,7 +80,7 @@ export function StudioDesktopHeader({
               )}
             />
             <span className="text-xs font-medium text-fg-muted">
-              {connectionPulse === "healthy" ? "Online" : connectionPulse === "degraded" ? "Slow" : "Error"}
+              {connectionPulse === "healthy" ? t("online") : connectionPulse === "degraded" ? t("slow") : t("error")}
             </span>
           </div>
         )}
@@ -87,7 +91,7 @@ export function StudioDesktopHeader({
           className="h-7 px-3 text-xs font-medium gap-2 text-fg-muted hover:text-purple-400 hover:bg-purple-500/10"
           onClick={() => router.push("/monitoring")}
         >
-          <Gauge strokeWidth={1.5} className="w-3 h-3" /> Monitoring
+          <Gauge strokeWidth={1.5} className="w-3 h-3" /> {t("monitoring")}
         </Button>
 
         {user && (
@@ -100,15 +104,18 @@ export function StudioDesktopHeader({
             <DropdownMenuContent align="end" className="w-56 bg-raised border-hairline-strong text-fg-secondary">
               {isAdmin && (
                 <DropdownMenuItem onClick={() => router.push("/admin")} className="cursor-pointer">
-                  <Settings strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> Admin Dashboard
+                  <Settings strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> {t("adminDashboard")}
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={() => router.push("/monitoring")} className="cursor-pointer">
-                <Gauge strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> Monitoring
+                <Gauge strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> {t("monitoring")}
               </DropdownMenuItem>
+              <div className="border-t border-hairline my-1 px-2 py-1">
+                <LocaleSwitcher variant="menu" />
+              </div>
               <div className="border-t border-hairline my-1" />
               <DropdownMenuItem onClick={onLogout} className="text-red-400 cursor-pointer">
-                <LogOut strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> Logout
+                <LogOut strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> {t("logout")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

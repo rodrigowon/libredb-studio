@@ -2,6 +2,7 @@
 
 import type { DatabaseType } from "@/lib/types";
 import { compatibleEnginesFor, type WireCompatibleEngine } from "@/lib/db/compatibility";
+import { useTranslations } from "next-intl";
 
 interface WireCompatibilityHintProps {
   type: DatabaseType;
@@ -23,6 +24,7 @@ interface WireCompatibilityHintProps {
  * the notice.
  */
 export function WireCompatibilityHint({ type, engines }: WireCompatibilityHintProps) {
+  const t = useTranslations("Connections.compatibility");
   const verified = engines ?? compatibleEnginesFor(type);
   if (verified.length === 0) return null;
 
@@ -34,15 +36,15 @@ export function WireCompatibilityHint({ type, engines }: WireCompatibilityHintPr
       data-testid="wire-compat-hint"
     >
       <p>
-        This driver also serves{" "}
+        {t("alsoServes")}{" "}
         {verified.map((engine, index) => (
           <span key={engine.name}>
             {index > 0 && ", "}
             <span className="text-fg">{engine.name}</span>{" "}
-            <span className="text-fg-subtle">(verified on {engine.probedVersion})</span>
+            <span className="text-fg-subtle">({t("verifiedOn", { version: engine.probedVersion })})</span>
             {engine.tier !== "full" && (
               <span className="text-fg-subtle" data-testid={`wire-compat-tier-${engine.name}`}>
-                {engine.tier === "query-only" ? " - query editor only" : " - partial support"}
+                {engine.tier === "query-only" ? ` - ${t("queryOnly")}` : ` - ${t("partial")}`}
               </span>
             )}
           </span>
@@ -51,8 +53,7 @@ export function WireCompatibilityHint({ type, engines }: WireCompatibilityHintPr
       </p>
       {hasCaveats && (
         <p className="mt-1 text-fg-subtle" data-testid="wire-compat-caveat-notice">
-          Some of these expose fewer monitoring and statistics views than the driver&apos;s own engine. The
-          compatibility table in the docs lists what each one is missing.
+          {t("caveatNotice")}
         </p>
       )}
     </div>

@@ -1,7 +1,8 @@
 import "../setup-dom";
 
 import { afterEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, screen } from "@testing-library/react";
+import { IntlTestProvider, renderWithIntl as render } from "../helpers/render-with-intl";
 import ReactDOMServer from "react-dom/server";
 
 // ── next-themes stand-in ─────────────────────────────────────────────────────
@@ -187,7 +188,11 @@ describe("ThemeToggle", () => {
    */
   test("the server names no destination it might have to take back", () => {
     withTheme("light");
-    const html = ReactDOMServer.renderToStaticMarkup(<ThemeToggle />);
+    const html = ReactDOMServer.renderToStaticMarkup(
+      <IntlTestProvider>
+        <ThemeToggle />
+      </IntlTestProvider>,
+    );
     expect(html).toContain('aria-label="Toggle theme"');
     expect(html).toContain('title="Toggle theme"');
   });
@@ -198,11 +203,23 @@ describe("ThemeToggle", () => {
    */
   test("the server markup is the same whatever theme is stored", () => {
     withTheme("dark");
-    const asDark = ReactDOMServer.renderToStaticMarkup(<ThemeToggle />);
+    const asDark = ReactDOMServer.renderToStaticMarkup(
+      <IntlTestProvider>
+        <ThemeToggle />
+      </IntlTestProvider>,
+    );
     withTheme("light");
-    const asLight = ReactDOMServer.renderToStaticMarkup(<ThemeToggle />);
+    const asLight = ReactDOMServer.renderToStaticMarkup(
+      <IntlTestProvider>
+        <ThemeToggle />
+      </IntlTestProvider>,
+    );
     withTheme(undefined);
-    const asUnset = ReactDOMServer.renderToStaticMarkup(<ThemeToggle />);
+    const asUnset = ReactDOMServer.renderToStaticMarkup(
+      <IntlTestProvider>
+        <ThemeToggle />
+      </IntlTestProvider>,
+    );
 
     expect(asLight).toBe(asDark);
     expect(asUnset).toBe(asDark);

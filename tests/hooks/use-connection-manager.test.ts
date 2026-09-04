@@ -3,8 +3,19 @@ import { mockToastSuccess, mockToastError } from "../helpers/mock-sonner";
 import "../helpers/mock-navigation";
 
 import { describe, test, expect, beforeEach, afterEach, spyOn } from "bun:test";
-import { renderHook, act, waitFor } from "@testing-library/react";
+import { createElement, type ReactNode } from "react";
+import { renderHook as testingLibraryRenderHook, act, waitFor } from "@testing-library/react";
+import { IntlTestProvider } from "../helpers/render-with-intl";
 import { mockGlobalFetch, restoreGlobalFetch } from "../helpers/mock-fetch";
+
+const renderHook = ((callback) =>
+  testingLibraryRenderHook(callback, { wrapper: IntlTestProvider })) as typeof testingLibraryRenderHook;
+
+function renderHookWithLocale<Result>(callback: () => Result, locale: "pt-BR" | "en") {
+  const Wrapper = ({ children }: { children: ReactNode }) =>
+    createElement(IntlTestProvider, { locale }, children);
+  return testingLibraryRenderHook(callback, { wrapper: Wrapper });
+}
 
 import { useConnectionManager } from "@/hooks/use-connection-manager";
 import type { ManagedConnectionPayload } from "@/hooks/use-connection-payload";
@@ -199,6 +210,21 @@ describe("useConnectionManager", () => {
 
     // useToast calls sonnerToast.error for destructive variant
     expect(mockToastError).toHaveBeenCalledWith("Schema Error", { description: "Connection refused" });
+  });
+
+  test("fetchSchema translates its title but preserves a raw database error in Brazilian Portuguese", async () => {
+    mockGlobalFetch({
+      "/api/db/schema": { ok: false, status: 500, json: { error: "permission denied for schema public" } },
+    });
+
+    const { result } = renderHookWithLocale(() => useConnectionManager(true), "pt-BR");
+    await act(async () => {
+      await result.current.fetchSchema(makeConnection());
+    });
+
+    expect(mockToastError).toHaveBeenCalledWith("Erro no schema", {
+      description: "permission denied for schema public",
+    });
   });
 
   // A failing read must not leave the PREVIOUS connection's tables on screen (D31).

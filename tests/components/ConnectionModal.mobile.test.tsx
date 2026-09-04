@@ -241,7 +241,8 @@ mock.module("lucide-react", () => {
 
 // ── Imports AFTER mocks ─────────────────────────────────────────────────────
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { render, cleanup } from "@testing-library/react";
+import { cleanup } from "@testing-library/react";
+import { renderWithIntl as render } from "../helpers/render-with-intl";
 import { ConnectionModal } from "@/components/ConnectionModal";
 
 // =============================================================================

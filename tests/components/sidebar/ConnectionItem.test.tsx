@@ -59,8 +59,9 @@ mock.module("@/lib/db-ui-config", () => ({
 }));
 
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { render, fireEvent, cleanup } from "@testing-library/react";
+import { fireEvent, cleanup } from "@testing-library/react";
 import React from "react";
+import { renderWithIntl as render } from "../../helpers/render-with-intl";
 
 import { ConnectionItem } from "@/components/sidebar/ConnectionItem";
 import { mockPostgresConnection } from "../../fixtures/connections";

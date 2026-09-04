@@ -4,6 +4,7 @@ import React, { useRef, useEffect, useState, useMemo, forwardRef, useImperativeH
 import Editor from "@monaco-editor/react";
 import type * as Monaco from "monaco-editor";
 import { Zap, LoaderCircle, TextAlignStart, Trash2, Copy, Play, Hash } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { format } from "sql-formatter";
@@ -112,6 +113,7 @@ export const QueryEditor = forwardRef<QueryEditorRef, QueryEditorProps>(
     { value, onChange, onContentChange, onExplain, language = "sql", databaseType, schemaContext, capabilities },
     ref,
   ) => {
+    const t = useTranslations("Editor.toolbar");
     const monaco = useMonacoInstance();
     const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
     const [hasSelection, setHasSelection] = useState(false);
@@ -385,7 +387,7 @@ export const QueryEditor = forwardRef<QueryEditorRef, QueryEditorProps>(
       // editor ref, so there is no `text` prop that would still be current at click time.
       const textToCopy = getSelectedText() || editorRef.current?.getValue() || "";
       void writeToClipboard(textToCopy).then((copied) => {
-        if (!copied) toast.error("Could not copy the query — select the text and copy it yourself");
+        if (!copied) toast.error(t("copyError"));
       });
     };
 
@@ -549,7 +551,7 @@ export const QueryEditor = forwardRef<QueryEditorRef, QueryEditorProps>(
               className="h-7 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 hover:text-white gap-2 shadow-[0_0_10px_rgba(37,99,235,0.3)] animate-in fade-in zoom-in duration-200"
               onClick={handleExecute}
             >
-              <Play strokeWidth={1.5} className="w-3 h-3 fill-current" /> Run Sel
+              <Play strokeWidth={1.5} className="w-3 h-3 fill-current" /> {t("runSelection")}
             </Button>
           )}
 
@@ -559,9 +561,9 @@ export const QueryEditor = forwardRef<QueryEditorRef, QueryEditorProps>(
               size="sm"
               className="h-7 text-xs font-medium text-fg-muted hover:text-fg-bright gap-2"
               onClick={handleFormat}
-              title={language === "json" ? "Format JSON (Shift+Alt+F)" : "Format SQL (Shift+Alt+F)"}
+              title={`${language === "json" ? t("formatJson") : t("formatSql")} (Shift+Alt+F)`}
             >
-              <TextAlignStart strokeWidth={1.5} className="w-3 h-3" /> Format
+              <TextAlignStart strokeWidth={1.5} className="w-3 h-3" /> {t("format")}
             </Button>
           )}
 
@@ -571,7 +573,7 @@ export const QueryEditor = forwardRef<QueryEditorRef, QueryEditorProps>(
             className="h-7 text-xs font-medium text-fg-muted hover:text-fg-bright gap-2"
             onClick={handleCopy}
           >
-            <Copy strokeWidth={1.5} className="w-3 h-3" /> {hasSelection ? "Copy Sel" : "Copy"}
+            <Copy strokeWidth={1.5} className="w-3 h-3" /> {hasSelection ? t("copySelection") : t("copy")}
           </Button>
 
           <Button
@@ -580,7 +582,7 @@ export const QueryEditor = forwardRef<QueryEditorRef, QueryEditorProps>(
             className="h-7 text-xs font-medium text-fg-muted hover:text-red-400 gap-2"
             onClick={handleClear}
           >
-            <Trash2 strokeWidth={1.5} className="w-3 h-3" /> Clear
+            <Trash2 strokeWidth={1.5} className="w-3 h-3" /> {t("clear")}
           </Button>
 
           <div className="h-4 w-px bg-fill" />
@@ -593,9 +595,9 @@ export const QueryEditor = forwardRef<QueryEditorRef, QueryEditorProps>(
               showLineNumbers ? "text-fg-secondary" : "text-fg-muted hover:text-fg-bright",
             )}
             onClick={() => setLineNumbersPreference(!showLineNumbers)}
-            title={showLineNumbers ? "Hide line numbers" : "Show line numbers"}
+            title={showLineNumbers ? t("hideLineNumbers") : t("showLineNumbers")}
           >
-            <Hash strokeWidth={1.5} className="w-3 h-3" /> Lines
+            <Hash strokeWidth={1.5} className="w-3 h-3" /> {t("lines")}
           </Button>
 
           <div className="flex-1" />
@@ -608,7 +610,7 @@ export const QueryEditor = forwardRef<QueryEditorRef, QueryEditorProps>(
                 className="h-7 text-xs font-medium text-amber-500 hover:text-amber-400 gap-2"
                 onClick={onExplain}
               >
-                <Zap strokeWidth={1.5} className="w-3 h-3" /> Explain
+                <Zap strokeWidth={1.5} className="w-3 h-3" /> {t("explain")}
               </Button>
             )}
             <kbd className="px-1.5 py-0.5 rounded bg-raised border border-hairline text-[0.5625rem] text-fg-subtle font-mono">
@@ -657,7 +659,7 @@ export const QueryEditor = forwardRef<QueryEditorRef, QueryEditorProps>(
               // Context Menu Actions
               editor.addAction({
                 id: "run-query",
-                label: "Run Query",
+                label: t("runQuery"),
                 keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
                 contextMenuGroupId: "navigation",
                 contextMenuOrder: 1,
@@ -670,7 +672,7 @@ export const QueryEditor = forwardRef<QueryEditorRef, QueryEditorProps>(
               );
               editor.addAction({
                 id: "explain-query",
-                label: "Explain Plan",
+                label: t("explainPlan"),
                 precondition: CAN_EXPLAIN_CONTEXT_KEY,
                 contextMenuGroupId: "navigation",
                 contextMenuOrder: 2,
@@ -679,7 +681,7 @@ export const QueryEditor = forwardRef<QueryEditorRef, QueryEditorProps>(
 
               editor.addAction({
                 id: "format-sql",
-                label: "Format SQL",
+                label: t("formatSql"),
                 keybindings: [monaco.KeyMod.Alt | monaco.KeyMod.Shift | monaco.KeyCode.KeyF],
                 contextMenuGroupId: "modification",
                 contextMenuOrder: 1,

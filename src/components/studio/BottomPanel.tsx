@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { storage } from "@/lib/storage";
+import { useTranslations } from "next-intl";
 
 export type BottomPanelMode =
   | "results"
@@ -202,6 +203,7 @@ export function BottomPanel({
   agentArtifact = null,
   onDismissAgentArtifact,
 }: BottomPanelProps) {
+  const t = useTranslations("Studio.navigation");
   const explainInput = useMemo(() => resolveExplainPlan(currentTab.explainPlan), [currentTab.explainPlan]);
 
   /*
@@ -251,55 +253,55 @@ export function BottomPanel({
   const tabs: { key: BottomPanelMode; label: string; icon: React.ReactNode; activeClass: string }[] = [
     {
       key: "results",
-      label: "Results",
+      label: t("results"),
       icon: <LayoutGrid strokeWidth={1.5} className="w-3 h-3" />,
       activeClass: "text-blue-400 border-blue-500 bg-fill",
     },
     {
       key: "explain",
-      label: "Explain",
+      label: t("explain"),
       icon: <Zap strokeWidth={1.5} className="w-3 h-3" />,
       activeClass: "text-amber-400 border-amber-500 bg-fill",
     },
     {
       key: "history",
-      label: "History",
+      label: t("history"),
       icon: <Clock strokeWidth={1.5} className="w-3 h-3" />,
       activeClass: "text-emerald-400 border-emerald-500 bg-fill",
     },
     {
       key: "saved",
-      label: "Saved",
+      label: t("saved"),
       icon: <Bookmark strokeWidth={1.5} className="w-3 h-3" />,
       activeClass: "text-purple-400 border-purple-500 bg-fill",
     },
     {
       key: "charts",
-      label: "Charts",
+      label: t("charts"),
       icon: <ChartColumn strokeWidth={1.5} className="w-3 h-3" />,
       activeClass: "text-cyan-400 border-cyan-500 bg-fill",
     },
     {
       key: "pivot",
-      label: "Pivot",
+      label: t("pivot"),
       icon: <Columns3 strokeWidth={1.5} className="w-3 h-3" />,
       activeClass: "text-orange-400 border-orange-500 bg-fill",
     },
     {
       key: "docs",
-      label: "Docs",
+      label: t("docs"),
       icon: <FileText strokeWidth={1.5} className="w-3 h-3" />,
       activeClass: "text-teal-400 border-teal-500 bg-fill",
     },
     {
       key: "schemadiff",
-      label: "Diff",
+      label: t("diff"),
       icon: <GitCompare strokeWidth={1.5} className="w-3 h-3" />,
       activeClass: "text-rose-400 border-rose-500 bg-fill",
     },
     {
       key: "dashboard",
-      label: "Dashboard",
+      label: t("dashboard"),
       icon: <LayoutDashboard strokeWidth={1.5} className="w-3 h-3" />,
       activeClass: "text-indigo-400 border-indigo-500 bg-fill",
     },
@@ -519,8 +521,8 @@ export function BottomPanel({
             ) : (
               <div className="h-full flex flex-col items-center justify-center opacity-20 bg-surface">
                 <Terminal strokeWidth={1.5} className="w-12 h-12 mb-4" />
-                <p className="text-xs font-medium">Execute a query or check history</p>
-                <p className="text-xs mt-2">Ready to query</p>
+                <p className="text-xs font-medium">{t("empty")}</p>
+                <p className="text-xs mt-2">{t("ready")}</p>
               </div>
             )}
           </React.Suspense>

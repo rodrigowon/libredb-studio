@@ -2,9 +2,15 @@ import { describe, expect, test } from "bun:test";
 import enCommon from "../../../messages/en/common.json";
 import enLogin from "../../../messages/en/login.json";
 import enMetadata from "../../../messages/en/metadata.json";
+import enStudio from "../../../messages/en/studio.json";
+import enConnections from "../../../messages/en/connections.json";
+import enEditor from "../../../messages/en/editor.json";
 import ptBrCommon from "../../../messages/pt-BR/common.json";
 import ptBrLogin from "../../../messages/pt-BR/login.json";
 import ptBrMetadata from "../../../messages/pt-BR/metadata.json";
+import ptBrStudio from "../../../messages/pt-BR/studio.json";
+import ptBrConnections from "../../../messages/pt-BR/connections.json";
+import ptBrEditor from "../../../messages/pt-BR/editor.json";
 import { loadMessages, mergeMessages } from "@/i18n/load-messages";
 
 type JsonObject = { [key: string]: string | JsonObject };
@@ -27,12 +33,18 @@ describe("i18n message loading", () => {
     expect(messages.Common).toEqual(enCommon);
     expect(messages.Metadata).toEqual(enMetadata);
     expect(messages.Login).toEqual(enLogin);
+    expect(messages.Studio).toEqual(enStudio);
+    expect(messages.Connections).toEqual(enConnections);
+    expect(messages.Editor).toEqual(enEditor);
   });
 
   test("overrides English with Brazilian Portuguese", () => {
     const messages = loadMessages("pt-BR");
     expect(messages.Login.form.submit).toBe("Entrar");
     expect(messages.Metadata.title).toBe("LibreDB Studio | Editor universal de bancos de dados");
+    expect(messages.Studio.navigation.results).toBe("Resultados");
+    expect(messages.Connections.modal.newTitle).toBe("Nova conexão");
+    expect(messages.Editor.toolbar.run).toBe("Executar");
   });
 
   test("falls back to English for a key missing from pt-BR", () => {
@@ -52,5 +64,8 @@ describe("i18n message loading", () => {
     expectValidOverride(enCommon as JsonObject, ptBrCommon as JsonObject);
     expectValidOverride(enMetadata as JsonObject, ptBrMetadata as JsonObject);
     expectValidOverride(enLogin as JsonObject, ptBrLogin as JsonObject);
+    expectValidOverride(enStudio as JsonObject, ptBrStudio as JsonObject);
+    expectValidOverride(enConnections as JsonObject, ptBrConnections as JsonObject);
+    expectValidOverride(enEditor as JsonObject, ptBrEditor as JsonObject);
   });
 });

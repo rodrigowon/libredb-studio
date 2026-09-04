@@ -282,8 +282,9 @@ mock.module("@/components/ui/resizable", () => {
 // that no real heavy child module evaluates in this process.
 
 import { describe, test, expect, afterEach, beforeEach } from "bun:test";
-import { render, cleanup, act } from "@testing-library/react";
+import { cleanup, act } from "@testing-library/react";
 import React from "react";
+import { renderWithIntl as render } from "../helpers/render-with-intl";
 import type { SavedQueryInput, StudioWorkspaceProps } from "@/workspace/types";
 import type { ProviderMetadata } from "@/hooks/use-provider-metadata";
 import { generateTableQuery } from "@/lib/query-generators";

@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { storage } from "@/lib/storage";
 import { logger } from "@/lib/logger";
 import { filterEnabledDatabaseConnections } from "@/lib/database-visibility";
+import { useTranslations } from "next-intl";
 import {
   buildConnectionPayload,
   NO_SERVED_SEEDS,
@@ -20,6 +21,7 @@ import {
 const MANAGED_POLL_MAX_ATTEMPTS = 30;
 
 export function useConnectionManager(storageReady = false) {
+  const t = useTranslations("Studio.sidebar");
   const [connections, setConnections] = useState<DatabaseConnection[]>([]);
   const [activeConnection, setActiveConnection] = useState<DatabaseConnection | null>(null);
   /**
@@ -66,18 +68,18 @@ export function useConnectionManager(storageReady = false) {
         const response = await fetch(...init("/api/db/schema/list"));
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || "Failed to fetch schema");
+          throw new Error(errorData.error || t("schemaFetchFailed"));
         }
         const list: TableSchema[] = await response.json();
         setSchema(list);
         setSchemaError(null);
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        const errorMessage = error instanceof Error ? error.message : t("unknownError");
         // Nothing read for THIS connection, so nothing may stay on screen as its
         // tables — the previous connection's list is not evidence about this one.
         setSchema([]);
         setSchemaError(errorMessage);
-        toast({ title: "Schema Error", description: errorMessage, variant: "destructive" });
+        toast({ title: t("schemaError"), description: errorMessage, variant: "destructive" });
         return; // finally still clears the loading flag; skip relations
       } finally {
         setIsLoadingSchema(false);
@@ -105,7 +107,7 @@ export function useConnectionManager(storageReady = false) {
         });
       }
     },
-    [toast],
+    [t, toast],
   );
 
   // Memoized derived values

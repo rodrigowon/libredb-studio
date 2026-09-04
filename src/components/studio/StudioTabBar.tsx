@@ -3,6 +3,7 @@
 import React, { type Dispatch, type SetStateAction } from "react";
 import type { QueryTab } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import { FileBraces, Hash, Plus, X } from "lucide-react";
 
 interface StudioTabBarProps {
@@ -30,6 +31,7 @@ export function StudioTabBar({
   onCloseTab,
   onAddTab,
 }: StudioTabBarProps) {
+  const t = useTranslations("Editor.tabs");
   // Roving tabindex (WAI-ARIA tabs pattern): arrows/Home/End move activation,
   // and focus follows the newly activated tab.
   const activateTabAt = (index: number, e: React.KeyboardEvent) => {
@@ -53,7 +55,7 @@ export function StudioTabBar({
   return (
     <div
       role="tablist"
-      aria-label="Editor tabs"
+      aria-label={t("ariaLabel")}
       className="hidden md:flex h-10 bg-raised border-b border-hairline items-center px-2 gap-1 overflow-x-auto no-scrollbar"
     >
       {tabs.map((tab, index) => (
@@ -79,7 +81,7 @@ export function StudioTabBar({
               )}
               <input
                 autoFocus
-                aria-label={`Rename ${tab.name}`}
+                aria-label={t("rename", { name: tab.name })}
                 value={editingTabName}
                 onChange={(e) => onSetEditingTabName(e.target.value)}
                 onBlur={() => {
@@ -131,7 +133,7 @@ export function StudioTabBar({
           {tabs.length > 1 && (
             <button
               type="button"
-              aria-label={`Close ${tab.name}`}
+                  aria-label={t("close", { name: tab.name })}
               className="ml-auto opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-fg-bright shrink-0 cursor-pointer"
               onClick={(e) => {
                 // Closing removes this button from the DOM; without an explicit
@@ -150,7 +152,7 @@ export function StudioTabBar({
       ))}
       <button
         type="button"
-        aria-label="New tab"
+        aria-label={t("new")}
         className="text-fg-muted cursor-pointer hover:text-fg-bright mx-2"
         onClick={onAddTab}
       >

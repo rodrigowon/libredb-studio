@@ -3,7 +3,11 @@ import { mockToastSuccess, mockToastError, mockToastDefault } from "../helpers/m
 import "../helpers/mock-navigation";
 
 import { describe, test, expect, beforeEach, afterEach, mock, spyOn } from "bun:test";
-import { renderHook, act, waitFor } from "@testing-library/react";
+import { renderHook as testingLibraryRenderHook, act, waitFor } from "@testing-library/react";
+import { IntlTestProvider } from "../helpers/render-with-intl";
+
+const renderHook = ((callback, options = {}) =>
+  testingLibraryRenderHook(callback, { ...options, wrapper: IntlTestProvider })) as typeof testingLibraryRenderHook;
 import { mockGlobalFetch, restoreGlobalFetch, type MockFetchResponse } from "../helpers/mock-fetch";
 import { storage } from "@/lib/storage";
 

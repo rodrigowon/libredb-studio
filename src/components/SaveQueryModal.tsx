@@ -7,6 +7,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Bookmark, Tag } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface SaveQueryModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ interface SaveQueryModalProps {
 }
 
 export function SaveQueryModal({ isOpen, onClose, onSave, defaultQuery }: SaveQueryModalProps) {
+  const t = useTranslations("Editor.saveModal");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [tagsInput, setTagsInput] = useState("");
@@ -38,52 +40,52 @@ export function SaveQueryModal({ isOpen, onClose, onSave, defaultQuery }: SaveQu
       <DialogContent className="bg-raised border-hairline-strong text-fg-secondary sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="text-fg flex items-center gap-2">
-            <Bookmark strokeWidth={1.5} className="w-5 h-5 text-blue-500" /> Save Query
+            <Bookmark strokeWidth={1.5} className="w-5 h-5 text-blue-500" /> {t("title")}
           </DialogTitle>
           <DialogDescription className="text-fg-muted">
-            Give your query a name and description to find it easily later.
+            {t("description")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="name" className="text-xs font-medium text-fg-muted">
-              Name
+              {t("name")}
             </Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Monthly Active Users"
+              placeholder={t("namePlaceholder")}
               className="bg-fill border-hairline-strong focus:ring-blue-500/20"
             />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="description" className="text-xs font-medium text-fg-muted">
-              Description
+              {t("queryDescription")}
             </Label>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="What does this query do?"
+              placeholder={t("descriptionPlaceholder")}
               className="bg-fill border-hairline-strong focus:ring-blue-500/20 min-h-[80px]"
             />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="tags" className="text-xs font-medium text-fg-muted flex items-center gap-2">
-              <Tag strokeWidth={1.5} className="w-3 h-3" /> Tags (comma separated)
+              <Tag strokeWidth={1.5} className="w-3 h-3" /> {t("tags")}
             </Label>
             <Input
               id="tags"
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
-              placeholder="reports, analytics, users"
+              placeholder={t("tagsPlaceholder")}
               className="bg-fill border-hairline-strong focus:ring-blue-500/20"
             />
           </div>
           <div className="mt-2">
-            <Label className="text-xs font-medium text-fg-muted mb-2 block">Preview</Label>
+            <Label className="text-xs font-medium text-fg-muted mb-2 block">{t("preview")}</Label>
             <div className="bg-canvas p-3 rounded-md border border-hairline max-h-[100px] overflow-y-auto">
               <pre className="text-xs font-mono text-fg-muted italic whitespace-pre-wrap break-words">
                 {defaultQuery}
@@ -94,14 +96,14 @@ export function SaveQueryModal({ isOpen, onClose, onSave, defaultQuery }: SaveQu
 
         <DialogFooter>
           <Button variant="ghost" onClick={onClose} className="text-fg-tertiary">
-            Cancel
+            {t("cancel")}
           </Button>
           <Button
             onClick={handleSave}
             disabled={!name}
             className="bg-blue-600 hover:bg-blue-500 text-white font-medium"
           >
-            Save Query
+            {t("save")}
           </Button>
         </DialogFooter>
       </DialogContent>

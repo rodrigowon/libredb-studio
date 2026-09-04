@@ -4,6 +4,7 @@ import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 
 /**
  * False through the server render AND the hydration render, true after — the
@@ -18,11 +19,6 @@ const useHydrated = () =>
     () => true,
     () => false,
   );
-
-const NEXT_LABEL = {
-  dark: "Switch to light theme",
-  light: "Switch to dark theme",
-} as const;
 
 /**
  * Two-state theme control: dark ↔ light.
@@ -46,6 +42,7 @@ const NEXT_LABEL = {
  * that cannot change anything is worse than no toggle at all.
  */
 export function ThemeToggle({ className, showLabel = false }: { className?: string; showLabel?: boolean }) {
+  const t = useTranslations("Studio.theme");
   const { theme, setTheme, themes } = useTheme();
   const hydrated = useHydrated();
 
@@ -71,7 +68,7 @@ export function ThemeToggle({ className, showLabel = false }: { className?: stri
    * would a wrong icon. Before hydration the control therefore says what it IS,
    * which is true in every state and identical on both sides.
    */
-  const label = hydrated ? NEXT_LABEL[current] : "Toggle theme";
+  const label = hydrated ? t("switchTo", { theme: t(next) }) : t("toggle");
 
   return (
     <button

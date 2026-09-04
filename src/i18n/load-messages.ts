@@ -1,9 +1,15 @@
 import enCommon from "../../messages/en/common.json";
 import enLogin from "../../messages/en/login.json";
 import enMetadata from "../../messages/en/metadata.json";
+import enStudio from "../../messages/en/studio.json";
+import enConnections from "../../messages/en/connections.json";
+import enEditor from "../../messages/en/editor.json";
 import ptBrCommon from "../../messages/pt-BR/common.json";
 import ptBrLogin from "../../messages/pt-BR/login.json";
 import ptBrMetadata from "../../messages/pt-BR/metadata.json";
+import ptBrStudio from "../../messages/pt-BR/studio.json";
+import ptBrConnections from "../../messages/pt-BR/connections.json";
+import ptBrEditor from "../../messages/pt-BR/editor.json";
 import { FALLBACK_LOCALE, type Locale } from "@/i18n/config";
 
 type MessageObject = { [key: string]: string | MessageObject };
@@ -15,12 +21,18 @@ const englishMessages = {
   Common: enCommon,
   Metadata: enMetadata,
   Login: enLogin,
+  Studio: enStudio,
+  Connections: enConnections,
+  Editor: enEditor,
 };
 
 const portugueseMessages = {
   Common: ptBrCommon,
   Metadata: ptBrMetadata,
   Login: ptBrLogin,
+  Studio: ptBrStudio,
+  Connections: ptBrConnections,
+  Editor: ptBrEditor,
 };
 
 export type AppMessages = typeof englishMessages;

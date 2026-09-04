@@ -3,8 +3,9 @@ import "../helpers/mock-sonner";
 import { mockRouterPush } from "../helpers/mock-navigation";
 
 import { describe, test, expect, afterEach, beforeEach, mock } from "bun:test";
-import { render, cleanup, act, fireEvent, waitFor } from "@testing-library/react";
+import { cleanup, act, fireEvent, waitFor } from "@testing-library/react";
 import React from "react";
+import { renderWithIntl as render } from "../helpers/render-with-intl";
 import { setupMonacoMock, setupRechartssMock, setupXYFlowMock, setupFramerMotionMock } from "../helpers/mock-monaco";
 
 // Setup heavy library mocks before any component imports

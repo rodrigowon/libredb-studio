@@ -78,8 +78,9 @@ mock.module("@/lib/db-ui-config", () => ({
 }));
 
 import { describe, test, expect, afterEach } from "bun:test";
-import { render, fireEvent, cleanup } from "@testing-library/react";
+import { fireEvent, cleanup } from "@testing-library/react";
 import React from "react";
+import { renderWithIntl as render } from "../helpers/render-with-intl";
 
 import { CommandPalette } from "@/components/CommandPalette";
 import { storage } from "@/lib/storage";
@@ -501,5 +502,14 @@ describe("CommandPalette", () => {
 
     // CommandEmpty renders "No results found." text
     expect(queryByText("No results found.")).not.toBeNull();
+  });
+
+  test("renders command palette accessibility copy in Brazilian Portuguese", () => {
+    const { getByText, getByPlaceholderText } = render(<CommandPalette {...createDefaultProps()} />, "pt-BR");
+    fireEvent.keyDown(document, { key: "k", metaKey: true });
+
+    expect(getByText("Paleta de comandos")).toBeTruthy();
+    expect(getByText("Busque um comando para executar.")).toBeTruthy();
+    expect(getByPlaceholderText("Buscar tabelas, conexões, consultas e ações...")).toBeTruthy();
   });
 });

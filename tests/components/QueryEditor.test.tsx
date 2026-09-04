@@ -198,7 +198,8 @@ mock.module("lucide-react", () => {
 
 // ── Imports AFTER mocks ─────────────────────────────────────────────────────
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { render, cleanup, fireEvent, act, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, act, waitFor } from "@testing-library/react";
+import { renderWithIntl as render } from "../helpers/render-with-intl";
 import { QueryEditor } from "@/components/QueryEditor";
 import type { MaintenanceType } from "@/lib/db/types";
 
@@ -349,6 +350,14 @@ describe("QueryEditor", () => {
     expect(queryByText("Lines")).not.toBeNull();
   });
 
+  test("renders the editor chrome in Brazilian Portuguese", () => {
+    const { queryByText } = render(React.createElement(QueryEditor, createDefaultProps()), "pt-BR");
+    expect(queryByText("Formatar")).not.toBeNull();
+    expect(queryByText("Copiar")).not.toBeNull();
+    expect(queryByText("Limpar")).not.toBeNull();
+    expect(queryByText("Linhas")).not.toBeNull();
+  });
+
   // EXPLAIN button
   // -----------------------------------------------------------------------
 
@@ -358,7 +367,7 @@ describe("QueryEditor", () => {
       capabilities: defaultCapabilities,
     });
     const { queryByText } = render(React.createElement(QueryEditor, props));
-    expect(queryByText("Explain")).not.toBeNull();
+    expect(queryByText("EXPLAIN")).not.toBeNull();
   });
 
   test("Explain button hidden without onExplain", () => {
@@ -367,7 +376,7 @@ describe("QueryEditor", () => {
       capabilities: defaultCapabilities,
     });
     const { queryByText } = render(React.createElement(QueryEditor, props));
-    expect(queryByText("Explain")).toBeNull();
+    expect(queryByText("EXPLAIN")).toBeNull();
   });
 
   test("Explain button hidden when supportsExplain is false", () => {
@@ -376,7 +385,7 @@ describe("QueryEditor", () => {
       capabilities: { ...defaultCapabilities, supportsExplain: false },
     });
     const { queryByText } = render(React.createElement(QueryEditor, props));
-    expect(queryByText("Explain")).toBeNull();
+    expect(queryByText("EXPLAIN")).toBeNull();
   });
 
   test("Explain button hidden when no capabilities", () => {
@@ -385,7 +394,7 @@ describe("QueryEditor", () => {
       capabilities: undefined,
     });
     const { queryByText } = render(React.createElement(QueryEditor, props));
-    expect(queryByText("Explain")).toBeNull();
+    expect(queryByText("EXPLAIN")).toBeNull();
   });
 
   test("Explain click calls onExplain handler", () => {
@@ -395,7 +404,7 @@ describe("QueryEditor", () => {
       capabilities: defaultCapabilities,
     });
     const { queryByText } = render(React.createElement(QueryEditor, props));
-    fireEvent.click(queryByText("Explain")!);
+    fireEvent.click(queryByText("EXPLAIN")!);
     expect(onExplain).toHaveBeenCalled();
   });
 

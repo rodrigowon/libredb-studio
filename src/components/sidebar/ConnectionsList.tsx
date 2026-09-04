@@ -2,6 +2,7 @@ import React from "react";
 import { DatabaseConnection } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { ConnectionItem } from "./ConnectionItem";
+import { useTranslations } from "next-intl";
 
 interface ConnectionsListProps {
   connections: DatabaseConnection[];
@@ -20,10 +21,11 @@ export function ConnectionsList({
   onEditConnection,
   onAddConnection,
 }: ConnectionsListProps) {
+  const t = useTranslations("Studio.sidebar");
   return (
     <section>
       <div className="px-3 mb-2 flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">Connections</span>
+        <span className="text-xs font-medium text-muted-foreground">{t("connections")}</span>
         <div className="h-[1px] flex-1 bg-border/30 ml-3" />
       </div>
 
@@ -31,10 +33,10 @@ export function ConnectionsList({
         {connections.length === 0 ? (
           <div className="px-3 py-6 text-center border border-dashed border-border/50 rounded-lg mx-2">
             <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
-              No database connections established yet.
+              {t("noConnections")}
             </p>
             <Button variant="outline" size="sm" className="h-7 text-xs" onClick={onAddConnection}>
-              Add Connection
+              {t("addConnection")}
             </Button>
           </div>
         ) : (

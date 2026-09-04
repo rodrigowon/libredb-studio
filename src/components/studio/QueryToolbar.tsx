@@ -6,6 +6,7 @@ import type { ProviderMetadata } from "@/hooks/use-provider-metadata";
 import { cn } from "@/lib/utils";
 import { FlaskConical, Pencil, Play, Save, Square, Terminal, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 
 interface QueryToolbarProps {
   activeConnection: DatabaseConnection | null;
@@ -52,6 +53,7 @@ export function QueryToolbar({
   onToggleEditing,
   onImport,
 }: QueryToolbarProps) {
+  const t = useTranslations("Editor.toolbar");
   // Bundled so the three cannot be half-supplied: a caller offering BEGIN without
   // COMMIT would strand the user inside a transaction it cannot close.
   const transaction =
@@ -68,7 +70,7 @@ export function QueryToolbar({
       {playgroundMode && (
         <div className="hidden md:flex items-center justify-center gap-2 px-4 py-1 bg-emerald-500/10 border-b border-emerald-500/20 text-emerald-400">
           <FlaskConical strokeWidth={1.5} className="w-3 h-3" />
-          <span className="text-xs font-mediumr">Sandbox Mode — All changes will be auto-rolled back</span>
+          <span className="text-xs font-mediumr">{t("sandboxBanner")}</span>
         </div>
       )}
 
@@ -77,7 +79,7 @@ export function QueryToolbar({
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 px-2 py-0.5 rounded bg-blue-500/5 border border-blue-500/10">
             <Terminal strokeWidth={1.5} className="w-3 h-3 text-blue-400" />
-            <span className="text-xs font-medium text-blue-400">Query</span>
+            <span className="text-xs font-medium text-blue-400">{t("query")}</span>
           </div>
           {/* The separator is chrome for Save; with Save withheld it would be a rule
               standing alone, the same reason the control group drops its border (#427). */}
@@ -90,7 +92,7 @@ export function QueryToolbar({
                 className="h-7 text-xs font-medium text-fg-muted hover:text-fg-bright gap-2"
                 onClick={onSaveQuery}
               >
-                <Save strokeWidth={1.5} className="w-3 h-3" /> Save
+                <Save strokeWidth={1.5} className="w-3 h-3" /> {t("save")}
               </Button>
             </>
           )}
@@ -102,7 +104,7 @@ export function QueryToolbar({
             onClick={onCancelQuery}
           >
             <Square strokeWidth={1.5} className="w-3 h-3 fill-current" />
-            CANCEL
+            {t("cancel").toUpperCase()}
           </Button>
         ) : (
           <Button
@@ -112,7 +114,7 @@ export function QueryToolbar({
             disabled={!activeConnection}
           >
             <Play strokeWidth={1.5} className="w-3 h-3 fill-current" />
-            RUN
+            {t("run").toUpperCase()}
           </Button>
         )}
 
@@ -166,7 +168,7 @@ export function QueryToolbar({
                 )}
                 onClick={onTogglePlayground}
                 disabled={transactionActive}
-                title="Playground mode: queries are auto-rolled back"
+                title={t("playgroundTitle")}
               >
                 <FlaskConical strokeWidth={1.5} className="w-3 h-3" />
                 SANDBOX
@@ -184,10 +186,10 @@ export function QueryToolbar({
                     : "text-fg-muted hover:text-fg-bright",
                 )}
                 onClick={onToggleEditing}
-                title="Enable inline data editing"
+                title={t("editTitle")}
               >
                 <Pencil strokeWidth={1.5} className="w-3 h-3" />
-                EDIT
+                {t("edit").toUpperCase()}
               </Button>
             )}
 
@@ -197,10 +199,10 @@ export function QueryToolbar({
                 variant="ghost"
                 className="h-7 text-xs font-medium text-fg-muted hover:text-fg-bright gap-1"
                 onClick={onImport}
-                title="Import data from CSV/JSON"
+                title={t("importTitle")}
               >
                 <Upload strokeWidth={1.5} className="w-3 h-3" />
-                IMPORT
+                {t("import").toUpperCase()}
               </Button>
             )}
           </div>

@@ -6,5 +6,10 @@
     "continue": "Continuar",
     "loading": "Carregando",
     "error": "Erro"
+  },
+  "language": {
+    "label": "Idioma",
+    "ptBR": "Português (Brasil)",
+    "en": "English"
   }
 }

@@ -24,6 +24,7 @@ import { lazyRetry } from "@/lib/lazy";
 import { editorLanguageForTabType } from "@/lib/editor/tab-language";
 import { buildResultExport, type ResultExportFormat } from "@/lib/export/result-export";
 import { downloadText } from "@/lib/export/download";
+import { useTranslations } from "next-intl";
 
 // The ERD is the largest thing this shell can mount (`@xyflow/react` + the elk layout
 // engine + the snapdom capture), and it is mounted only while `showDiagram` is true.
@@ -170,6 +171,7 @@ export function StudioWorkspace({
   features: featuresProp,
   className,
 }: StudioWorkspaceProps) {
+  const tEditor = useTranslations("Editor");
   const queryEditorRef = useRef<QueryEditorRef>(null);
   const { toast } = useToast();
 
@@ -242,14 +244,17 @@ export function StudioWorkspace({
             tags,
           });
           setSavedKey((prev) => prev + 1);
-          toast({ title: "Query Saved", description: `"${name}" has been added to your saved queries.` });
+          toast({
+            title: tEditor("messages.querySaved"),
+            description: tEditor("messages.querySavedDescription", { name }),
+          });
         } catch (error) {
-          const msg = error instanceof Error ? error.message : "Failed to save query";
-          toast({ title: "Save Failed", description: msg, variant: "destructive" });
+          const msg = error instanceof Error ? error.message : tEditor("messages.saveFailed");
+          toast({ title: tEditor("messages.saveFailed"), description: msg, variant: "destructive" });
         }
       }
     },
-    [conn.activeConnection, tabMgr.currentTab.query, onSaveQueryProp, toast],
+    [conn.activeConnection, tabMgr.currentTab.query, onSaveQueryProp, toast, tEditor],
   );
 
   // === Export results (shared writers; this shell applies no masking) ===
@@ -551,23 +556,24 @@ export function StudioWorkspace({
                 <TriangleAlert strokeWidth={1.5} className="w-5 h-5 text-amber-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <AlertDialogTitle className="text-xs font-medium text-fg mb-1">Load all results?</AlertDialogTitle>
+                <AlertDialogTitle className="text-xs font-medium text-fg mb-1">
+                  {tEditor("loadAll.title")}
+                </AlertDialogTitle>
                 <AlertDialogDescription className="text-xs text-fg-muted leading-relaxed">
-                  This may slow down your browser. Max <span className="text-fg-tertiary">100K</span> rows will be
-                  loaded.
+                  {tEditor("loadAll.description")}
                 </AlertDialogDescription>
               </div>
             </div>
           </div>
           <div className="px-6 pb-6 flex gap-2">
             <AlertDialogCancel className="flex-1 h-9 bg-fill border-0 text-fg-tertiary text-xs font-medium hover:bg-fill-strong hover:text-fg">
-              Cancel
+              {tEditor("loadAll.cancel")}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={queryExec.handleUnlimitedQuery}
               className="flex-1 h-9 bg-amber-600 border-0 text-white text-xs font-medium hover:bg-amber-500"
             >
-              Load All
+              {tEditor("loadAll.confirm")}
             </AlertDialogAction>
           </div>
         </AlertDialogContent>

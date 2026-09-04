@@ -4,7 +4,7 @@ import { render } from "@testing-library/react";
 import type { Locale } from "@/i18n/config";
 import { loadMessages } from "@/i18n/load-messages";
 
-export function IntlTestProvider({ children, locale = "en" }: { children: ReactNode; locale?: Locale }) {
+export function IntlTestProvider({ children, locale = "en" }: { children?: ReactNode; locale?: Locale }) {
   return (
     <NextIntlClientProvider locale={locale} messages={loadMessages(locale)}>
       {children}
@@ -13,5 +13,10 @@ export function IntlTestProvider({ children, locale = "en" }: { children: ReactN
 }
 
 export function renderWithIntl(ui: ReactElement, locale: Locale = "en") {
-  return render(<IntlTestProvider locale={locale}>{ui}</IntlTestProvider>);
+  const result = render(<IntlTestProvider locale={locale}>{ui}</IntlTestProvider>);
+  return {
+    ...result,
+    rerender: (nextUi: ReactElement) =>
+      result.rerender(<IntlTestProvider locale={locale}>{nextUi}</IntlTestProvider>),
+  };
 }

@@ -17,6 +17,7 @@ import { newLocalId } from "@/lib/ids";
 import { getExplainStrategy } from "@/lib/explain";
 import { maybeInviteToStar } from "@/lib/community/star-prompt-toast";
 import { buildConnectionPayload } from "./use-connection-payload";
+import { useTranslations } from "next-intl";
 
 export interface QueryExecutionOptions {
   limit?: number;
@@ -49,14 +50,18 @@ interface UseQueryExecutionParams {
  * "not loaded yet", not "unsupported" — blaming the database type there would be
  * misleading.
  */
-function explainRefusal(metadata: ProviderMetadata | null, hasStrategy: boolean) {
+function explainRefusal(
+  metadata: ProviderMetadata | null,
+  hasStrategy: boolean,
+  copy: { notReady: string; loading: string; notSupported: string; selectOnly: string; unavailable: string },
+) {
   if (!metadata) {
-    return { title: "Not Ready", description: "Connection metadata is still loading. Try again in a moment." };
+    return { title: copy.notReady, description: copy.loading };
   }
   if (hasStrategy && metadata.capabilities.supportsExplain) {
-    return { title: "Not Supported", description: "Only SELECT statements can be explained." };
+    return { title: copy.notSupported, description: copy.selectOnly };
   }
-  return { title: "Not Supported", description: "EXPLAIN is not available for this database type." };
+  return { title: copy.notSupported, description: copy.unavailable };
 }
 
 /**
@@ -84,6 +89,7 @@ export function useQueryExecution({
   fetchSchema,
   queryEditorRef,
 }: UseQueryExecutionParams) {
+  const t = useTranslations("Editor.messages");
   /**
    * The run in flight for each tab, keyed by tab id.
    *
@@ -195,7 +201,7 @@ export function useQueryExecution({
       }
 
       if (!activeConnection) {
-        toast({ title: "No Connection", description: "Select a connection first.", variant: "destructive" });
+        toast({ title: t("noConnection"), description: t("selectConnection"), variant: "destructive" });
         return;
       }
 
@@ -244,7 +250,16 @@ export function useQueryExecution({
       const directExplainSql =
         isExplain && explainSupported ? (explainStrategy?.buildSql(queryToExecute, "analyze") ?? null) : null;
       if (isExplain && !directExplainSql) {
-        toast({ ...explainRefusal(metadata, Boolean(explainStrategy)), variant: "destructive" });
+        toast({
+          ...explainRefusal(metadata, Boolean(explainStrategy), {
+            notReady: t("notReady"),
+            loading: t("metadataLoading"),
+            notSupported: t("notSupported"),
+            selectOnly: t("selectOnly"),
+            unavailable: t("explainUnavailable"),
+          }),
+          variant: "destructive",
+        });
         setTabs((prev) =>
           prev.map((t) => (t.id === targetTabId ? { ...t, isExecuting: false, isLoadingMore: false } : t)),
         );
@@ -413,7 +428,7 @@ export function useQueryExecution({
           // a Retry-After on any other status says nothing about this query's failure.
           const retryAfter = response.status === 429 ? retryAfterSeconds(response) : null;
           const errorMessage =
-            retryAfter !== null ? `Too many requests. Try again in ${retryAfter}s.` : error.error || "Query failed";
+            retryAfter !== null ? t("rateLimitSeconds", { seconds: retryAfter }) : error.error || t("queryFailed");
 
           storage.addToHistory({
             id: newLocalId(),
@@ -430,7 +445,7 @@ export function useQueryExecution({
           // Handle query cancellation via response code
           if (errorCode === ApiErrorCode.QUERY_CANCELLED) {
             commitToTab((t) => ({ ...t, isExecuting: false, isLoadingMore: false }));
-            toast({ title: "Query Cancelled", description: "Query execution was cancelled." });
+            toast({ title: t("queryCancelled"), description: t("executionCancelled") });
             return;
           }
 
@@ -464,14 +479,17 @@ export function useQueryExecution({
           if (hasError) {
             const errorStmt = resultData.statements?.find((s: { status: string }) => s.status === "error");
             toast({
-              title: `Executed ${executedCount - 1}/${statementCount} statements`,
-              description: `Error in statement ${errorStmt?.index + 1}: ${errorStmt?.error}`,
+              title: t("multiPartial", { executed: executedCount - 1, total: statementCount }),
+              description: t("multiError", { index: errorStmt?.index + 1, error: errorStmt?.error }),
               variant: "destructive",
             });
           } else {
             toast({
-              title: `${executedCount} statements executed`,
-              description: `All ${statementCount} statements completed in ${resultData.executionTime}ms`,
+              title: t("multiSuccess", { count: executedCount }),
+              description: t("multiSuccessDescription", {
+                count: statementCount,
+                time: resultData.executionTime,
+              }),
             });
           }
         }
@@ -546,8 +564,8 @@ export function useQueryExecution({
             logger.warn("Playground transaction rollback failed", { route: "use-query-execution" });
           }
           toast({
-            title: "Playground",
-            description: "Changes auto-rolled back. No data was modified.",
+            title: t("playgroundTitle"),
+            description: t("playgroundDescription"),
           });
         }
 
@@ -591,16 +609,16 @@ export function useQueryExecution({
           // Superseding is not cancelling. The user asked for another query; they
           // did not ask to be told this one stopped.
           if (!superseded) {
-            toast({ title: "Query Cancelled", description: "Query execution was cancelled." });
+            toast({ title: t("queryCancelled"), description: t("executionCancelled") });
           }
           return;
         }
 
-        const title = "Query Error";
-        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        const title = t("queryError");
+        const errorMessage = error instanceof Error ? error.message : t("unknownError");
         // Fallback string check for cancellation errors not caught by response code
         if (errorMessage.includes("Query was cancelled") || errorMessage.includes("cancelled")) {
-          toast({ title: "Query Cancelled", description: "Query execution was cancelled." });
+          toast({ title: t("queryCancelled"), description: t("executionCancelled") });
           return;
         }
         toast({ title, description: errorMessage, variant: "destructive" });
@@ -614,7 +632,7 @@ export function useQueryExecution({
         }
       }
     },
-    [activeConnection, toast, fetchSchema, metadata, transactionActive, playgroundMode, setTabs, queryEditorRef],
+    [activeConnection, toast, fetchSchema, metadata, transactionActive, playgroundMode, setTabs, queryEditorRef, t],
   );
 
   // Force execute (bypass safety check) — unified via skipSafety flag
@@ -656,7 +674,7 @@ export function useQueryExecution({
   const executeHandedOverStatement = useCallback(
     async (runId: string, sql: string) => {
       if (!activeConnection) {
-        toast({ title: "No Connection", description: "Select a connection first.", variant: "destructive" });
+        toast({ title: t("noConnection"), description: t("selectConnection"), variant: "destructive" });
         return;
       }
       const targetTabId = activeTabId;
@@ -670,7 +688,7 @@ export function useQueryExecution({
         const response = await fetch(`/api/agent/runs/${encodeURIComponent(runId)}/handover`, { method: "POST" });
         const payload = await response.json();
         if (!response.ok) {
-          throw new Error(payload.error || "The hand-over could not be run");
+          throw new Error(payload.error || t("handoverFailed"));
         }
 
         const result = payload.result;
@@ -695,7 +713,7 @@ export function useQueryExecution({
           ),
         );
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        const errorMessage = error instanceof Error ? error.message : t("unknownError");
         storage.addToHistory({
           id: newLocalId(),
           connectionId: activeConnection.id,
@@ -709,10 +727,10 @@ export function useQueryExecution({
         });
         setHistoryKey((prev) => prev + 1);
         setTabs((prev) => prev.map((t) => (t.id === targetTabId ? { ...t, isExecuting: false } : t)));
-        toast({ title: "Query Error", description: errorMessage, variant: "destructive" });
+        toast({ title: t("queryError"), description: errorMessage, variant: "destructive" });
       }
     },
-    [activeConnection, activeTabId, tabs, currentTab, setTabs, toast],
+    [activeConnection, activeTabId, tabs, currentTab, setTabs, toast, t],
   );
 
   /**

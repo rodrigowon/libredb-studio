@@ -2,7 +2,11 @@ import "../setup-dom";
 import "../helpers/mock-sonner";
 
 import { describe, test, expect, mock, beforeEach } from "bun:test";
-import { renderHook, act } from "@testing-library/react";
+import { renderHook as testingLibraryRenderHook, act } from "@testing-library/react";
+import { IntlTestProvider } from "../helpers/render-with-intl";
+
+const renderHook = ((callback, options = {}) =>
+  testingLibraryRenderHook(callback, { ...options, wrapper: IntlTestProvider })) as typeof testingLibraryRenderHook;
 
 import { useQueryAdapter } from "@/workspace/hooks/use-query-adapter";
 import type { DatabaseConnection, QueryTab } from "@/lib/types";

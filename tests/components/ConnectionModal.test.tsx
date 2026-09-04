@@ -276,7 +276,8 @@ mock.module("lucide-react", () => {
 
 // ── Imports AFTER mocks ─────────────────────────────────────────────────────
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { render, fireEvent, cleanup } from "@testing-library/react";
+import { fireEvent, cleanup } from "@testing-library/react";
+import { renderWithIntl as render } from "../helpers/render-with-intl";
 import { ConnectionModal } from "@/components/ConnectionModal";
 
 // =============================================================================
@@ -1009,5 +1010,29 @@ describe("ConnectionModal", () => {
 
     const passphraseInput = container.querySelector('input[placeholder="Key passphrase (if encrypted)"]');
     expect(passphraseInput?.getAttribute("autocomplete")).toBe("new-password");
+  });
+
+  test("renders a new connection in Brazilian Portuguese and keeps the provider allowlist", () => {
+    const props = createDefaultProps();
+    const { getAllByText, getByText, queryByText } = render(React.createElement(ConnectionModal, props), "pt-BR");
+
+    expect(getAllByText("Nova conexão").length).toBeGreaterThan(0);
+    expect(getByText("Nome da conexão")).toBeTruthy();
+    expect(getByText("Testar conexão")).toBeTruthy();
+    expect(getByText("PostgreSQL")).toBeTruthy();
+    expect(getByText("MySQL")).toBeTruthy();
+    expect(getByText("SQLite")).toBeTruthy();
+    expect(queryByText("MongoDB")).toBeNull();
+  });
+
+  test("renders edit connection actions in Brazilian Portuguese", () => {
+    mockFormOverrides = { isEditMode: true };
+    const props = createDefaultProps({
+      editConnection: { id: "e1", name: "Legado", type: "postgres", createdAt: new Date() },
+    });
+    const { getAllByText, getByText } = render(React.createElement(ConnectionModal, props), "pt-BR");
+
+    expect(getAllByText("Editar conexão").length).toBeGreaterThan(0);
+    expect(getByText("Salvar alterações")).toBeTruthy();
   });
 });

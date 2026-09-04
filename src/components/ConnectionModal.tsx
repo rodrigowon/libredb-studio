@@ -9,7 +9,6 @@ import {
   DatabaseConnection,
   ConnectionEnvironment,
   ENVIRONMENT_COLORS,
-  ENVIRONMENT_LABELS,
   SSLMode,
 } from "@/lib/types";
 import {
@@ -36,24 +35,7 @@ import { useConnectionForm } from "@/hooks/use-connection-form";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { WireCompatibilityHint } from "@/components/WireCompatibilityHint";
 import { ENGINE_URI_SCHEMES } from "@/lib/connection-string-parser";
-
-/**
- * What each SSL mode actually does, in the panel where it is chosen.
- *
- * `verify-system` is the one that needs the sentence most (D26): without it a reader cannot
- * tell it from `verify-ca` and goes looking for a CA file that mode does not want. The
- * SSLMode union is published (src/lib/types.ts), so this Record is exhaustive by type - a
- * mode added there without copy here fails typecheck rather than rendering an empty hint.
- */
-const SSL_MODE_HINTS: Record<SSLMode, string> = {
-  disable: "Plaintext. Nothing is encrypted.",
-  require: "Encrypts but verifies nothing - any certificate is accepted, including a forged one.",
-  "verify-system":
-    "Encrypts and verifies the certificate chain and host name against the system trust store - no certificate to paste. Use this for a managed endpoint (Neon, Supabase, Atlas, RDS, Capella).",
-  "verify-ca": "Encrypts and verifies the chain against the CA certificate below. Paste one for a private CA.",
-  "verify-full":
-    "Encrypts and verifies the chain against the CA certificate below, and that it names the host you typed.",
-};
+import { useTranslations } from "next-intl";
 
 interface ConnectionModalProps {
   isOpen: boolean;
@@ -74,6 +56,7 @@ export function ConnectionModal({
   onTestConnection,
 }: ConnectionModalProps) {
   const isMobile = useIsMobile();
+  const t = useTranslations("Connections");
   const {
     // Connection fields
     type,
@@ -189,8 +172,14 @@ export function ConnectionModal({
   // JWT here. A field labelled Password invites a password no libSQL server has,
   // which is why this one is relabelled rather than left to be guessed at.
   const isLibSQL = type === "libsql";
-  const passwordFieldLabel = isLibSQL ? "Auth Token" : "Password";
-  const databaseFieldLabel = isCouchbase ? "Bucket" : isTrino ? "Catalog" : isCassandra ? "Keyspace" : "Database";
+  const passwordFieldLabel = isLibSQL ? t("fields.authToken") : t("fields.password");
+  const databaseFieldLabel = isCouchbase
+    ? t("fields.bucketName")
+    : isTrino
+      ? t("fields.catalogName")
+      : isCassandra
+        ? t("fields.keyspaceName")
+        : t("fields.databaseName");
   const databaseFieldPlaceholder = isTrino ? "tpch" : isCassandra ? "probe" : "db";
   const connectionUriPlaceholder = isCouchbase
     ? "couchbase://localhost:8091/travel-sample  or  couchbases://cb.<id>.cloud.couchbase.com/..."
@@ -217,14 +206,14 @@ export function ConnectionModal({
               <Zap strokeWidth={1.5} className="w-5 h-5 text-blue-400" />
             </div>
             <h2 className="text-xs md:text-[0.8125rem] font-medium">
-              {isEditMode ? "Edit Connection" : "New Connection"}
+              {isEditMode ? t("modal.editTitle") : t("modal.newTitle")}
             </h2>
           </div>
           <div className="flex items-center justify-between">
             <p className="text-xs text-fg-muted">
               {isEditMode
-                ? "Update your database connection parameters."
-                : "Configure your database connection parameters securely."}
+                ? t("modal.editDescription")
+                : t("modal.newDescription")}
             </p>
             {!isEditMode && (
               <button
@@ -232,7 +221,7 @@ export function ConnectionModal({
                 className="flex items-center gap-1.5 text-xs font-mediumr text-blue-400 hover:text-blue-300 transition-colors px-2 py-1 rounded-md hover:bg-blue-500/10"
               >
                 <ClipboardPaste strokeWidth={1.5} className="w-3 h-3" />
-                Paste URL
+                {t("modal.pasteUrl")}
               </button>
             )}
           </div>
@@ -248,7 +237,7 @@ export function ConnectionModal({
               className="mb-6 overflow-hidden"
             >
               <div className="p-3 rounded-lg border border-blue-500/20 bg-blue-500/5 space-y-2">
-                <Label className="text-xs font-mediumr text-blue-400">Paste Connection URL</Label>
+                <Label className="text-xs font-mediumr text-blue-400">{t("modal.pasteTitle")}</Label>
                 <div className="flex gap-2">
                   <Input
                     value={pasteInput}
@@ -262,10 +251,10 @@ export function ConnectionModal({
                     onClick={handlePasteConnectionString}
                     className="bg-blue-600 hover:bg-blue-500 text-white h-9 px-4 text-xs font-medium"
                   >
-                    Parse
+                    {t("modal.parse")}
                   </Button>
                 </div>
-                <p className="text-xs text-fg-muted">Supports: {pasteSchemes}</p>
+                <p className="text-xs text-fg-muted">{t("modal.supports", { formats: pasteSchemes })}</p>
               </div>
             </motion.div>
           )}
@@ -277,21 +266,21 @@ export function ConnectionModal({
             <div className="flex items-center gap-2 mb-1">
               <Database strokeWidth={1.5} className="w-3 h-3 text-fg-muted" />
               <Label htmlFor="name" className="text-xs font-mediumr text-fg-muted">
-                Connection Name
+                {t("fields.name")}
               </Label>
             </div>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="My Database"
+              placeholder={t("fields.namePlaceholder")}
               className="h-10 bg-panel border-hairline focus:border-blue-500/50 transition-all text-xs"
             />
           </div>
 
           {/* Environment Selector */}
           <div className="space-y-2">
-            <Label className="text-xs font-mediumr text-fg-muted">Environment</Label>
+            <Label className="text-xs font-mediumr text-fg-muted">{t("fields.environment")}</Label>
             <div className="flex flex-wrap items-center gap-2">
               {(Object.keys(ENVIRONMENT_COLORS) as ConnectionEnvironment[]).map((env) => (
                 <button
@@ -305,7 +294,7 @@ export function ConnectionModal({
                   )}
                 >
                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: ENVIRONMENT_COLORS[env] }} />
-                  {env === "other" ? "Other" : ENVIRONMENT_LABELS[env]}
+                  {t(`environment.${env}`)}
                 </button>
               ))}
             </div>
@@ -362,7 +351,7 @@ export function ConnectionModal({
                     )}
                   >
                     <Globe strokeWidth={1.5} className="w-3 h-3" />
-                    Host / Port
+                    {t("fields.host")} / {t("fields.port")}
                   </button>
                   <button
                     onClick={() => setMongoConnectionMode("connectionString")}
@@ -374,7 +363,7 @@ export function ConnectionModal({
                     )}
                   >
                     <Link strokeWidth={1.5} className="w-3 h-3" />
-                    Connection String
+                    {t("fields.connectionString")}
                   </button>
                 </div>
               )}
@@ -385,7 +374,7 @@ export function ConnectionModal({
                     <div className="flex items-center gap-2 mb-1">
                       <Link strokeWidth={1.5} className="w-3 h-3 text-fg-muted" />
                       <Label htmlFor="connectionString" className="text-xs font-mediumr text-fg-muted">
-                        Connection URI
+                        {t("fields.connectionUri")}
                       </Label>
                     </div>
                     <Input
@@ -400,14 +389,14 @@ export function ConnectionModal({
                     <div className="flex items-center gap-2 mb-1">
                       <Database strokeWidth={1.5} className="w-3 h-3 text-fg-muted" />
                       <Label htmlFor="database" className="text-xs font-mediumr text-fg-muted">
-                        {databaseFieldLabel} Name (optional override)
+                        {databaseFieldLabel} ({t("fields.optionalOverride")})
                       </Label>
                     </div>
                     <Input
                       id="database"
                       value={database}
                       onChange={(e) => setDatabase(e.target.value)}
-                      placeholder="Extracted from URI if not provided"
+                      placeholder={t("placeholders.databaseExtracted")}
                       className="h-10 bg-panel border-hairline focus:border-blue-500/50 transition-all text-xs font-mono"
                     />
                   </div>
@@ -417,14 +406,14 @@ export function ConnectionModal({
                   <div className="flex items-center gap-2 mb-1">
                     <Database strokeWidth={1.5} className="w-3 h-3 text-fg-muted" />
                     <Label htmlFor="database" className="text-xs font-medium text-fg-muted">
-                      Database File Path
+                      {t("fields.databasePath")}
                     </Label>
                   </div>
                   <Input
                     id="database"
                     value={database}
                     onChange={(e) => setDatabase(e.target.value)}
-                    placeholder="/path/to/database file"
+                    placeholder={t("placeholders.databasePath")}
                     className="h-10 bg-panel border-hairline focus:border-blue-500/50 transition-all text-xs font-mono"
                   />
                 </div>
@@ -434,7 +423,7 @@ export function ConnectionModal({
                     <div className="flex items-center gap-2 mb-1">
                       <Globe strokeWidth={1.5} className="w-3 h-3 text-fg-muted" />
                       <Label htmlFor="host" className="text-xs font-mediumr text-fg-muted">
-                        Host & Instance
+                        {t("fields.hostPort")}
                       </Label>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -467,7 +456,7 @@ export function ConnectionModal({
                         <div className="flex items-center gap-2 mb-1">
                           <Key strokeWidth={1.5} className="w-3 h-3 text-fg-muted" />
                           <Label htmlFor="user" className="text-xs font-mediumr text-fg-muted">
-                            Username
+                            {t("fields.username")}
                           </Label>
                         </div>
                         <Input
@@ -509,14 +498,12 @@ export function ConnectionModal({
                       */}
                       {isLibSQL && (
                         <p className="text-xs text-fg-muted">
-                          Turso Cloud mints this per database (`turso db tokens create`). A self-hosted libSQL server
-                          started without authentication takes none - leave it empty.
+                          {t("helpers.libsqlPassword")}
                         </p>
                       )}
                       {isTrino && (
                         <p className="text-xs text-fg-muted">
-                          Trino refuses a password over plain HTTP. Enable TLS below, or leave this empty to connect as
-                          an unauthenticated user.
+                          {t("helpers.trinoPassword")}
                         </p>
                       )}
                     </div>
@@ -533,7 +520,7 @@ export function ConnectionModal({
                       <div className="flex items-center gap-2 mb-1">
                         <Database strokeWidth={1.5} className="w-3 h-3 text-fg-muted" />
                         <Label htmlFor="database" className="text-xs font-mediumr text-fg-muted">
-                          {databaseFieldLabel} Name
+                          {databaseFieldLabel}
                         </Label>
                       </div>
                       <Input
@@ -545,13 +532,12 @@ export function ConnectionModal({
                       />
                       {isTrino && (
                         <p className="text-xs text-fg-muted">
-                          The Trino catalog to open, such as tpch or hive. Its schemas are the level below.
+                          {t("helpers.trino")}
                         </p>
                       )}
                       {isCassandra && (
                         <p className="text-xs text-fg-muted">
-                          The keyspace to open. Tables inside it are the level below; statements can still name any
-                          keyspace in full.
+                          {t("helpers.cassandra")}
                         </p>
                       )}
                     </div>
@@ -569,7 +555,7 @@ export function ConnectionModal({
                       <div className="flex items-center gap-2 mb-1">
                         <Key strokeWidth={1.5} className="w-3 h-3 text-fg-muted" />
                         <Label htmlFor="authSource" className="text-xs font-medium text-fg-muted">
-                          Authentication Database
+                          {t("fields.authenticationDatabase")}
                         </Label>
                       </div>
                       <Input
@@ -580,8 +566,7 @@ export function ConnectionModal({
                         className="h-10 bg-panel border-hairline focus:border-blue-500/50 transition-all text-xs font-mono"
                       />
                       <p className="text-xs text-fg-muted">
-                        The database the user was created in, usually admin. Leave empty when the credentials live in
-                        the database above.
+                        {t("helpers.authDatabase")}
                       </p>
                     </div>
                   )}
@@ -598,7 +583,7 @@ export function ConnectionModal({
                       <div className="flex items-center gap-2 mb-1">
                         <Server strokeWidth={1.5} className="w-3 h-3 text-fg-muted" />
                         <Label htmlFor="localDataCenter" className="text-xs font-medium text-fg-muted">
-                          Local Data Center
+                          {t("fields.localDataCenter")}
                         </Label>
                       </div>
                       <Input
@@ -609,8 +594,7 @@ export function ConnectionModal({
                         className="h-10 bg-panel border-hairline focus:border-blue-500/50 transition-all text-xs font-mono"
                       />
                       <p className="text-xs text-fg-muted">
-                        Required: the Cassandra driver refuses to connect without it. A stock single-node install
-                        reports datacenter1; the server lists the ones it has if this is wrong.
+                        {t("helpers.localDataCenter")}
                       </p>
                     </div>
                   )}
@@ -628,7 +612,7 @@ export function ConnectionModal({
                 className="flex items-center gap-2 w-full px-3 py-2 rounded-lg border border-hairline hover:border-hairline-strong bg-panel text-xs font-medium text-fg-tertiary hover:text-fg transition-all"
               >
                 <Settings2 strokeWidth={1.5} className="w-3.5 h-3.5 text-orange-500" />
-                <span>Advanced</span>
+                <span>{t("fields.advanced")}</span>
                 {(serviceName || instanceName) && (
                   <span className="ml-1 px-1.5 py-0.5 rounded text-[0.625rem] bg-orange-500/10 text-orange-400 border border-orange-500/20">
                     SET
@@ -647,7 +631,7 @@ export function ConnectionModal({
                     <div className="p-3 rounded-lg border border-orange-500/10 bg-orange-500/5 space-y-3">
                       {type === "oracle" && (
                         <div className="space-y-1.5">
-                          <Label className="text-xs font-mediumr text-fg-muted">Service Name</Label>
+                          <Label className="text-xs font-mediumr text-fg-muted">{t("fields.serviceName")}</Label>
                           <Input
                             value={serviceName}
                             onChange={(e) => setServiceName(e.target.value)}
@@ -655,13 +639,13 @@ export function ConnectionModal({
                             className="h-9 bg-panel border-hairline focus:border-orange-500/50 text-xs"
                           />
                           <p className="text-xs text-fg-muted">
-                            If empty, the Database Name field is used as the service name.
+                            {t("helpers.serviceName")}
                           </p>
                         </div>
                       )}
                       {type === "mssql" && (
                         <div className="space-y-1.5">
-                          <Label className="text-xs font-mediumr text-fg-muted">Instance Name</Label>
+                          <Label className="text-xs font-mediumr text-fg-muted">{t("fields.instanceName")}</Label>
                           <Input
                             value={instanceName}
                             onChange={(e) => setInstanceName(e.target.value)}
@@ -669,7 +653,7 @@ export function ConnectionModal({
                             className="h-9 bg-panel border-hairline focus:border-orange-500/50 text-xs"
                           />
                           <p className="text-xs text-fg-muted">
-                            For named instances (e.g. SQLEXPRESS). Leave empty for default instance.
+                            {t("helpers.instanceName")}
                           </p>
                         </div>
                       )}
@@ -690,7 +674,7 @@ export function ConnectionModal({
                 className="flex items-center gap-2 w-full px-3 py-2 rounded-lg border border-hairline hover:border-hairline-strong bg-panel text-xs font-medium text-fg-tertiary hover:text-fg transition-all"
               >
                 <Lock strokeWidth={1.5} className="w-3.5 h-3.5 text-emerald-500" />
-                <span>SSL / TLS</span>
+                <span>{t("fields.ssl")}</span>
                 {sslMode !== "disable" && (
                   <span className="ml-1 px-1.5 py-0.5 rounded text-[0.625rem] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                     {sslMode.toUpperCase()}
@@ -708,7 +692,7 @@ export function ConnectionModal({
                   >
                     <div className="p-3 rounded-lg border border-emerald-500/10 bg-emerald-500/5 space-y-3">
                       <div className="space-y-2">
-                        <Label className="text-xs font-mediumr text-fg-muted">SSL Mode</Label>
+                        <Label className="text-xs font-mediumr text-fg-muted">{t("fields.sslMode")}</Label>
                         <div className="flex flex-wrap gap-1.5">
                           {(["disable", "require", "verify-system", "verify-ca", "verify-full"] as SSLMode[]).map(
                             (mode) => (
@@ -729,17 +713,17 @@ export function ConnectionModal({
                           )}
                         </div>
                         <p data-testid="ssl-mode-hint" className="text-xs text-fg-muted">
-                          {SSL_MODE_HINTS[sslMode]}
+                          {t(`sslHints.${sslMode}`)}
                         </p>
                       </div>
                       {sslMode !== "disable" && (
                         <div className="space-y-3">
                           <div className="space-y-1.5">
-                            <Label className="text-xs font-mediumr text-fg-muted">CA Certificate (PEM)</Label>
+                            <Label className="text-xs font-mediumr text-fg-muted">{t("fields.caCertificate")} (PEM)</Label>
                             <textarea
                               value={caCert}
                               onChange={(e) => setCaCert(e.target.value)}
-                              placeholder="-----BEGIN CERTIFICATE-----&#10;Paste CA cert content here...&#10;-----END CERTIFICATE-----"
+                              placeholder={t("placeholders.caCertificate")}
                               rows={3}
                               className="w-full rounded-md bg-panel border border-hairline focus:border-emerald-500/50 text-xs font-mono text-fg-secondary p-2 resize-none placeholder:text-fg-subtle"
                             />
@@ -747,21 +731,21 @@ export function ConnectionModal({
                           {(sslMode === "verify-ca" || sslMode === "verify-full") && (
                             <>
                               <div className="space-y-1.5">
-                                <Label className="text-xs font-mediumr text-fg-muted">Client Certificate (PEM)</Label>
+                                <Label className="text-xs font-mediumr text-fg-muted">{t("fields.clientCertificate")} (PEM)</Label>
                                 <textarea
                                   value={clientCert}
                                   onChange={(e) => setClientCert(e.target.value)}
-                                  placeholder="-----BEGIN CERTIFICATE-----&#10;Optional client cert...&#10;-----END CERTIFICATE-----"
+                                  placeholder={t("placeholders.clientCertificate")}
                                   rows={3}
                                   className="w-full rounded-md bg-panel border border-hairline focus:border-emerald-500/50 text-xs font-mono text-fg-secondary p-2 resize-none placeholder:text-fg-subtle"
                                 />
                               </div>
                               <div className="space-y-1.5">
-                                <Label className="text-xs font-mediumr text-fg-muted">Client Private Key (PEM)</Label>
+                                <Label className="text-xs font-mediumr text-fg-muted">{t("fields.clientKey")} (PEM)</Label>
                                 <textarea
                                   value={clientKey}
                                   onChange={(e) => setClientKey(e.target.value)}
-                                  placeholder="-----BEGIN PRIVATE KEY-----&#10;Optional client key...&#10;-----END PRIVATE KEY-----"
+                                  placeholder={t("placeholders.clientKey")}
                                   rows={3}
                                   className="w-full rounded-md bg-panel border border-hairline focus:border-emerald-500/50 text-xs font-mono text-fg-secondary p-2 resize-none placeholder:text-fg-subtle"
                                 />
@@ -782,7 +766,7 @@ export function ConnectionModal({
                 className="flex items-center gap-2 w-full px-3 py-2 rounded-lg border border-hairline hover:border-hairline-strong bg-panel text-xs font-medium text-fg-tertiary hover:text-fg transition-all"
               >
                 <Terminal strokeWidth={1.5} className="w-3.5 h-3.5 text-purple-500" />
-                <span>SSH Tunnel</span>
+                <span>{t("fields.sshTunnel")}</span>
                 {sshEnabled && (
                   <span className="ml-1 px-1.5 py-0.5 rounded text-[0.625rem] bg-purple-500/10 text-purple-400 border border-purple-500/20">
                     ON
@@ -806,13 +790,13 @@ export function ConnectionModal({
                           onChange={(e) => setSSHEnabled(e.target.checked)}
                           className="rounded border-edge bg-panel"
                         />
-                        <span className="text-xs font-medium text-fg-secondary">Enable SSH Tunnel</span>
+                        <span className="text-xs font-medium text-fg-secondary">{t("fields.enableSsh")}</span>
                       </label>
                       {sshEnabled && (
                         <div className="space-y-3">
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                             <div className="md:col-span-3 space-y-1.5">
-                              <Label className="text-xs font-mediumr text-fg-muted">SSH Host</Label>
+                              <Label className="text-xs font-mediumr text-fg-muted">{t("fields.sshHost")}</Label>
                               <Input
                                 value={sshHost}
                                 onChange={(e) => setSSHHost(e.target.value)}
@@ -822,7 +806,7 @@ export function ConnectionModal({
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <Label className="text-xs font-mediumr text-fg-muted">Port</Label>
+                              <Label className="text-xs font-mediumr text-fg-muted">{t("fields.port")}</Label>
                               <Input
                                 value={sshPort}
                                 onChange={(e) => setSSHPort(e.target.value)}
@@ -832,7 +816,7 @@ export function ConnectionModal({
                             </div>
                           </div>
                           <div className="space-y-1.5">
-                            <Label className="text-xs font-mediumr text-fg-muted">Username</Label>
+                            <Label className="text-xs font-mediumr text-fg-muted">{t("fields.sshUsername")}</Label>
                             <Input
                               value={sshUsername}
                               onChange={(e) => setSSHUsername(e.target.value)}
@@ -842,7 +826,7 @@ export function ConnectionModal({
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label className="text-xs font-mediumr text-fg-muted">Auth Method</Label>
+                            <Label className="text-xs font-mediumr text-fg-muted">{t("fields.authMethod")}</Label>
                             <div className="flex gap-2">
                               <button
                                 type="button"
@@ -854,7 +838,7 @@ export function ConnectionModal({
                                     : "border-transparent text-fg-muted hover:text-fg-secondary hover:bg-fill",
                                 )}
                               >
-                                Password
+                                {t("fields.password")}
                               </button>
                               <button
                                 type="button"
@@ -866,13 +850,13 @@ export function ConnectionModal({
                                     : "border-transparent text-fg-muted hover:text-fg-secondary hover:bg-fill",
                                 )}
                               >
-                                Private Key
+                                {t("fields.privateKey")}
                               </button>
                             </div>
                           </div>
                           {sshAuthMethod === "password" ? (
                             <div className="space-y-1.5">
-                              <Label className="text-xs font-mediumr text-fg-muted">SSH Password</Label>
+                              <Label className="text-xs font-mediumr text-fg-muted">{t("fields.sshPassword")}</Label>
                               <Input
                                 type="password"
                                 value={sshPassword}
@@ -885,22 +869,22 @@ export function ConnectionModal({
                           ) : (
                             <div className="space-y-3">
                               <div className="space-y-1.5">
-                                <Label className="text-xs font-mediumr text-fg-muted">Private Key (PEM)</Label>
+                                <Label className="text-xs font-mediumr text-fg-muted">{t("fields.privateKey")} (PEM)</Label>
                                 <textarea
                                   value={sshPrivateKey}
                                   onChange={(e) => setSSHPrivateKey(e.target.value)}
-                                  placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;Paste private key here...&#10;-----END OPENSSH PRIVATE KEY-----"
+                                  placeholder={t("placeholders.privateKey")}
                                   rows={4}
                                   className="w-full rounded-md bg-panel border border-hairline focus:border-purple-500/50 text-xs font-mono text-fg-secondary p-2 resize-none placeholder:text-fg-subtle"
                                 />
                               </div>
                               <div className="space-y-1.5">
-                                <Label className="text-xs font-mediumr text-fg-muted">Passphrase (optional)</Label>
+                                <Label className="text-xs font-mediumr text-fg-muted">{t("fields.passphrase")}</Label>
                                 <Input
                                   type="password"
                                   value={sshPassphrase}
                                   onChange={(e) => setSSHPassphrase(e.target.value)}
-                                  placeholder="Key passphrase (if encrypted)"
+                                  placeholder={t("placeholders.passphrase")}
                                   autoComplete="new-password"
                                   className="h-9 bg-panel border-hairline focus:border-purple-500/50 text-xs"
                                 />
@@ -960,7 +944,7 @@ export function ConnectionModal({
             onClick={onClose}
             className="w-full md:w-auto text-fg-muted hover:text-fg hover:bg-fill text-xs font-medium"
           >
-            Cancel
+            {t("modal.cancel")}
           </Button>
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-2">
             <Button
@@ -973,10 +957,10 @@ export function ConnectionModal({
                 <div className="flex items-center gap-2">
                   {/* On an outline button, so the spinner follows the text ramp. */}
                   <div className="w-3 h-3 border-2 border-fg-tertiary/30 border-t-fg-tertiary rounded-full animate-spin" />
-                  Testing...
+                  {t("modal.testing")}
                 </div>
               ) : (
-                "Test Connection"
+                t("modal.test")
               )}
             </Button>
             <Button
@@ -1000,7 +984,7 @@ export function ConnectionModal({
                   >
                     {/* Inside a solid blue button — white is right on either ground. */}
                     <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Connecting...
+                    {t("modal.connecting")}
                   </motion.div>
                 ) : (
                   <motion.div
@@ -1010,7 +994,7 @@ export function ConnectionModal({
                     exit={{ opacity: 0 }}
                     className="flex items-center gap-2"
                   >
-                    {isEditMode ? "Save Changes" : "Establish Connection"}
+                    {isEditMode ? t("modal.saveChanges") : t("modal.establish")}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -1031,8 +1015,8 @@ export function ConnectionModal({
       >
         <DrawerContent className="max-h-[95dvh] bg-surface border-hairline text-fg p-0 flex flex-col">
           <DrawerHeader className="sr-only">
-            <DrawerTitle>{isEditMode ? "Edit Connection" : "New Connection"}</DrawerTitle>
-            <DrawerDescription>Configure database connection parameters.</DrawerDescription>
+            <DrawerTitle>{isEditMode ? t("modal.editTitle") : t("modal.newTitle")}</DrawerTitle>
+            <DrawerDescription>{isEditMode ? t("aria.editDescription") : t("aria.newDescription")}</DrawerDescription>
           </DrawerHeader>
           {formContent}
         </DrawerContent>
@@ -1046,8 +1030,10 @@ export function ConnectionModal({
         className="sm:max-w-[500px] lg:max-w-[540px] max-h-[90vh] bg-surface border-hairline text-fg p-0 overflow-hidden shadow-2xl flex flex-col"
         showCloseButton={false}
       >
-        <DialogTitle className="sr-only">{isEditMode ? "Edit Connection" : "New Connection"}</DialogTitle>
-        <DialogDescription className="sr-only">Configure database connection parameters.</DialogDescription>
+        <DialogTitle className="sr-only">{isEditMode ? t("modal.editTitle") : t("modal.newTitle")}</DialogTitle>
+        <DialogDescription className="sr-only">
+          {isEditMode ? t("aria.editDescription") : t("aria.newDescription")}
+        </DialogDescription>
         {formContent}
       </DialogContent>
     </Dialog>

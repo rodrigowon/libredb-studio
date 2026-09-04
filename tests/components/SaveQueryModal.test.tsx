@@ -4,7 +4,8 @@ import "../helpers/mock-navigation";
 
 import React from "react";
 import { afterEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, fireEvent, render, within } from "@testing-library/react";
+import { cleanup, fireEvent, within } from "@testing-library/react";
+import { renderWithIntl as render } from "../helpers/render-with-intl";
 import { SaveQueryModal } from "@/components/SaveQueryModal";
 
 describe("SaveQueryModal", () => {

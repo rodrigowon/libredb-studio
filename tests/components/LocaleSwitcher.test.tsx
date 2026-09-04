@@ -4,11 +4,20 @@ import ReactDOMServer from "react-dom/server";
 import { hydrateRoot } from "react-dom/client";
 import { afterEach, describe, expect, mock, spyOn, test } from "bun:test";
 import { cleanup, fireEvent, waitFor } from "@testing-library/react";
+import { useTranslations } from "next-intl";
 import { mockRouterRefresh } from "../helpers/mock-navigation";
 import { IntlTestProvider, renderWithIntl } from "../helpers/render-with-intl";
 import type { Locale } from "@/i18n/config";
 
 const { LocaleSwitcher } = await import("@/components/locale-switcher");
+
+function LoginLocaleProbe() {
+  return <span>{useTranslations("Login.form")("submit")}</span>;
+}
+
+function StudioLocaleProbe() {
+  return <span>{useTranslations("Studio.header")("monitoring")}</span>;
+}
 
 describe("LocaleSwitcher", () => {
   afterEach(() => {
@@ -27,7 +36,7 @@ describe("LocaleSwitcher", () => {
   });
 
   test("persists the new locale and refreshes the current URL", async () => {
-    const persist = mock(async (_locale: string) => {});
+    const persist = mock(async () => {});
     const { getByLabelText } = renderWithIntl(<LocaleSwitcher onLocaleChange={persist} />, "pt-BR");
 
     fireEvent.change(getByLabelText("Idioma"), { target: { value: "en" } });
@@ -52,6 +61,28 @@ describe("LocaleSwitcher", () => {
 
     const refreshed = renderWithIntl(<LocaleSwitcher onLocaleChange={persist} />, persistedLocale);
     expect((refreshed.getByLabelText("Language") as HTMLSelectElement).value).toBe("en");
+  });
+
+  test("keeps the selected locale when navigating from login to Studio", async () => {
+    let persistedLocale: Locale = "pt-BR";
+    const persist = mock(async (locale: string) => {
+      persistedLocale = locale as Locale;
+    });
+    const login = renderWithIntl(
+      <>
+        <LoginLocaleProbe />
+        <LocaleSwitcher onLocaleChange={persist} />
+      </>,
+      persistedLocale,
+    );
+    expect(login.getByText("Entrar")).toBeTruthy();
+
+    fireEvent.change(login.getByLabelText("Idioma"), { target: { value: "en" } });
+    await waitFor(() => expect(persist).toHaveBeenCalledWith("en"));
+    login.unmount();
+
+    const studio = renderWithIntl(<StudioLocaleProbe />, persistedLocale);
+    expect(studio.getByText("Monitoring")).toBeTruthy();
   });
 
   test("hydrates without a locale mismatch warning", async () => {

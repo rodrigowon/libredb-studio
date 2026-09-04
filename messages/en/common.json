@@ -7,5 +7,10 @@
     "continue": "Continue",
     "loading": "Loading",
     "error": "Error"
+  },
+  "language": {
+    "label": "Language",
+    "ptBR": "Português (Brasil)",
+    "en": "English"
   }
 }

@@ -14,6 +14,7 @@ import { getDBConfig } from "@/lib/db-ui-config";
 import { getEnabledDatabaseTypes } from "@/lib/database-visibility";
 import { parseConnectionString } from "@/lib/connection-string-parser";
 import { newLocalId } from "@/lib/ids";
+import { useTranslations } from "next-intl";
 
 const DEFAULT_FORM_DATABASE_TYPE = getEnabledDatabaseTypes()[0] ?? "postgres";
 const DEFAULT_FORM_DATABASE_PORT = getDBConfig(DEFAULT_FORM_DATABASE_TYPE).defaultPort;
@@ -115,8 +116,8 @@ interface TestOutcome {
  * refused - `Keyspace system_views does not exist` on ScyllaDB - and a house phrasing
  * would replace it with something less specific.
  */
-function degradedSentence(result: TestOutcome): string {
-  return result.message ?? result.error ?? "Connected, but this server answered no health data.";
+function degradedSentence(result: TestOutcome, fallback: string): string {
+  return result.message ?? result.error ?? fallback;
 }
 
 /**
@@ -130,6 +131,7 @@ function degradedSentence(result: TestOutcome): string {
 type TestResultTone = "success" | "warning" | "error";
 
 export function useConnectionForm({ isOpen, onConnect, editConnection, onTestConnection }: UseConnectionFormProps) {
+  const t = useTranslations("Connections");
   const [type, setType] = useState<DatabaseType>(DEFAULT_FORM_DATABASE_TYPE);
   const [name, setName] = useState("");
   const [host, setHost] = useState("localhost");
@@ -434,17 +436,19 @@ export function useConnectionForm({ isOpen, onConnect, editConnection, onTestCon
         tone: !result.success ? "error" : result.degraded ? "warning" : "success",
         message: result.success
           ? result.degraded
-            ? degradedSentence(result)
-            : `Connected successfully${result.latency ? ` (${result.latency}ms)` : ""}`
-          : result.error || "Connection failed",
+            ? degradedSentence(result, t("messages.healthUnavailable"))
+            : result.latency
+              ? t("messages.successWithLatency", { latency: result.latency })
+              : t("messages.success")
+          : result.error || t("messages.failed"),
         latency: result.latency,
       });
     } catch {
-      setTestResult({ tone: "error", message: "Network error - could not reach server" });
+      setTestResult({ tone: "error", message: t("messages.networkError") });
     } finally {
       setIsTesting(false);
     }
-  }, [buildConnection, probeConnection]);
+  }, [buildConnection, probeConnection, t]);
 
   const handleConnect = useCallback(async () => {
     setIsTesting(true);
@@ -455,7 +459,7 @@ export function useConnectionForm({ isOpen, onConnect, editConnection, onTestCon
       const result = await probeConnection(conn);
 
       if (!result.success) {
-        setTestResult({ tone: "error", message: result.error || "Connection failed" });
+        setTestResult({ tone: "error", message: result.error || t("messages.failed") });
         return;
       }
 
@@ -484,9 +488,10 @@ export function useConnectionForm({ isOpen, onConnect, editConnection, onTestCon
           // The button's own label, because the dialog renders two of them: "Save
           // Changes" when editing and "Establish Connection" when creating, and naming
           // a button that is not on screen is worse than naming none.
-          message: `${degradedSentence(result)} Click ${
-            isEditMode ? "Save Changes" : "Establish Connection"
-          } again to save it anyway.`,
+          message: t("messages.saveAfterDegraded", {
+            message: degradedSentence(result, t("messages.healthUnavailable")),
+            action: isEditMode ? t("modal.saveChanges") : t("modal.establish"),
+          }),
         });
         return;
       }
@@ -501,11 +506,11 @@ export function useConnectionForm({ isOpen, onConnect, editConnection, onTestCon
       setMongoConnectionMode("host");
       setTestResult(null);
     } catch {
-      setTestResult({ tone: "error", message: "Network error - could not reach server" });
+      setTestResult({ tone: "error", message: t("messages.networkError") });
     } finally {
       setIsTesting(false);
     }
-  }, [buildConnection, degradedSaveAcknowledged, isEditMode, onConnect, probeConnection]);
+  }, [buildConnection, degradedSaveAcknowledged, isEditMode, onConnect, probeConnection, t]);
 
   const handlePasteConnectionString = useCallback(() => {
     const trimmed = pasteInput.trim();
@@ -523,8 +528,10 @@ export function useConnectionForm({ isOpen, onConnect, editConnection, onTestCon
         // DuckDB, SQLite and the embedded store are absent for a different reason:
         // they are FILE-based, `showConnectionStringToggle` is false for all three, so
         // this control is never rendered for them and no scheme is being withheld.
-        message:
-          "Could not parse connection string. Supported formats: postgres://, mysql://, mongodb://, couchbase://, clickhouse://, libsql://, http(s)://, redis://, oracle://, mssql://",
+        message: t("messages.invalidUrl", {
+          formats:
+            "postgres://, mysql://, mongodb://, couchbase://, clickhouse://, libsql://, http(s)://, redis://, oracle://, mssql://",
+        }),
       });
       return;
     }
@@ -575,15 +582,15 @@ export function useConnectionForm({ isOpen, onConnect, editConnection, onTestCon
     if (parsed.unmappedTLSParam) {
       setTestResult({
         tone: "warning",
-        message: `TLS setting not applied: "${parsed.unmappedTLSParam}" has no equivalent among disable, require, verify-system, verify-ca and verify-full. The other fields were filled in, but SSL Mode stays "${sslMode}" - open SSL / TLS and choose one before connecting.`,
+        message: t("messages.unmappedTls", { parameter: parsed.unmappedTLSParam, mode: sslMode }),
       });
       return;
     }
     setTestResult({
       tone: "success",
-      message: "Connection string parsed successfully. Review the fields and connect.",
+      message: t("messages.parsed"),
     });
-  }, [pasteInput, name, sslMode]);
+  }, [pasteInput, name, sslMode, t]);
 
   // New connections follow the fork's central UI allowlist. Edit mode retains the
   // current provider so a legacy hidden connection can still be represented safely.

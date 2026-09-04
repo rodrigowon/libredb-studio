@@ -1,8 +1,18 @@
 import "../setup-dom";
 
 import { describe, test, expect, beforeEach, afterEach, mock } from "bun:test";
-import { useEffect, useRef } from "react";
-import { renderHook, act } from "@testing-library/react";
+import { createElement, useEffect, useRef, type ReactNode } from "react";
+import { renderHook as testingLibraryRenderHook, act } from "@testing-library/react";
+import { IntlTestProvider } from "../helpers/render-with-intl";
+
+const renderHook = ((callback, options = {}) =>
+  testingLibraryRenderHook(callback, { ...options, wrapper: IntlTestProvider })) as typeof testingLibraryRenderHook;
+
+function renderHookWithLocale<Result>(callback: () => Result, locale: "pt-BR" | "en") {
+  const Wrapper = ({ children }: { children: ReactNode }) =>
+    createElement(IntlTestProvider, { locale }, children);
+  return testingLibraryRenderHook(callback, { wrapper: Wrapper });
+}
 import { mockGlobalFetch, restoreGlobalFetch } from "../helpers/mock-fetch";
 
 // ── Shared mocks — process-wide singletons (no contamination) ────────────────
@@ -1838,5 +1848,32 @@ describe("useConnectionForm", () => {
     // Non-vacuous: the connection WAS built, and the fields libSQL does take survived.
     expect(saved.host).toBe("db.turso.io");
     expect(saved.type).toBe("libsql");
+  });
+
+  test("translates application connection errors to Brazilian Portuguese", async () => {
+    const onTestConnection = mock(async () => {
+      throw new Error("network down");
+    });
+    const { result } = renderHookWithLocale(
+      () => useConnectionForm({ ...defaultProps, onTestConnection }),
+      "pt-BR",
+    );
+
+    await act(async () => result.current.handleTestConnection());
+
+    expect(result.current.testResult?.message).toBe("Erro de rede — não foi possível acessar o servidor");
+  });
+
+  test("preserves a raw database error in Brazilian Portuguese", async () => {
+    const rawError = 'password authentication failed for user "rodrigo"';
+    const onTestConnection = mock(async () => ({ success: false, error: rawError }));
+    const { result } = renderHookWithLocale(
+      () => useConnectionForm({ ...defaultProps, onTestConnection }),
+      "pt-BR",
+    );
+
+    await act(async () => result.current.handleTestConnection());
+
+    expect(result.current.testResult?.message).toBe(rawError);
   });
 });

@@ -27,6 +27,7 @@ import {
 import { DatabaseConnection, TableSchema, SavedQuery, QueryHistoryItem } from "@/lib/types";
 import { storage } from "@/lib/storage";
 import { getDBIcon } from "@/lib/db-ui-config";
+import { useTranslations } from "next-intl";
 
 interface CommandPaletteProps {
   connections: DatabaseConnection[];
@@ -73,6 +74,7 @@ export function CommandPalette({
   onAskAgent,
   onLogout,
 }: CommandPaletteProps) {
+  const t = useTranslations("Studio.commandPalette");
   const [open, setOpen] = useState(false);
 
   // Register Cmd+K / Ctrl+K keyboard shortcut
@@ -103,27 +105,29 @@ export function CommandPalette({
     <CommandDialog
       open={open}
       onOpenChange={setOpen}
+      title={t("title")}
+      description={t("description")}
       className="sm:max-w-[560px] bg-surface border-hairline-strong"
       showCloseButton={false}
     >
-      <CommandInput placeholder="Search tables, connections, queries, actions..." className="text-fg" />
+      <CommandInput placeholder={t("placeholder")} className="text-fg" />
       <CommandList className="max-h-[400px]">
-        <CommandEmpty className="text-fg-muted">No results found.</CommandEmpty>
+        <CommandEmpty className="text-fg-muted">{t("noResults")}</CommandEmpty>
 
         {/* Quick Actions */}
-        <CommandGroup heading="Actions">
+        <CommandGroup heading={t("actions")}>
           <CommandItem onSelect={() => runAction(onExecuteQuery)}>
             <Play strokeWidth={1.5} className="w-3.5 h-3.5 text-blue-400" />
-            <span>Run Query</span>
+            <span>{t("runQuery")}</span>
             <CommandShortcut>Ctrl+Enter</CommandShortcut>
           </CommandItem>
           <CommandItem onSelect={() => runAction(onFormatQuery)}>
             <TextAlignStart strokeWidth={1.5} className="w-3.5 h-3.5 text-fg-tertiary" />
-            <span>Format Query</span>
+            <span>{t("formatQuery")}</span>
           </CommandItem>
           <CommandItem onSelect={() => runAction(onSaveQuery)}>
             <Save strokeWidth={1.5} className="w-3.5 h-3.5 text-fg-tertiary" />
-            <span>Save Current Query</span>
+            <span>{t("saveCurrentQuery")}</span>
           </CommandItem>
           {onAskAgent && (
             /*
@@ -133,36 +137,36 @@ export function CommandPalette({
             */
             <CommandItem onSelect={() => runAction(onAskAgent)}>
               <Bot strokeWidth={1.5} className="w-3.5 h-3.5 text-blue-400" />
-              <span>Ask the agent about this query</span>
+              <span>{t("askAgent")}</span>
             </CommandItem>
           )}
           <CommandItem onSelect={() => runAction(onAddConnection)}>
             <Plus strokeWidth={1.5} className="w-3.5 h-3.5 text-emerald-400" />
-            <span>New Connection</span>
+            <span>{t("newConnection")}</span>
           </CommandItem>
           <CommandItem onSelect={() => runAction(onNavigateHealth)}>
             <Activity strokeWidth={1.5} className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Health Dashboard</span>
+            <span>{t("healthDashboard")}</span>
           </CommandItem>
           <CommandItem onSelect={() => runAction(onNavigateMonitoring)}>
             <Gauge strokeWidth={1.5} className="w-3.5 h-3.5 text-purple-400" />
-            <span>Monitoring</span>
+            <span>{t("monitoring")}</span>
           </CommandItem>
           {activeConnection && (
             <CommandItem onSelect={() => runAction(onShowDiagram)}>
               <Layers strokeWidth={1.5} className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Schema Diagram (ERD)</span>
+              <span>{t("schemaDiagram")}</span>
             </CommandItem>
           )}
           <CommandItem onSelect={() => runAction(onLogout)}>
             <LogOut strokeWidth={1.5} className="w-3.5 h-3.5 text-red-400" />
-            <span>Logout</span>
+            <span>{t("logout")}</span>
           </CommandItem>
         </CommandGroup>
 
         {/* Connections */}
         {connections.length > 0 && (
-          <CommandGroup heading="Connections">
+          <CommandGroup heading={t("connections")}>
             {connections.map((conn) => {
               const Icon = getDBIcon(conn.type);
               return (
@@ -170,7 +174,7 @@ export function CommandPalette({
                   <Icon className="w-3.5 h-3.5" />
                   <span>{conn.name}</span>
                   {activeConnection?.id === conn.id && (
-                    <span className="ml-auto text-xs text-emerald-500 font-medium">Active</span>
+                    <span className="ml-auto text-xs text-emerald-500 font-medium">{t("active")}</span>
                   )}
                 </CommandItem>
               );
@@ -180,14 +184,14 @@ export function CommandPalette({
 
         {/* Tables */}
         {schema.length > 0 && (
-          <CommandGroup heading="Tables">
+          <CommandGroup heading={t("tables")}>
             {schema.map((table) => (
               <CommandItem key={table.name} onSelect={() => runAction(() => onTableClick(table.name))}>
                 <Table2 strokeWidth={1.5} className="w-3.5 h-3.5 text-fg-muted" />
                 <span>{table.name}</span>
                 <span className="ml-auto text-xs text-fg-subtle">
-                  {table.columns.length} cols
-                  {table.rowCount !== undefined && ` / ${table.rowCount} rows`}
+                  {t("columns", { count: table.columns.length })}
+                  {table.rowCount !== undefined && ` / ${t("rows", { count: table.rowCount })}`}
                 </span>
               </CommandItem>
             ))}
@@ -196,7 +200,7 @@ export function CommandPalette({
 
         {/* Saved Queries */}
         {savedQueries.length > 0 && (
-          <CommandGroup heading="Saved Queries">
+          <CommandGroup heading={t("savedQueries")}>
             {savedQueries.map((sq: SavedQuery) => (
               <CommandItem key={sq.id} onSelect={() => runAction(() => onLoadSavedQuery(sq.query))}>
                 <Bookmark strokeWidth={1.5} className="w-3.5 h-3.5 text-purple-400" />
@@ -211,7 +215,7 @@ export function CommandPalette({
 
         {/* Recent Queries */}
         {historyItems.length > 0 && (
-          <CommandGroup heading="Recent Queries">
+          <CommandGroup heading={t("recentQueries")}>
             {historyItems.map((item: QueryHistoryItem) => (
               <CommandItem key={item.id} onSelect={() => runAction(() => onLoadHistoryQuery(item.query))}>
                 <Clock strokeWidth={1.5} className="w-3.5 h-3.5 text-fg-muted" />

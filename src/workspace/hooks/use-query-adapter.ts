@@ -7,6 +7,7 @@ import type { BottomPanelMode } from "@/components/studio/BottomPanel";
 import { useToast } from "@/hooks/use-toast";
 import { isDangerousQuery } from "@/components/QuerySafetyDialog";
 import { maybeInviteToStar } from "@/lib/community/star-prompt-toast";
+import { useTranslations } from "next-intl";
 
 /**
  * The channels a host result carries beyond rows and counts (#285).
@@ -63,6 +64,7 @@ export function useQueryAdapter({
   fetchSchema: _fetchSchema,
   features: _features,
 }: UseQueryAdapterParams) {
+  const t = useTranslations("Editor.messages");
   // Reserved for future use (schema refresh after DDL, feature gating)
   void _fetchSchema;
   void _features;
@@ -92,12 +94,12 @@ export function useQueryAdapter({
       const queryToExecute = overrideQuery || tabToExec.query;
 
       if (!activeConnection) {
-        toast({ title: "No Connection", description: "Select a connection first.", variant: "destructive" });
+        toast({ title: t("noConnection"), description: t("selectConnection"), variant: "destructive" });
         return;
       }
 
       if (!queryToExecute || queryToExecute.trim() === "") {
-        toast({ title: "Empty Query", description: "Enter a query to execute.", variant: "destructive" });
+        toast({ title: t("emptyQuery"), description: t("enterQuery"), variant: "destructive" });
         return;
       }
 
@@ -180,11 +182,11 @@ export function useQueryAdapter({
           ),
         );
 
-        const errorMessage = error instanceof Error ? error.message : "Unknown error";
-        toast({ title: "Query Error", description: errorMessage, variant: "destructive" });
+        const errorMessage = error instanceof Error ? error.message : t("unknownError");
+        toast({ title: t("queryError"), description: errorMessage, variant: "destructive" });
       }
     },
-    [activeConnection, tabs, currentTab, activeTabId, toast, onQueryExecute, setTabs],
+    [activeConnection, tabs, currentTab, activeTabId, toast, onQueryExecute, setTabs, t],
   );
 
   // Force execute (bypass safety check)
@@ -193,12 +195,12 @@ export function useQueryAdapter({
       setSafetyCheckQuery(null);
 
       if (!activeConnection) {
-        toast({ title: "No Connection", description: "Select a connection first.", variant: "destructive" });
+        toast({ title: t("noConnection"), description: t("selectConnection"), variant: "destructive" });
         return;
       }
 
       if (!query || query.trim() === "") {
-        toast({ title: "Empty Query", description: "Enter a query to execute.", variant: "destructive" });
+        toast({ title: t("emptyQuery"), description: t("enterQuery"), variant: "destructive" });
         return;
       }
 
@@ -264,11 +266,11 @@ export function useQueryAdapter({
             ),
           );
 
-          const errorMessage = error instanceof Error ? error.message : "Unknown error";
-          toast({ title: "Query Error", description: errorMessage, variant: "destructive" });
+          const errorMessage = error instanceof Error ? error.message : t("unknownError");
+          toast({ title: t("queryError"), description: errorMessage, variant: "destructive" });
         });
     },
-    [activeConnection, activeTabId, toast, onQueryExecute, setTabs],
+    [activeConnection, activeTabId, toast, onQueryExecute, setTabs, t],
   );
 
   // Cancel running query (best-effort via ref flag)
@@ -287,8 +289,8 @@ export function useQueryAdapter({
       ),
     );
 
-    toast({ title: "Query Cancelled", description: "Query execution was cancelled." });
-  }, [setTabs, toast]);
+    toast({ title: t("queryCancelled"), description: t("executionCancelled") });
+  }, [setTabs, toast, t]);
 
   // Load More handler
   const handleLoadMore = useCallback(() => {
@@ -354,10 +356,10 @@ export function useQueryAdapter({
           ),
         );
 
-        const errorMessage = error instanceof Error ? error.message : "Unknown error";
-        toast({ title: "Load More Error", description: errorMessage, variant: "destructive" });
+        const errorMessage = error instanceof Error ? error.message : t("unknownError");
+        toast({ title: t("loadMoreError"), description: errorMessage, variant: "destructive" });
       });
-  }, [currentTab, activeConnection, onQueryExecute, setTabs, toast]);
+  }, [currentTab, activeConnection, onQueryExecute, setTabs, toast, t]);
 
   // Unlimited query handler
   const handleUnlimitedQuery = useCallback(() => {
@@ -422,13 +424,13 @@ export function useQueryAdapter({
           ),
         );
 
-        const errorMessage = error instanceof Error ? error.message : "Unknown error";
-        toast({ title: "Query Error", description: errorMessage, variant: "destructive" });
+        const errorMessage = error instanceof Error ? error.message : t("unknownError");
+        toast({ title: t("queryError"), description: errorMessage, variant: "destructive" });
       });
 
     setUnlimitedWarningOpen(false);
     setPendingUnlimitedQuery(null);
-  }, [pendingUnlimitedQuery, activeConnection, onQueryExecute, setTabs, toast]);
+  }, [pendingUnlimitedQuery, activeConnection, onQueryExecute, setTabs, toast, t]);
 
   return {
     executeQuery,

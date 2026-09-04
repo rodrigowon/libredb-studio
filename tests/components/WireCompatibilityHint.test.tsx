@@ -1,7 +1,8 @@
 import "../setup-dom";
 
 import { describe, expect, test, mock, afterEach } from "bun:test";
-import { render, cleanup, screen } from "@testing-library/react";
+import { cleanup, screen } from "@testing-library/react";
+import { renderWithIntl as render } from "../helpers/render-with-intl";
 import type { WireCompatibleEngine } from "@/lib/db/compatibility";
 
 /**
@@ -94,5 +95,15 @@ describe("WireCompatibilityHint", () => {
     render(<WireCompatibilityHint type="mysql" engines={[MOCK[0]!]} />);
     expect(screen.queryByTestId("wire-compat-caveat-notice")).toBeNull();
     expect(screen.getByText("MariaDB")).toBeTruthy();
+  });
+
+  test("translates the presentation copy without changing engine names or versions", () => {
+    render(<WireCompatibilityHint type="mysql" />, "pt-BR");
+    expect(screen.getByText(/Este driver também se conecta a/)).toBeTruthy();
+    expect(screen.getByText("MariaDB")).toBeTruthy();
+    expect(screen.getByText(/12\.3\.2-MariaDB-ubu2404/)).toBeTruthy();
+    expect(screen.getByTestId("wire-compat-tier-ExampleStore").textContent).toContain(
+      "somente editor de consultas",
+    );
   });
 });

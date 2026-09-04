@@ -4,7 +4,8 @@ import { mockRouterPush } from "../../helpers/mock-navigation";
 
 import React from "react";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, render, fireEvent } from "@testing-library/react";
+import { cleanup, fireEvent } from "@testing-library/react";
+import { renderWithIntl as render } from "../../helpers/render-with-intl";
 
 mock.module("@/components/ui/dropdown-menu", () => ({
   DropdownMenu: ({ children }: { children: React.ReactNode }) =>
@@ -391,5 +392,17 @@ describe("StudioDesktopHeader", () => {
       expect(header?.className).toContain("hidden");
       expect(header?.className).toContain("md:flex");
     });
+  });
+
+  test("renders the authenticated shell and locale switcher in Brazilian Portuguese", () => {
+    const { getAllByText, getByLabelText } = render(
+      <StudioDesktopHeader {...defaultProps} activeConnection={null} />,
+      "pt-BR",
+    );
+
+    expect(getAllByText("Acesso rápido").length).toBeGreaterThan(0);
+    expect(getAllByText("Monitoramento").length).toBeGreaterThanOrEqual(1);
+    expect(getAllByText("Sair").length).toBeGreaterThan(0);
+    expect((getByLabelText("Idioma") as HTMLSelectElement).value).toBe("pt-BR");
   });
 });

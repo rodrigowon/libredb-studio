@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AnimatePresence } from "framer-motion";
 import { TableItem } from "./TableItem";
+import { useTranslations } from "next-intl";
 
 interface SchemaExplorerProps {
   schema: TableSchema[];
@@ -44,6 +45,7 @@ export function SchemaExplorer({
   onGenerateCode,
   onGenerateTestData,
 }: SchemaExplorerProps) {
+  const t = useTranslations("Studio.sidebar");
   const labels = metadata?.labels;
   const capabilities = metadata?.capabilities;
   const [searchQuery, setSearchQuery] = useState("");
@@ -79,7 +81,7 @@ export function SchemaExplorer({
           <LoaderCircle strokeWidth={1.5} className="w-8 h-8 animate-spin text-blue-500/20" />
           <Database strokeWidth={1.5} className="w-3.5 h-3.5 absolute inset-0 m-auto text-blue-500 animate-pulse" />
         </div>
-        <span className="text-xs font-medium animate-pulse">Scanning Schema...</span>
+        <span className="text-xs font-medium animate-pulse">{t("scanningSchema")}</span>
       </div>
     );
   }
@@ -97,7 +99,7 @@ export function SchemaExplorer({
         <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4 border border-border">
           <CircleAlert strokeWidth={1.5} className="w-6 h-6 text-amber-400" />
         </div>
-        <h3 className="text-foreground text-xs font-medium mb-1">Schema could not be read</h3>
+        <h3 className="text-foreground text-xs font-medium mb-1">{t("schemaUnavailable")}</h3>
         <p className="text-xs text-muted-foreground leading-relaxed break-words">{schemaError}</p>
       </div>
     );
@@ -109,9 +111,9 @@ export function SchemaExplorer({
         <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4 border border-border">
           <CircleAlert strokeWidth={1.5} className="w-6 h-6 text-muted-foreground" />
         </div>
-        <h3 className="text-foreground text-xs font-medium mb-1">No structures found</h3>
+        <h3 className="text-foreground text-xs font-medium mb-1">{t("noStructures")}</h3>
         <p className="text-xs text-muted-foreground leading-relaxed">
-          We couldn&apos;t find any tables or views in this connection.
+          {t("noStructuresHint")}
         </p>
       </div>
     );
@@ -123,14 +125,14 @@ export function SchemaExplorer({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Database strokeWidth={1.5} className="w-3.5 h-3.5 text-blue-500/50" />
-            <span className="text-xs font-medium text-muted-foreground">Explorer</span>
+            <span className="text-xs font-medium text-muted-foreground">{t("explorer")}</span>
           </div>
           <div className="flex items-center gap-1.5">
             {isAdmin && (
               <button
                 className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-amber-400 transition-colors"
                 onClick={() => onOpenMaintenance?.("global")}
-                title="Database Maintenance"
+                title={t("maintenance")}
               >
                 <Settings strokeWidth={1.5} className="w-3.5 h-3.5" />
               </button>
@@ -139,7 +141,7 @@ export function SchemaExplorer({
               <button
                 className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-blue-400 transition-colors"
                 onClick={onCreateTableClick}
-                title={`Create ${labels?.entityName || "Table"}`}
+                title={t("createEntity", { entity: labels?.entityName || "Table" })}
               >
                 <Plus strokeWidth={1.5} className="w-3.5 h-3.5" />
               </button>
@@ -156,7 +158,7 @@ export function SchemaExplorer({
             className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground group-focus-within:text-blue-500 transition-colors"
           />
           <Input
-            placeholder={labels?.searchPlaceholder || "Search tables or columns..."}
+            placeholder={labels?.searchPlaceholder || t("search")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="h-8 pl-8 pr-8 text-xs bg-muted/50 border-border focus-visible:ring-1 focus-visible:ring-blue-500/50 placeholder:text-muted-foreground/50"
@@ -165,6 +167,7 @@ export function SchemaExplorer({
             <button
               onClick={() => setSearchQuery("")}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label={t("clearSearch")}
             >
               <Hash strokeWidth={1.5} className="w-3.5 h-3.5 rotate-45" />
             </button>

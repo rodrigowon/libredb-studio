@@ -3,8 +3,9 @@ import "../helpers/mock-sonner";
 import "../helpers/mock-navigation";
 
 import { describe, test, expect, afterEach, beforeEach, mock } from "bun:test";
-import { render, cleanup, act, fireEvent, waitFor } from "@testing-library/react";
+import { cleanup, act, fireEvent, waitFor } from "@testing-library/react";
 import React from "react";
+import { renderWithIntl as render } from "../helpers/render-with-intl";
 
 /**
  * The composed claim behind #331 T3: selecting the palette's agent item puts THE

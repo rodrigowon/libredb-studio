@@ -3,8 +3,9 @@ import "../../helpers/mock-navigation";
 
 import React from "react";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, render, fireEvent, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, waitFor } from "@testing-library/react";
 import { mockToastError } from "../../helpers/mock-sonner";
+import { renderWithIntl as render } from "../../helpers/render-with-intl";
 
 // The insecure-context harness, as in tests/components/copy-button.test.tsx: an absent
 // `navigator.clipboard` is what plain HTTP off loopback actually hands the page, and an
@@ -212,7 +213,7 @@ describe("StudioMobileHeader", () => {
 
   test("Explain Plan click calls onExplain when provided", () => {
     const { queryByText } = render(<StudioMobileHeader {...defaults} onExplain={mockOnExplain} />);
-    const explainItem = queryByText("Explain Plan");
+    const explainItem = queryByText("EXPLAIN Plan");
     expect(explainItem).not.toBeNull();
     fireEvent.click(explainItem!.closest('[role="menuitem"]')!);
     expect(mockOnExplain).toHaveBeenCalledTimes(1);
@@ -220,7 +221,7 @@ describe("StudioMobileHeader", () => {
 
   test("Explain Plan not rendered when onExplain is undefined", () => {
     const { queryByText } = render(<StudioMobileHeader {...defaults} />);
-    expect(queryByText("Explain Plan")).toBeNull();
+    expect(queryByText("EXPLAIN Plan")).toBeNull();
   });
 
   test("BEGIN Transaction click calls onBeginTransaction", () => {
