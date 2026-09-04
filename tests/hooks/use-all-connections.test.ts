@@ -85,6 +85,21 @@ describe("useAllConnections", () => {
     expect(result.current.connections[0].id).toBe("conn-1");
   });
 
+  test("hides a disabled user connection without deleting it from storage", async () => {
+    const hidden = makeConnection({ id: "legacy-oracle", type: "oracle" });
+    storage.saveConnection(hidden);
+
+    mockGlobalFetch({
+      "/api/connections/managed": { json: { connections: [] } },
+    });
+
+    const { result } = renderHook(() => useAllConnections());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.connections).toEqual([]);
+    expect(storage.getConnections()).toEqual([hidden]);
+  });
+
   test("returns user connections when managed response has no connections field", async () => {
     storage.saveConnection(makeConnection());
 

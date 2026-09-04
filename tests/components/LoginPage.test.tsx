@@ -13,6 +13,7 @@ import { DEPLOY_GROUP_LABELS, DEPLOY_GROUP_ORDER } from "@/lib/distribution/depl
 import { ENGINE_URI_SCHEMES, parseConnectionString } from "@/lib/connection-string-parser";
 import { SIGNATURE_URIS } from "@/components/login/connection-signature";
 import { EXTERNAL_DATABASE_TYPES, SHIPPED_DATABASE_TYPES, WIRE_COMPATIBLE_ENGINES } from "@/lib/db/compatibility";
+import { filterEnabledDatabaseTypes, isDatabaseTypeEnabled } from "@/lib/database-visibility";
 
 // sonner and next/navigation are mocked via preload
 // lucide-react resolves fine natively — no mock needed
@@ -269,20 +270,15 @@ describe("LoginPage showcase (issue #425)", () => {
     }
   });
 
-  test("marks the embedded provider in the pill list instead of dropping it", () => {
-    // The hero claims 14 external engines while showing 15 pills, and this marker is what
-    // reconciles the two for a reader. Hiding the pill was the alternative and it is worse:
-    // libredb is a provider the connection picker offers, so a login page that never names
-    // it contradicts the app - the reasoning db-showcase.ts already records for issue #425.
+  test("does not advertise an embedded provider hidden by the fork allowlist", () => {
     const { getByTestId } = renderShowcase();
     const embedded = listShowcaseDatabases().filter((db) => db.embedded);
-    expect(embedded.length).toBe(1);
+    expect(embedded).toEqual([]);
     for (const testId of ["database-showcase-desktop", "database-showcase-mobile"]) {
       const marked = [...getByTestId(testId).querySelectorAll("li")].filter((item) =>
         /embedded/i.test(item.textContent ?? ""),
       );
-      expect(marked.length).toBe(embedded.length);
-      expect(marked[0]?.textContent).toContain(embedded[0].label);
+      expect(marked).toEqual([]);
     }
   });
 
@@ -291,11 +287,12 @@ describe("LoginPage showcase (issue #425)", () => {
     // forty named products, and the other twenty-six were published in README.md and the
     // docs compatibility table but nowhere a visitor to the login page could see them.
     const { getByTestId } = renderShowcase();
-    expect(WIRE_COMPATIBLE_ENGINES.length).toBeGreaterThan(0);
+    const visible = WIRE_COMPATIBLE_ENGINES.filter((engine) => isDatabaseTypeEnabled(engine.via));
+    expect(visible.length).toBeGreaterThan(0);
     for (const testId of ["wire-compatible-desktop", "wire-compatible-mobile"]) {
       const text = getByTestId(testId).textContent ?? "";
-      expect(text).toContain(`${WIRE_COMPATIBLE_ENGINES.length}`);
-      for (const engine of WIRE_COMPATIBLE_ENGINES) {
+      expect(text).toContain(`${visible.length}`);
+      for (const engine of visible) {
         expect(text).toContain(engine.name);
       }
     }
@@ -305,10 +302,11 @@ describe("LoginPage showcase (issue #425)", () => {
     // The same guard the engine pills have. A name typed into the JSX would be a claim no
     // gate-4 probe stands behind, which is the overclaim issue #424 exists to forbid.
     const { getByTestId } = renderShowcase();
-    const known = new Set(WIRE_COMPATIBLE_ENGINES.map((engine) => engine.name));
+    const visible = WIRE_COMPATIBLE_ENGINES.filter((engine) => isDatabaseTypeEnabled(engine.via));
+    const known = new Set(visible.map((engine) => engine.name));
     for (const testId of ["wire-compatible-desktop", "wire-compatible-mobile"]) {
       const named = getByTestId(testId).querySelectorAll("[data-relative-name]");
-      expect(named.length).toBe(WIRE_COMPATIBLE_ENGINES.length);
+      expect(named.length).toBe(visible.length);
       for (const node of named) {
         expect(known.has(node.textContent?.trim() ?? "")).toBe(true);
       }
@@ -354,7 +352,9 @@ describe("LoginPage showcase (issue #425)", () => {
     const { getByTestId } = renderShowcase();
     const scheme = (getByTestId("connection-signature").textContent ?? "").split("://")[0];
     expect(Object.values(ENGINE_URI_SCHEMES)).toContain(scheme);
-    expect(SIGNATURE_URIS.length).toBe(Object.keys(ENGINE_URI_SCHEMES).length);
+    expect(SIGNATURE_URIS.length).toBe(
+      listShowcaseDatabases().filter((db) => ENGINE_URI_SCHEMES[db.type] !== undefined).length,
+    );
     for (const uri of SIGNATURE_URIS) {
       expect(parseConnectionString(`${uri.scheme}${uri.rest}`)?.type).toBe(uri.type);
     }
@@ -378,7 +378,9 @@ describe("LoginPage showcase (issue #425)", () => {
 
   test("derives the engine and channel counts instead of typing them", () => {
     const { container } = renderShowcase();
-    expect(container.textContent).toContain(`${EXTERNAL_DATABASE_TYPES.length} database engines`);
+    expect(container.textContent).toContain(
+      `${filterEnabledDatabaseTypes(EXTERNAL_DATABASE_TYPES).length} database engines`,
+    );
     expect(container.textContent).toContain(`${LIVE_CHANNELS.length} install channels`);
   });
 
@@ -392,13 +394,15 @@ describe("LoginPage showcase (issue #425)", () => {
     // "14 database engines" substring check would pass only on the mobile line and silently
     // stop covering the surface it was written for.
     const { container, getByTestId } = renderShowcase();
-    const external = new RegExp(`${EXTERNAL_DATABASE_TYPES.length}\\s*database engines`);
+    const visibleExternal = filterEnabledDatabaseTypes(EXTERNAL_DATABASE_TYPES);
+    const external = new RegExp(`${visibleExternal.length}\\s*database engines`);
     const shipped = new RegExp(`${SHIPPED_DATABASE_TYPES.length}\\s*database engines`);
     // The desktop figure specifically, then the page as a whole, so neither surface can
     // carry the claim alone.
     expect(external.test(getByTestId("hero-proof").textContent ?? "")).toBe(true);
     expect(external.test(container.textContent ?? "")).toBe(true);
     expect(shipped.test(container.textContent ?? "")).toBe(false);
+    expect(visibleExternal).toEqual(["postgres", "mysql", "sqlite"]);
     expect(SHIPPED_DATABASE_TYPES.length).toBe(EXTERNAL_DATABASE_TYPES.length + 1);
   });
 

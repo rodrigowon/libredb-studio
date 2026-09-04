@@ -50,6 +50,7 @@ import { useQueryExecution } from "@/hooks/use-query-execution";
 import { useInlineEditing } from "@/hooks/use-inline-editing";
 import { useStorageSync } from "@/hooks/use-storage-sync";
 import { storage } from "@/lib/storage";
+import { filterEnabledDatabaseConnections } from "@/lib/database-visibility";
 import {
   type MaskingConfig,
   loadMaskingConfig,
@@ -409,7 +410,7 @@ export default function Studio() {
     // Preserve managed (seed) connections that aren't in localStorage
     const userConns = storage.getConnections();
     const managedConns = conn.connections.filter((c) => c.managed && !userConns.some((uc) => uc.id === c.id));
-    const updated = [...managedConns, ...userConns];
+    const updated = filterEnabledDatabaseConnections([...managedConns, ...userConns]);
     conn.setConnections(updated);
     if (conn.activeConnection?.id === id) conn.setActiveConnection(updated[0] || null);
   };
@@ -769,7 +770,7 @@ export default function Studio() {
           storage.saveConnection(c);
           const userConns = storage.getConnections();
           const managedConns = conn.connections.filter((mc) => mc.managed && !userConns.some((uc) => uc.id === mc.id));
-          conn.setConnections([...managedConns, ...userConns]);
+          conn.setConnections(filterEnabledDatabaseConnections([...managedConns, ...userConns]));
           conn.setActiveConnection(c);
           setIsConnectionModalOpen(false);
           setEditingConnection(null);

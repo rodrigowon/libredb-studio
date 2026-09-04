@@ -607,6 +607,12 @@ Deploy your own instance of LibreDB Studio with a single click on DigitalOcean, 
 
 ### Environment Variables
 
+This fork shows PostgreSQL, MySQL, and SQLite by default. Set
+`NEXT_PUBLIC_ENABLED_DATABASE_TYPES` to a comma-separated list of shipped `DatabaseType`
+ids before building to change the providers presented in the UI. The setting is
+non-destructive: hidden providers remain registered and existing persisted connections
+are retained.
+
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `ADMIN_EMAIL` | ❌ | Admin email (default: `admin@libredb.org`) |
@@ -617,6 +623,7 @@ Deploy your own instance of LibreDB Studio with a single click on DigitalOcean, 
 | `AUTH_BOOTSTRAP` | ❌ | `off` disables zero-config generation (strict mode; recommended for production) |
 | `AUTH_COOKIE_SECURE` | ❌ | `false` drops the `Secure` flag from auth cookies — needed only when the browser reaches the app over plain HTTP (LAN/home server); not for TLS terminated at an ingress |
 | `NEXT_PUBLIC_AUTH_PROVIDER` | ❌ | `local` (default) or `oidc` for SSO |
+| `NEXT_PUBLIC_ENABLED_DATABASE_TYPES` | ❌ | Comma-separated provider ids shown in the UI (fork default: `postgres,mysql,sqlite`; set before build) |
 | `OIDC_ISSUER` | ❌ | OIDC issuer URL (required when `oidc`) |
 | `OIDC_CLIENT_ID` | ❌ | OIDC client ID (required when `oidc`) |
 | `OIDC_CLIENT_SECRET` | ❌ | OIDC client secret (required when `oidc`) |

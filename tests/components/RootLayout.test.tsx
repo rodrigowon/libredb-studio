@@ -39,7 +39,7 @@ describe("RootLayout", () => {
   });
 
   test("exports correct metadata description", () => {
-    expect(metadata.description).toBe("Manage PostgreSQL, MySQL, MongoDB, and Redis in one web-based interface.");
+    expect(metadata.description).toBe("Manage PostgreSQL, MySQL, and SQLite in one web-based interface.");
   });
 
   test("renders children", () => {

@@ -35,6 +35,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useConnectionForm } from "@/hooks/use-connection-form";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { WireCompatibilityHint } from "@/components/WireCompatibilityHint";
+import { ENGINE_URI_SCHEMES } from "@/lib/connection-string-parser";
 
 /**
  * What each SSL mode actually does, in the panel where it is chosen.
@@ -159,6 +160,11 @@ export function ConnectionModal({
     dbTypes,
   } = useConnectionForm({ isOpen, onClose, onConnect, editConnection, onTestConnection });
 
+  const pasteableTypes = dbTypes.filter((db) => !isFileBased(db.value) && ENGINE_URI_SCHEMES[db.value]);
+  const pastePlaceholder =
+    pasteableTypes.length > 0 ? `${ENGINE_URI_SCHEMES[pasteableTypes[0].value]}://user:pass@host/db` : "Connection URL";
+  const pasteSchemes = pasteableTypes.map((db) => `${ENGINE_URI_SCHEMES[db.value]}://`).join(", ");
+
   // Couchbase pins one bucket per connection (issue #262, decision 4), so the shared
   // `database` field holds a bucket name and the form must say so.
   const isCouchbase = type === "couchbase";
@@ -247,7 +253,7 @@ export function ConnectionModal({
                   <Input
                     value={pasteInput}
                     onChange={(e) => setPasteInput(e.target.value)}
-                    placeholder="postgres://user:pass@host:5432/db  or  mongodb://..."
+                    placeholder={pastePlaceholder}
                     className="h-9 bg-panel border-hairline focus:border-blue-500/50 text-xs font-mono flex-1"
                     onKeyDown={(e) => e.key === "Enter" && handlePasteConnectionString()}
                   />
@@ -259,9 +265,7 @@ export function ConnectionModal({
                     Parse
                   </Button>
                 </div>
-                <p className="text-xs text-fg-muted">
-                  Supports: postgres://, mysql://, mongodb://, redis://, oracle://, mssql://
-                </p>
+                <p className="text-xs text-fg-muted">Supports: {pasteSchemes}</p>
               </div>
             </motion.div>
           )}

@@ -58,7 +58,7 @@ mock.module("@/lib/db-ui-config", () => ({
 
 import { useConnectionForm } from "@/hooks/use-connection-form";
 import { resolveAgentRunConnectionId } from "@/hooks/use-connection-payload";
-import type { DatabaseConnection, DatabaseType } from "@/lib/types";
+import type { DatabaseConnection } from "@/lib/types";
 
 // =============================================================================
 // useConnectionForm Tests
@@ -1029,9 +1029,7 @@ describe("useConnectionForm", () => {
     expect(result.current.dbTypes.length).toBeGreaterThan(0);
 
     const types = result.current.dbTypes.map((t: { value: string }) => t.value);
-    expect(types).toContain("postgres");
-    expect(types).toContain("mysql");
-    expect(types).toContain("mongodb");
+    expect(types).toEqual(["postgres", "mysql", "sqlite"]);
 
     // Each entry has value, label, icon, color
     const first = result.current.dbTypes[0];
@@ -1041,46 +1039,25 @@ describe("useConnectionForm", () => {
     expect(first).toHaveProperty("color");
   });
 
-  // ── Every connectable type is offered by the picker (#127) ─────────────────
-
-  // The picker must cover the whole DatabaseType union, because this form is also the EDIT
-  // form: a type missing here renders the edit dialog with no tile selected. Keyed by
-  // DatabaseType, so adding a provider to the union fails `typecheck` on the missing key
-  // instead of silently dropping it from the UI. Set an entry to false only to hide a type
-  // on purpose — and say why.
-  const PICKER_COVERAGE: Record<DatabaseType, boolean> = {
-    postgres: true,
-    mysql: true,
-    sqlite: true,
-    oracle: true,
-    mssql: true,
-    mongodb: true,
-    redis: true,
-    libredb: true,
-    couchbase: true,
-    clickhouse: true,
-    druid: true,
-    // Both search ids are selectable: the same form EDITS an existing connection, so
-    // an omitted type leaves the picker with nothing selected for a connection the
-    // product can otherwise open (issue #424 Phase 1).
-    elasticsearch: true,
-    opensearch: true,
-    trino: true,
-    cassandra: true,
-    libsql: true,
-    duckdb: true,
-  };
-
-  test("dbTypes offers every database type a connection can carry", () => {
+  test("dbTypes defaults to the fork's three visible providers", () => {
     const { result } = renderHook(() => useConnectionForm(defaultProps));
+    expect(result.current.dbTypes.map((t: { value: string }) => t.value)).toEqual(["postgres", "mysql", "sqlite"]);
+  });
 
-    const offered = result.current.dbTypes.map((t: { value: string }) => t.value).sort();
-    const expected = Object.entries(PICKER_COVERAGE)
-      .filter(([, selectable]) => selectable)
-      .map(([type]) => type)
-      .sort();
-
-    expect(offered).toEqual(expected);
+  test("dbTypes retains a hidden provider while editing a legacy connection", () => {
+    const legacy: DatabaseConnection = {
+      id: "legacy-oracle",
+      name: "Legacy Oracle",
+      type: "oracle",
+      createdAt: new Date(),
+    };
+    const { result } = renderHook(() => useConnectionForm({ ...defaultProps, editConnection: legacy }));
+    expect(result.current.dbTypes.map((t: { value: string }) => t.value)).toEqual([
+      "postgres",
+      "mysql",
+      "sqlite",
+      "oracle",
+    ]);
   });
 
   test("dbTypes includes sqlite so the seeded sample connection can be edited", () => {

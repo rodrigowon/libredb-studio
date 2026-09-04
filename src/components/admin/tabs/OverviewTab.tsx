@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { storage } from "@/lib/storage";
 import { useAllConnections } from "@/hooks/use-all-connections";
-import { getDBIcon, getDBColor } from "@/lib/db-ui-config";
+import { getDBIcon, getDBColor, getDBConfig } from "@/lib/db-ui-config";
+import { getEnabledDatabaseTypes } from "@/lib/database-visibility";
 import {
   type DatabaseType,
   type DatabaseConnection,
@@ -1108,11 +1109,12 @@ function QuickActionsSection() {
 // ─── Empty State ─────────────────────────────────────────────────────────────
 
 function EmptyState() {
+  const visibleProviderTypes = getEnabledDatabaseTypes();
   const features = [
     {
       icon: Database,
-      label: "7 DB Types",
-      description: "PostgreSQL, MySQL, SQLite, MongoDB, Redis, Oracle, MSSQL",
+      label: `${visibleProviderTypes.length} DB Types`,
+      description: visibleProviderTypes.map((type) => getDBConfig(type).label).join(", "),
     },
     {
       icon: Sparkles,

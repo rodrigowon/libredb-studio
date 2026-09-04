@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import type { DatabaseConnection } from "@/lib/types";
 import { storage } from "@/lib/storage";
+import { filterEnabledDatabaseConnections } from "@/lib/database-visibility";
 
 /**
  * Returns all connections: user connections from localStorage + managed seed connections from server.
@@ -45,7 +46,7 @@ export function useAllConnections() {
               merged.push(uc);
             }
 
-            setConnections(merged);
+            setConnections(filterEnabledDatabaseConnections(merged));
             setLoading(false);
             return;
           }
@@ -55,7 +56,7 @@ export function useAllConnections() {
       }
 
       if (!cancelled) {
-        setConnections(userConns);
+        setConnections(filterEnabledDatabaseConnections(userConns));
         setLoading(false);
       }
     }

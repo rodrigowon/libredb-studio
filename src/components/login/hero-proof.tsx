@@ -1,6 +1,7 @@
 import { AGENT_EXECUTION_ENGINES, namedList } from "@/lib/agent/engine-support";
 import { getDBConfig } from "@/lib/db-ui-config";
 import { EXTERNAL_DATABASE_TYPES } from "@/lib/db/compatibility";
+import { filterEnabledDatabaseTypes } from "@/lib/database-visibility";
 import { LIVE_CHANNELS, LIVE_PLATFORMS } from "@/lib/distribution/channels.generated";
 import { DEPLOY_GROUP_LABELS, DEPLOY_GROUP_ORDER } from "@/lib/distribution/deploy-groups";
 
@@ -25,7 +26,9 @@ const AGENT_MODES: readonly { key: string; label: string; detail: string }[] = [
   {
     key: "agent",
     label: "agent mode",
-    detail: `runs read-only on ${namedList(AGENT_EXECUTION_ENGINES.map((type) => getDBConfig(type).label))}`,
+    detail: `runs read-only on ${namedList(
+      filterEnabledDatabaseTypes(AGENT_EXECUTION_ENGINES).map((type) => getDBConfig(type).label),
+    )}`,
   },
 ];
 
@@ -56,7 +59,7 @@ export const HERO_CLAIMS: readonly { key: string; value: number; unit: string; d
     // this page one out of step with the number README.md publishes. The pill for it stays -
     // it is a provider the connection picker offers - marked as embedded so the reader can
     // see why seventeen pills sit under a claim of sixteen.
-    value: EXTERNAL_DATABASE_TYPES.length,
+    value: filterEnabledDatabaseTypes(EXTERNAL_DATABASE_TYPES).length,
     unit: "database engines",
     detail: "one client, one workspace, every one of them",
   },

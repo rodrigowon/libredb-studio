@@ -96,6 +96,18 @@ describe("useConnectionManager", () => {
     expect(result.current.connections[0].name).toBe("Test DB");
   });
 
+  test("does not present a disabled stored connection and leaves it persisted", async () => {
+    const hidden = makeConnection({ id: "legacy-oracle", type: "oracle" });
+    storage.saveConnection(hidden);
+
+    mockGlobalFetch({});
+    const { result } = renderHook(() => useConnectionManager(true));
+
+    await waitFor(() => expect(result.current.connections).toEqual([]));
+    expect(result.current.activeConnection).toBeNull();
+    expect(storage.getConnections()).toEqual([hidden]);
+  });
+
   // ── Active Connection from Persisted ID ───────────────────────────────────
 
   test("sets activeConnection from persisted active ID", async () => {

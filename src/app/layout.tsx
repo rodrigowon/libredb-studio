@@ -10,10 +10,17 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { getEnabledDatabaseTypes } from "@/lib/database-visibility";
+import { getDBConfig } from "@/lib/db-ui-config";
+
+const visibleProviderNames = getEnabledDatabaseTypes().map((type) => getDBConfig(type).label);
+const visibleProviderSummary = new Intl.ListFormat("en", { style: "long", type: "conjunction" }).format(
+  visibleProviderNames,
+);
 
 export const metadata: Metadata = {
   title: "LibreDB Studio | Universal Database Editor",
-  description: "Manage PostgreSQL, MySQL, MongoDB, and Redis in one web-based interface.",
+  description: `Manage ${visibleProviderSummary} in one web-based interface.`,
   icons: {
     icon: [
       { url: "/favicon.ico?v=2", sizes: "any" },

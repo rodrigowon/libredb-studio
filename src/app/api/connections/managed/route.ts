@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { getManagedConnections, getPendingSeeds } from "@/lib/seed";
 import { logger } from "@/lib/logger";
 import { SEED_CONFIG_UNREADABLE_REASON } from "@/hooks/use-connection-payload";
+import { filterEnabledDatabaseConnections, isDatabaseTypeEnabled } from "@/lib/database-visibility";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,7 @@ export async function GET() {
       );
     }
 
-    const sanitized = connections.map((conn) => {
+    const sanitized = filterEnabledDatabaseConnections(connections).map((conn) => {
       if (conn.managed) {
         const { password, connectionString, ...rest } = conn;
         return rest;
@@ -45,7 +46,11 @@ export async function GET() {
     // Seed ids still being seeded asynchronously (e.g. the SQLite sample file
     // copy at boot) — clients poll while non-empty so the sample appears
     // without a page refresh. Always [] when embedded in platform.
-    return NextResponse.json({ connections: sanitized, cacheHint: cacheTTL, pendingSeeds: getPendingSeeds() });
+    return NextResponse.json({
+      connections: sanitized,
+      cacheHint: cacheTTL,
+      pendingSeeds: isDatabaseTypeEnabled("sqlite") ? getPendingSeeds() : [],
+    });
   } catch (error) {
     logger.error("Failed to load managed connections", error, {
       route: "GET /api/connections/managed",

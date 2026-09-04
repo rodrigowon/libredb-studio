@@ -5,6 +5,7 @@ import type { DatabaseConnection, TableSchema, TableRelations } from "@/lib/type
 import { useToast } from "@/hooks/use-toast";
 import { storage } from "@/lib/storage";
 import { logger } from "@/lib/logger";
+import { filterEnabledDatabaseConnections } from "@/lib/database-visibility";
 import {
   buildConnectionPayload,
   NO_SERVED_SEEDS,
@@ -159,7 +160,7 @@ export function useConnectionManager(storageReady = false) {
         merged.push(uc);
       }
 
-      return merged;
+      return filterEnabledDatabaseConnections(merged);
     };
 
     const fetchManaged = async (): Promise<{
@@ -263,11 +264,12 @@ export function useConnectionManager(storageReady = false) {
       }
 
       if (!managedMerged) {
-        setConnections(loadedConnections);
-        if (loadedConnections.length > 0) {
+        const visibleConnections = filterEnabledDatabaseConnections(loadedConnections);
+        setConnections(visibleConnections);
+        if (visibleConnections.length > 0) {
           const savedId = storage.getActiveConnectionId();
-          const saved = savedId ? loadedConnections.find((c: DatabaseConnection) => c.id === savedId) : null;
-          setActiveConnection(saved ?? loadedConnections[0]);
+          const saved = savedId ? visibleConnections.find((c: DatabaseConnection) => c.id === savedId) : null;
+          setActiveConnection(saved ?? visibleConnections[0]);
         }
       }
     };

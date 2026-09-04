@@ -211,13 +211,6 @@ function getDefaultForm() {
       },
       { value: "mysql", label: "MySQL", icon: () => React.createElement("span", null, "MY"), color: "text-amber-400" },
       { value: "sqlite", label: "SQLite", icon: () => React.createElement("span", null, "SL"), color: "text-cyan-400" },
-      {
-        value: "mongodb",
-        label: "MongoDB",
-        icon: () => React.createElement("span", null, "MG"),
-        color: "text-emerald-400",
-      },
-      { value: "redis", label: "Redis", icon: () => React.createElement("span", null, "RD"), color: "text-red-400" },
     ],
     ...mockFormOverrides,
   };
@@ -366,15 +359,15 @@ describe("ConnectionModal", () => {
 
   // ── 5. Database type buttons render ─────────────────────────────────────────
 
-  test("database type buttons render", () => {
+  test("database type buttons render only the fork's default providers", () => {
     const props = createDefaultProps();
     const { queryByText } = render(React.createElement(ConnectionModal, props));
 
     expect(queryByText("PostgreSQL")).not.toBeNull();
     expect(queryByText("MySQL")).not.toBeNull();
     expect(queryByText("SQLite")).not.toBeNull();
-    expect(queryByText("MongoDB")).not.toBeNull();
-    expect(queryByText("Redis")).not.toBeNull();
+    expect(queryByText("MongoDB")).toBeNull();
+    expect(queryByText("Redis")).toBeNull();
   });
 
   // ── 6. Name input renders ──────────────────────────────────────────────────

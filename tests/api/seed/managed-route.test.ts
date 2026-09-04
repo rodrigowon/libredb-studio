@@ -87,6 +87,7 @@ describe("GET /api/connections/managed", () => {
     const unmanaged = data.connections.find((c: { managed: boolean }) => !c.managed);
     expect(unmanaged).toBeDefined();
     expect(unmanaged.password).toBe("mysql-pass");
+    expect(data.connections.map((c: { type: string }) => c.type)).toEqual(["postgres", "mysql"]);
 
     process.env.SEED_CONFIG_PATH = origPath;
     delete process.env.TEST_PG_PASSWORD;

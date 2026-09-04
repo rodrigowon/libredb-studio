@@ -1,6 +1,7 @@
 import { DB_UI_CONFIG, type DBIcon } from "@/lib/db-ui-config";
 import { isExternalDatabaseType } from "@/lib/db/compatibility";
 import type { DatabaseType } from "@/lib/types";
+import { filterEnabledDatabaseTypes } from "@/lib/database-visibility";
 
 /**
  * Display rank for the marketing surfaces (the login hero's "Supported Databases"
@@ -87,7 +88,7 @@ export interface ShowcaseDatabase {
  * Returns a fresh array so a caller cannot mutate the shared order.
  */
 export function listShowcaseDatabases(): ShowcaseDatabase[] {
-  return SHOWCASE_DATABASE_ORDER.map((type) => ({
+  return filterEnabledDatabaseTypes(SHOWCASE_DATABASE_ORDER).map((type) => ({
     type,
     label: DB_UI_CONFIG[type].label,
     icon: DB_UI_CONFIG[type].icon,

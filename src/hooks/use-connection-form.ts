@@ -11,8 +11,12 @@ import {
   SSHTunnelConfig,
 } from "@/lib/types";
 import { getDBConfig } from "@/lib/db-ui-config";
+import { getEnabledDatabaseTypes } from "@/lib/database-visibility";
 import { parseConnectionString } from "@/lib/connection-string-parser";
 import { newLocalId } from "@/lib/ids";
+
+const DEFAULT_FORM_DATABASE_TYPE = getEnabledDatabaseTypes()[0] ?? "postgres";
+const DEFAULT_FORM_DATABASE_PORT = getDBConfig(DEFAULT_FORM_DATABASE_TYPE).defaultPort;
 
 /**
  * Whether this editor OWNS a connection field or merely carries it.
@@ -126,10 +130,10 @@ function degradedSentence(result: TestOutcome): string {
 type TestResultTone = "success" | "warning" | "error";
 
 export function useConnectionForm({ isOpen, onConnect, editConnection, onTestConnection }: UseConnectionFormProps) {
-  const [type, setType] = useState<DatabaseType>("postgres");
+  const [type, setType] = useState<DatabaseType>(DEFAULT_FORM_DATABASE_TYPE);
   const [name, setName] = useState("");
   const [host, setHost] = useState("localhost");
-  const [port, setPort] = useState("5432");
+  const [port, setPort] = useState(DEFAULT_FORM_DATABASE_PORT);
   const [user, setUser] = useState("");
   const [password, setPassword] = useState("");
   const [database, setDatabase] = useState("");
@@ -275,9 +279,9 @@ export function useConnectionForm({ isOpen, onConnect, editConnection, onTestCon
         setDatabase("");
         setConnectionString("");
         setMongoConnectionMode("host");
-        setType("postgres");
+        setType(DEFAULT_FORM_DATABASE_TYPE);
         setHost("localhost");
-        setPort("5432");
+        setPort(DEFAULT_FORM_DATABASE_PORT);
         // Cassandra topology, so a leftover is not cosmetic: the next new connection
         // would dial its host with the previous ring's data centre, which the driver
         // either refuses or - when the name exists on both rings - accepts as a
@@ -581,28 +585,9 @@ export function useConnectionForm({ isOpen, onConnect, editConnection, onTestCon
     });
   }, [pasteInput, name, sslMode]);
 
-  // Ordered for display (the modal renders these as a 2-column grid), and covering the whole
-  // DatabaseType union — the same form edits existing connections, so an omitted type leaves the
-  // picker with nothing selected. tests/hooks/use-connection-form.test.ts enforces the coverage.
-  const selectableTypes: DatabaseType[] = [
-    "postgres",
-    "mysql",
-    "sqlite",
-    "oracle",
-    "mssql",
-    "mongodb",
-    "couchbase",
-    "redis",
-    "libredb",
-    "clickhouse",
-    "druid",
-    "elasticsearch",
-    "opensearch",
-    "trino",
-    "cassandra",
-    "libsql",
-    "duckdb",
-  ];
+  // New connections follow the fork's central UI allowlist. Edit mode retains the
+  // current provider so a legacy hidden connection can still be represented safely.
+  const selectableTypes = getEnabledDatabaseTypes(editConnection ? [editConnection.type] : []);
   const dbTypes = selectableTypes.map((t) => {
     const cfg = getDBConfig(t);
     return { value: t, label: cfg.label, icon: cfg.icon, color: cfg.color };

@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import { WIRE_COMPATIBLE_ENGINES } from "@/lib/db/compatibility";
+import { isDatabaseTypeEnabled } from "@/lib/database-visibility";
 
 interface WireCompatibleLineProps {
   variant: "desktop" | "mobile";
@@ -39,6 +40,7 @@ interface WireCompatibleLineProps {
  */
 export function WireCompatibleLine({ variant }: WireCompatibleLineProps) {
   const isDesktop = variant === "desktop";
+  const visibleEngines = WIRE_COMPATIBLE_ENGINES.filter((engine) => isDatabaseTypeEnabled(engine.via));
   return (
     <p
       data-testid={`wire-compatible-${variant}`}
@@ -48,8 +50,8 @@ export function WireCompatibleLine({ variant }: WireCompatibleLineProps) {
           : "text-[10px] text-center text-muted-foreground leading-snug pointer-events-none select-none"
       }
     >
-      Plus {WIRE_COMPATIBLE_ENGINES.length} wire-compatible engines, each measured on a live instance:{" "}
-      {WIRE_COMPATIBLE_ENGINES.map((engine, index) => (
+      Plus {visibleEngines.length} wire-compatible engines, each measured on a live instance:{" "}
+      {visibleEngines.map((engine, index) => (
         <Fragment key={engine.name}>
           {index > 0 && ", "}
           <span data-relative-name className={isDesktop ? "text-fg-secondary" : "text-foreground"}>
