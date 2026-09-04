@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import { SOCIAL_LINKS } from "@/lib/social-links";
 
 /**
@@ -39,6 +42,8 @@ const SOCIAL_ANCHOR_CLASSES = {
  * announces eight identical unnamed links.
  */
 function SocialRow({ variant }: CommunitySectionProps) {
+  const t = useTranslations("Login");
+
   return (
     <div className={variant === "desktop" ? "flex flex-wrap gap-2" : "flex flex-wrap justify-center gap-2"}>
       {SOCIAL_LINKS.map((link) => (
@@ -47,7 +52,7 @@ function SocialRow({ variant }: CommunitySectionProps) {
           href={link.href}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label={link.label}
+          aria-label={link.id === "sponsor" ? t("community.sponsor") : link.label}
           className={SOCIAL_ANCHOR_CLASSES[variant]}
         >
           <link.icon className="h-4 w-4" />
@@ -65,13 +70,15 @@ export function CommunitySection({ variant }: CommunitySectionProps) {
 }
 
 function DesktopCommunity() {
+  const t = useTranslations("Login.community");
+
   return (
     <div className="space-y-4">
       <div className="h-px bg-fill-strong" />
 
       <div className="flex items-center justify-between gap-4">
         <p className="text-xs text-fg-tertiary">
-          Open source
+          {t("openSource")}
           <span aria-hidden="true" className="mx-1.5 text-fg-muted">
             ·
           </span>
@@ -92,12 +99,14 @@ function DesktopCommunity() {
 }
 
 function MobileCommunity() {
+  const t = useTranslations("Login.community");
+
   return (
     <div className="space-y-3">
       <div className="h-px bg-muted" />
 
       <p className="text-xs text-center text-muted-foreground">
-        Open source
+        {t("openSource")}
         <span aria-hidden="true" className="mx-1.5">
           ·
         </span>

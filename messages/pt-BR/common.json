@@ -1,0 +1,10 @@
+{
+  "actions": {
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "back": "Voltar",
+    "continue": "Continuar",
+    "loading": "Carregando",
+    "error": "Erro"
+  }
+}

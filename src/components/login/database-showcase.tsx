@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import { listShowcaseDatabases } from "@/lib/db-showcase";
 
 interface DatabaseShowcaseProps {
@@ -37,9 +40,11 @@ export function DatabaseShowcase({ variant }: DatabaseShowcaseProps) {
 }
 
 function DesktopDatabases() {
+  const t = useTranslations("Login.hero");
+
   return (
     <ul
-      aria-label="Supported databases"
+      aria-label={t("databasesAriaLabel")}
       data-testid="database-showcase-desktop"
       className="flex flex-wrap gap-x-5 gap-y-2.5 pointer-events-none select-none"
     >
@@ -62,7 +67,7 @@ function DesktopDatabases() {
             */}
             <span>
               <span data-engine-label>{db.label}</span>
-              {db.embedded && <span> (embedded)</span>}
+              {db.embedded && <span> ({t("embedded")})</span>}
             </span>
           </li>
         );
@@ -72,16 +77,18 @@ function DesktopDatabases() {
 }
 
 function MobileDatabases() {
+  const t = useTranslations("Login.hero");
+
   return (
     <ul
-      aria-label="Supported databases"
+      aria-label={t("databasesAriaLabel")}
       data-testid="database-showcase-mobile"
       className="flex flex-wrap justify-center gap-2 pointer-events-none select-none"
     >
       {listShowcaseDatabases().map((db) => (
         <li key={db.type} className="text-[10px] px-2.5 py-1 rounded-full bg-muted text-muted-foreground font-medium">
           <span data-engine-label>{db.label}</span>
-          {db.embedded && <span> (embedded)</span>}
+          {db.embedded && <span> ({t("embedded")})</span>}
         </li>
       ))}
     </ul>

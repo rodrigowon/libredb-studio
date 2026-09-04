@@ -1,4 +1,7 @@
+"use client";
+
 import { Fragment } from "react";
+import { useTranslations } from "next-intl";
 import { WIRE_COMPATIBLE_ENGINES } from "@/lib/db/compatibility";
 import { isDatabaseTypeEnabled } from "@/lib/database-visibility";
 
@@ -39,6 +42,7 @@ interface WireCompatibleLineProps {
  * existed, so this is the one block on the page that has to earn its lines.
  */
 export function WireCompatibleLine({ variant }: WireCompatibleLineProps) {
+  const t = useTranslations("Login.hero");
   const isDesktop = variant === "desktop";
   const visibleEngines = WIRE_COMPATIBLE_ENGINES.filter((engine) => isDatabaseTypeEnabled(engine.via));
   return (
@@ -50,7 +54,7 @@ export function WireCompatibleLine({ variant }: WireCompatibleLineProps) {
           : "text-[10px] text-center text-muted-foreground leading-snug pointer-events-none select-none"
       }
     >
-      Plus {visibleEngines.length} wire-compatible engines, each measured on a live instance:{" "}
+      {t("wireCompatible", { count: visibleEngines.length })}{" "}
       {visibleEngines.map((engine, index) => (
         <Fragment key={engine.name}>
           {index > 0 && ", "}

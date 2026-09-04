@@ -14,6 +14,8 @@ import { ENGINE_URI_SCHEMES, parseConnectionString } from "@/lib/connection-stri
 import { SIGNATURE_URIS } from "@/components/login/connection-signature";
 import { EXTERNAL_DATABASE_TYPES, SHIPPED_DATABASE_TYPES, WIRE_COMPATIBLE_ENGINES } from "@/lib/db/compatibility";
 import { filterEnabledDatabaseTypes, isDatabaseTypeEnabled } from "@/lib/database-visibility";
+import type { Locale } from "@/i18n/config";
+import { renderWithIntl } from "../helpers/render-with-intl";
 
 // sonner and next/navigation are mocked via preload
 // lucide-react resolves fine natively — no mock needed
@@ -21,12 +23,12 @@ import { filterEnabledDatabaseTypes, isDatabaseTypeEnabled } from "@/lib/databas
 const { default: LoginForm } = await import("@/app/login/login-form");
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { cleanup, render, fireEvent, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-function renderLogin() {
+function renderLogin(locale: Locale = "en") {
   const user = userEvent.setup();
-  const result = render(<LoginForm authProvider="local" />);
+  const result = renderWithIntl(<LoginForm authProvider="local" />, locale);
   const form = result.container.querySelector("form")!;
   const emailInput = result.container.querySelector('input[type="email"]')! as HTMLInputElement;
   const passwordInput = result.container.querySelector('input[type="password"]')! as HTMLInputElement;
@@ -57,6 +59,14 @@ describe("LoginPage", () => {
   test("renders Sign In button", () => {
     const { getByText } = renderLogin();
     expect(getByText("Sign In")).not.toBeNull();
+  });
+
+  test("renders the complete login form in Brazilian Portuguese", () => {
+    const { getAllByText, getByPlaceholderText, getByLabelText } = renderLogin("pt-BR");
+    expect(getAllByText("Entrar").length).toBeGreaterThanOrEqual(1);
+    expect(getByPlaceholderText("Digite seu email")).not.toBeNull();
+    expect(getByPlaceholderText("Digite sua senha")).not.toBeNull();
+    expect(getByLabelText("Idioma")).not.toBeNull();
   });
 
   test("renders LibreDB Studio title", () => {
@@ -224,7 +234,7 @@ describe("LoginPage route (app/login/page)", () => {
     delete process.env.NEXT_PUBLIC_AUTH_PROVIDER;
     const { default: LoginPageRoute } = await import("@/app/login/page");
 
-    const { container } = render(<LoginPageRoute />);
+    const { container } = renderWithIntl(<LoginPageRoute />);
     expect(container.querySelector("form")).not.toBeNull();
   });
 
@@ -232,7 +242,7 @@ describe("LoginPage route (app/login/page)", () => {
     process.env.NEXT_PUBLIC_AUTH_PROVIDER = "oidc";
     const { default: LoginPageRoute } = await import("@/app/login/page");
 
-    const { queryByText, container } = render(<LoginPageRoute />);
+    const { queryByText, container } = renderWithIntl(<LoginPageRoute />);
     expect(queryByText("Login with SSO")).not.toBeNull();
     expect(container.querySelector("form")).toBeNull();
   });
@@ -244,7 +254,7 @@ describe("LoginPage showcase (issue #425)", () => {
   });
 
   function renderShowcase() {
-    return render(<LoginForm authProvider="local" />);
+    return renderWithIntl(<LoginForm authProvider="local" />);
   }
 
   test("renders every configured engine label on both surfaces", () => {

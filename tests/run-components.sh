@@ -29,8 +29,8 @@ FAIL=0
 # the third drift was caught (#331 T5): 26 was declared while 27 calls existed, so the
 # green summary line reported a group count no run had.
 # Drifted again before this line was touched: it read 30 while 32 `run_group` calls
-# existed, so every green run reported a group count no run had. 33 is the grep below.
-TOTAL_GROUPS=33
+# existed, so every green run reported a group count no run had. 34 is the grep below.
+TOTAL_GROUPS=34
 EXTRA_BUN_ARGS=("$@")
 GROUP_INDEX=0
 COVERAGE_MODE=0
@@ -154,6 +154,11 @@ run_group "Group 0i: Agent capability gate" \
 run_group "Group 0j: Agent workflow classifier" \
   tests/isolated/agent-workflow-classifier.test.ts
 
+# Group 0k: locale cookie Server Action (isolated — mocks next/headers, whose
+# process-wide mock has a different shape in authentication tests).
+run_group "Group 0k: Locale cookie action" \
+  tests/isolated/i18n-actions.test.ts
+
 # Group 1: Studio (isolated — mocks almost every child component)
 run_group "Group 1/6: Studio" \
   tests/components/Studio.test.tsx
@@ -229,6 +234,7 @@ run_group "Group 11/12: Smoke tests" \
   tests/components/SaveQueryModal.test.tsx \
   tests/components/MobileNav.test.tsx \
   tests/components/DataImportModal.test.tsx \
+  tests/components/LocaleSwitcher.test.tsx \
   tests/components/RootLayout.test.tsx \
   tests/components/AppErrorPages.test.tsx \
   tests/components/LazyView.test.tsx \

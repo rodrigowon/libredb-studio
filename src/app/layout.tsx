@@ -7,52 +7,60 @@ import { GeistMono } from "geist/font/mono";
 // --font-sans/--font-mono.
 import { GeistSans } from "geist/font/sans";
 import type { Metadata } from "next";
+import { NextIntlClientProvider } from "next-intl";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { getAppFormatter, getAppLocale, getAppMessages, getAppTranslations } from "@/i18n/server";
 import { getEnabledDatabaseTypes } from "@/lib/database-visibility";
 import { getDBConfig } from "@/lib/db-ui-config";
 
 const visibleProviderNames = getEnabledDatabaseTypes().map((type) => getDBConfig(type).label);
-const visibleProviderSummary = new Intl.ListFormat("en", { style: "long", type: "conjunction" }).format(
-  visibleProviderNames,
-);
 
-export const metadata: Metadata = {
-  title: "LibreDB Studio | Universal Database Editor",
-  description: `Manage ${visibleProviderSummary} in one web-based interface.`,
-  icons: {
-    icon: [
-      { url: "/favicon.ico?v=2", sizes: "any" },
-      { url: "/logo.svg?v=2", type: "image/svg+xml" },
-    ],
-    shortcut: "/favicon.ico?v=2",
-    apple: "/favicon-32x32.png?v=2",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const [format, t] = await Promise.all([getAppFormatter(), getAppTranslations("Metadata")]);
+  const visibleProviderSummary = format.list(visibleProviderNames, { style: "long", type: "conjunction" });
 
-export default function RootLayout({
+  return {
+    title: t("title"),
+    description: t("description", { providers: visibleProviderSummary }),
+    icons: {
+      icon: [
+        { url: "/favicon.ico?v=2", sizes: "any" },
+        { url: "/logo.svg?v=2", type: "image/svg+xml" },
+      ],
+      shortcut: "/favicon.ico?v=2",
+      apple: "/favicon-32x32.png?v=2",
+    },
+  };
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const [locale, messages] = await Promise.all([getAppLocale(), getAppMessages()]);
+
   return (
     // suppressHydrationWarning is scoped to <html>/<body> only: browser extensions
     // (Grammarly, dark-mode injectors, ...) mutate attributes on these two elements
     // before React hydrates. It suppresses attribute/text mismatches on THESE nodes
     // alone — real hydration bugs inside {children} are still reported.
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       {/*
         The `dark` class used to be written here, which pinned standalone studio to
         one theme. It is now owned by ThemeProvider, which writes it onto <html>
         (`attribute="class"`) and restores the user's choice before paint.
       */}
       <body suppressHydrationWarning className={`${GeistSans.variable} ${GeistMono.variable} antialiased font-sans`}>
-        <ThemeProvider>
-          {children}
-          {/* No `theme` prop: Toaster reads next-themes itself, so it follows. */}
-          <Toaster position="bottom-right" />
-        </ThemeProvider>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <ThemeProvider>
+            {children}
+            {/* No `theme` prop: Toaster reads next-themes itself, so it follows. */}
+            <Toaster position="bottom-right" />
+          </ThemeProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

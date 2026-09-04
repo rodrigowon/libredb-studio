@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,15 +13,14 @@ import LibreDBLogo from "@/components/libredb-logo";
 import { CommunitySection } from "@/components/community-section";
 import { ConnectionSignature } from "@/components/login/connection-signature";
 import { DatabaseShowcase } from "@/components/login/database-showcase";
-import { HeroProof, HERO_CLAIMS } from "@/components/login/hero-proof";
 import { WireCompatibleLine } from "@/components/login/wire-compatible-line";
+import { LocaleSwitcher } from "@/components/locale-switcher";
+import { HeroProof, useHeroClaims } from "@/components/login/hero-proof";
 
 /**
- * The agent half of the mobile summary. Pulled from `HERO_CLAIMS` rather than retyped, so
- * the mobile line states exactly what the desktop figure states about the two modes.
+ * The agent half of the mobile summary comes from the same localized claim data as the
+ * desktop figure, so the two surfaces cannot drift.
  */
-const agentClaimDetail = HERO_CLAIMS.find((claim) => claim.key === "agent")?.detail ?? "";
-
 function LoginFormInner({ authProvider }: { authProvider: string }) {
   const isOIDC = authProvider === "oidc";
   const [email, setEmail] = useState("");
@@ -29,12 +29,15 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const oidcError = searchParams.get("error");
+  const t = useTranslations("Login");
+  const heroClaims = useHeroClaims();
+  const agentClaimDetail = heroClaims.find((claim) => claim.key === "agent")?.detail ?? "";
 
   const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
     if (!email || !password) {
-      toast.error("Please enter email and password");
+      toast.error(t("messages.requiredCredentials"));
       return;
     }
 
@@ -49,7 +52,7 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
       const data = await response.json();
 
       if (data.success) {
-        toast.success(`Welcome back, ${data.role}!`);
+        toast.success(t("messages.welcome", { role: data.role }));
         router.push(data.role === "admin" ? "/admin" : "/");
         router.refresh();
       } else {
@@ -59,10 +62,14 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
         // (createErrorResponse) both carry `error`, not `message`. Without this fallback, a
         // reverse-proxy Host rewrite or a rate-limited legitimate user both see "Invalid email or
         // password" instead of the actionable text naming ALLOWED_ORIGINS or the retry window.
-        toast.error(data.message || data.error || "Invalid email or password");
+        const message =
+          data.message === "Invalid email or password"
+            ? t("messages.invalidCredentials")
+            : data.message || data.error || t("messages.invalidCredentials");
+        toast.error(message);
       }
     } catch {
-      toast.error("An error occurred. Please try again.");
+      toast.error(t("messages.genericError"));
     } finally {
       setIsLoading(false);
     }
@@ -70,6 +77,9 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
 
   return (
     <div className="flex min-h-[100dvh] bg-background">
+      <div className="absolute right-4 top-4 z-20">
+        <LocaleSwitcher />
+      </div>
       {/*
         Left Panel - Branding (hidden on mobile).
 
@@ -130,11 +140,13 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
           <div className="space-y-8 mt-auto">
             <div className="space-y-4 max-w-xl">
               <h1 className="text-4xl font-bold text-white tracking-tight leading-[1.1]">
-                The open-source SQL IDE that
-                <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                  {" "}
-                  deploys next to your data
-                </span>
+                {t.rich("hero.title", {
+                  accent: (chunks) => (
+                    <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                      {chunks}
+                    </span>
+                  ),
+                })}
               </h1>
               {/*
                 No longer "deploy with Docker in seconds": Docker is one of two dozen live
@@ -142,10 +154,7 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
                 so the old line was both an undercount and a contradiction of the deb, rpm,
                 Snap, winget, Homebrew and AppImage packages this project ships.
               */}
-              <p className="text-base text-fg-tertiary leading-relaxed">
-                Point it at a database you already run. Query, explore and manage every one of them from a single
-                workspace.
-              </p>
+              <p className="text-base text-fg-tertiary leading-relaxed">{t("hero.description")}</p>
             </div>
 
             <ConnectionSignature />
@@ -164,7 +173,7 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
               <WireCompatibleLine variant="desktop" />
             </div>
 
-            <HeroProof />
+            <HeroProof claims={heroClaims} />
           </div>
 
           <div className="mt-8">
@@ -181,7 +190,7 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
             href="https://libredb.org"
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="LibreDB Studio website"
+            aria-label={t("brand.websiteAriaLabel")}
             className="flex flex-col items-center gap-4 lg:hidden group"
           >
             <div className="relative">
@@ -194,7 +203,7 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
               <h2 className="text-2xl font-bold tracking-tight group-hover:text-blue-400 transition-colors duration-200">
                 LibreDB Studio
               </h2>
-              <p className="text-sm text-muted-foreground">Open-source SQL IDE for cloud-native teams</p>
+              <p className="text-sm text-muted-foreground">{t("brand.tagline")}</p>
             </div>
           </a>
 
@@ -202,12 +211,12 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
             {/* Desktop header inside card */}
             <CardHeader className="space-y-1 text-center pb-6 lg:pt-8">
               <CardTitle className="text-2xl font-bold tracking-tight">
-                <span className="hidden lg:inline">Welcome back</span>
-                <span className="lg:hidden">Sign in</span>
+                <span className="hidden lg:inline">{t("header.desktopTitle")}</span>
+                <span className="lg:hidden">{t("header.mobileTitle")}</span>
               </CardTitle>
               <CardDescription className="text-muted-foreground">
-                <span className="hidden lg:inline">Sign in to your LibreDB Studio account</span>
-                <span className="lg:hidden">Enter your credentials to continue</span>
+                <span className="hidden lg:inline">{t("header.desktopDescription")}</span>
+                <span className="lg:hidden">{t("header.mobileDescription")}</span>
               </CardDescription>
             </CardHeader>
 
@@ -216,7 +225,7 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
                 <>
                   {oidcError && (
                     <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-                      Authentication failed. Please try again.
+                      {t("oidc.error")}
                     </div>
                   )}
 
@@ -225,10 +234,8 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
                       <ShieldCheck className="h-6 w-6 text-primary" />
                     </div>
                     <div className="space-y-1">
-                      <p className="text-sm font-medium text-foreground">Single Sign-On</p>
-                      <p className="text-xs text-muted-foreground">
-                        Sign in securely with your organization&apos;s identity provider
-                      </p>
+                      <p className="text-sm font-medium text-foreground">{t("oidc.title")}</p>
+                      <p className="text-xs text-muted-foreground">{t("oidc.description")}</p>
                     </div>
                   </div>
 
@@ -241,7 +248,7 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
                     disabled={isLoading}
                   >
                     <ExternalLink className="h-4 w-4" />
-                    {isLoading ? "Redirecting..." : "Login with SSO"}
+                    {isLoading ? t("oidc.redirecting") : t("oidc.submit")}
                   </Button>
 
                   {/*
@@ -255,7 +262,7 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
                   <div className="flex items-center justify-center gap-4 pt-2">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Shield className="h-3 w-3" />
-                      <span>OIDC Protected</span>
+                      <span>{t("oidc.protected")}</span>
                     </div>
                   </div>
                 </>
@@ -263,13 +270,13 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
                 <>
                   <form onSubmit={handleLogin} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
+                      <Label htmlFor="email">{t("form.emailLabel")}</Label>
                       <div className="relative group">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
                         <Input
                           id="email"
                           type="email"
-                          placeholder="Enter your email"
+                          placeholder={t("form.emailPlaceholder")}
                           className="pl-10 h-11 transition-all focus:ring-2 focus:ring-primary/20"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
@@ -278,13 +285,13 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="password">Password</Label>
+                      <Label htmlFor="password">{t("form.passwordLabel")}</Label>
                       <div className="relative group">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
                         <Input
                           id="password"
                           type="password"
-                          placeholder="Enter your password"
+                          placeholder={t("form.passwordPlaceholder")}
                           className="pl-10 h-11 transition-all focus:ring-2 focus:ring-primary/20"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
@@ -297,7 +304,7 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
                       type="submit"
                       disabled={isLoading}
                     >
-                      {isLoading ? "Authenticating..." : "Sign In"}
+                      {isLoading ? t("form.authenticating") : t("form.submit")}
                     </Button>
                   </form>
                 </>
@@ -306,7 +313,7 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
 
             <CardFooter className="pt-0 pb-6 flex flex-col items-center gap-2">
               <p className="text-xs text-muted-foreground font-medium text-center max-w-[240px]">
-                Enterprise-grade security powered by LibreDB Studio Engine
+                {t("footer.security")}
               </p>
               <span className="text-[10px] text-muted-foreground/60 font-mono">
                 v{process.env.NEXT_PUBLIC_APP_VERSION}
@@ -324,14 +331,14 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
             <WireCompatibleLine variant="mobile" />
             {/*
               The same three claims the desktop hero makes, joined into one line rather than
-              re-worded for mobile: `HERO_CLAIMS` is the single source, so a change to the
+              re-worded for mobile: the localized claims are the single source, so a change to the
               agent copy cannot land on one surface and miss the other.
             */}
             <p
               data-testid="agent-claim"
               className="text-[10px] text-center text-muted-foreground leading-relaxed select-none"
             >
-              {HERO_CLAIMS.map((claim) => `${claim.value} ${claim.unit}`).join(" · ")} — {agentClaimDetail}
+              {heroClaims.map((claim) => `${claim.value} ${claim.unit}`).join(" · ")} — {agentClaimDetail}
             </p>
             <CommunitySection variant="mobile" />
           </div>

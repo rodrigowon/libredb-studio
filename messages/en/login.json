@@ -1,0 +1,70 @@
+{
+  "language": {
+    "label": "Language",
+    "ptBR": "Português (Brasil)",
+    "en": "English"
+  },
+  "brand": {
+    "websiteAriaLabel": "LibreDB Studio website",
+    "tagline": "Open-source SQL IDE for cloud-native teams"
+  },
+  "hero": {
+    "title": "The open-source SQL IDE that <accent>deploys next to your data</accent>",
+    "description": "Point it at a database you already run. Query, explore and manage every one of them from a single workspace.",
+    "databasesAriaLabel": "Supported databases",
+    "embedded": "embedded",
+    "wireCompatible": "Plus {count} wire-compatible engines, each measured on a live instance:",
+    "proof": {
+      "enginesUnit": "database engines",
+      "enginesDetail": "one client, one workspace, every one of them",
+      "channelsUnit": "install channels",
+      "agentUnit": "agent modes",
+      "planLabel": "plan mode",
+      "planDetail": "drafts one statement, runs nothing",
+      "agentLabel": "agent mode",
+      "agentDetail": "runs read-only on {engines}",
+      "runsOn": "Runs on {platforms}",
+      "deployGroups": {
+        "containers": "Containers",
+        "kubernetes": "Kubernetes",
+        "paas": "PaaS",
+        "packages": "Packages"
+      }
+    }
+  },
+  "header": {
+    "desktopTitle": "Welcome back",
+    "mobileTitle": "Sign in",
+    "desktopDescription": "Sign in to your LibreDB Studio account",
+    "mobileDescription": "Enter your credentials to continue"
+  },
+  "form": {
+    "emailLabel": "Email",
+    "emailPlaceholder": "Enter your email",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "submit": "Sign In",
+    "authenticating": "Authenticating..."
+  },
+  "oidc": {
+    "error": "Authentication failed. Please try again.",
+    "title": "Single Sign-On",
+    "description": "Sign in securely with your organization's identity provider",
+    "submit": "Login with SSO",
+    "redirecting": "Redirecting...",
+    "protected": "OIDC Protected"
+  },
+  "messages": {
+    "requiredCredentials": "Please enter email and password",
+    "welcome": "Welcome back, {role}!",
+    "invalidCredentials": "Invalid email or password",
+    "genericError": "An error occurred. Please try again."
+  },
+  "footer": {
+    "security": "Enterprise-grade security powered by LibreDB Studio Engine"
+  },
+  "community": {
+    "openSource": "Open source",
+    "sponsor": "Sponsor"
+  }
+}

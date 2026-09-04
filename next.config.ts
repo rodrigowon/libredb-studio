@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
 import packageJson from "./package.json";
 // Relative, not "@/": Next loads this file before any tsconfig path alias exists for it, and
 // src/lib/security/headers.ts is import-free by design precisely so a next.config can read it.
@@ -234,4 +235,6 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
+
+export default withNextIntl(nextConfig);

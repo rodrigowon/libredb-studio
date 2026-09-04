@@ -1,0 +1,70 @@
+{
+  "language": {
+    "label": "Idioma",
+    "ptBR": "Português (Brasil)",
+    "en": "English"
+  },
+  "brand": {
+    "websiteAriaLabel": "Site do LibreDB Studio",
+    "tagline": "IDE SQL de código aberto para equipes cloud-native"
+  },
+  "hero": {
+    "title": "A IDE SQL de código aberto que <accent>é implantada junto aos seus dados</accent>",
+    "description": "Conecte-a a um banco de dados que você já utiliza. Consulte, explore e gerencie todos eles em um único workspace.",
+    "databasesAriaLabel": "Bancos de dados compatíveis",
+    "embedded": "embutido",
+    "wireCompatible": "Além de {count} mecanismos compatíveis por protocolo, cada um validado em uma instância real:",
+    "proof": {
+      "enginesUnit": "mecanismos de banco de dados",
+      "enginesDetail": "um cliente, um workspace, todos os bancos",
+      "channelsUnit": "canais de instalação",
+      "agentUnit": "modos do agente",
+      "planLabel": "modo de planejamento",
+      "planDetail": "elabora uma instrução e não executa nada",
+      "agentLabel": "modo de agente",
+      "agentDetail": "executa somente leitura em {engines}",
+      "runsOn": "Disponível para {platforms}",
+      "deployGroups": {
+        "containers": "Contêineres",
+        "kubernetes": "Kubernetes",
+        "paas": "PaaS",
+        "packages": "Pacotes"
+      }
+    }
+  },
+  "header": {
+    "desktopTitle": "Que bom ter você de volta",
+    "mobileTitle": "Entrar",
+    "desktopDescription": "Entre na sua conta do LibreDB Studio",
+    "mobileDescription": "Informe suas credenciais para continuar"
+  },
+  "form": {
+    "emailLabel": "Email",
+    "emailPlaceholder": "Digite seu email",
+    "passwordLabel": "Senha",
+    "passwordPlaceholder": "Digite sua senha",
+    "submit": "Entrar",
+    "authenticating": "Autenticando..."
+  },
+  "oidc": {
+    "error": "Falha na autenticação. Tente novamente.",
+    "title": "Single Sign-On",
+    "description": "Entre com segurança usando o provedor de identidade da sua organização",
+    "submit": "Entrar com SSO",
+    "redirecting": "Redirecionando...",
+    "protected": "Protegido por OIDC"
+  },
+  "messages": {
+    "requiredCredentials": "Informe o email e a senha",
+    "welcome": "Boas-vindas, {role}!",
+    "invalidCredentials": "Email ou senha inválidos",
+    "genericError": "Ocorreu um erro. Tente novamente."
+  },
+  "footer": {
+    "security": "Segurança de nível empresarial fornecida pelo LibreDB Studio Engine"
+  },
+  "community": {
+    "openSource": "Código aberto",
+    "sponsor": "Patrocinar"
+  }
+}
