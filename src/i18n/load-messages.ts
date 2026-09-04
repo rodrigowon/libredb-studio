@@ -4,12 +4,22 @@ import enMetadata from "../../messages/en/metadata.json";
 import enStudio from "../../messages/en/studio.json";
 import enConnections from "../../messages/en/connections.json";
 import enEditor from "../../messages/en/editor.json";
+import enResults from "../../messages/en/results.json";
+import enHistory from "../../messages/en/history.json";
+import enDataTools from "../../messages/en/data-tools.json";
+import enDocs from "../../messages/en/docs.json";
+import enSchemaDiff from "../../messages/en/schema-diff.json";
 import ptBrCommon from "../../messages/pt-BR/common.json";
 import ptBrLogin from "../../messages/pt-BR/login.json";
 import ptBrMetadata from "../../messages/pt-BR/metadata.json";
 import ptBrStudio from "../../messages/pt-BR/studio.json";
 import ptBrConnections from "../../messages/pt-BR/connections.json";
 import ptBrEditor from "../../messages/pt-BR/editor.json";
+import ptBrResults from "../../messages/pt-BR/results.json";
+import ptBrHistory from "../../messages/pt-BR/history.json";
+import ptBrDataTools from "../../messages/pt-BR/data-tools.json";
+import ptBrDocs from "../../messages/pt-BR/docs.json";
+import ptBrSchemaDiff from "../../messages/pt-BR/schema-diff.json";
 import { FALLBACK_LOCALE, type Locale } from "@/i18n/config";
 
 type MessageObject = { [key: string]: string | MessageObject };
@@ -24,6 +34,11 @@ const englishMessages = {
   Studio: enStudio,
   Connections: enConnections,
   Editor: enEditor,
+  Results: enResults,
+  History: enHistory,
+  DataTools: enDataTools,
+  Docs: enDocs,
+  SchemaDiff: enSchemaDiff,
 };
 
 const portugueseMessages = {
@@ -33,6 +48,11 @@ const portugueseMessages = {
   Studio: ptBrStudio,
   Connections: ptBrConnections,
   Editor: ptBrEditor,
+  Results: ptBrResults,
+  History: ptBrHistory,
+  DataTools: ptBrDataTools,
+  Docs: ptBrDocs,
+  SchemaDiff: ptBrSchemaDiff,
 };
 
 export type AppMessages = typeof englishMessages;

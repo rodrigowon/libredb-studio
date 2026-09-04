@@ -1,0 +1,61 @@
+{
+  "empty": {
+    "title": "A consulta não retornou dados",
+    "hint": "A operação foi concluída, mas o conjunto de resultados está vazio.",
+    "engineWarnings": "O mecanismo informou:"
+  },
+  "table": {
+    "sortedAscending": "ordenação crescente",
+    "sortedDescending": "ordenação decrescente",
+    "maskedColumn": "Coluna mascarada",
+    "filterColumn": "Filtrar coluna",
+    "filterPlaceholder": "Filtrar {column}...",
+    "clearFilter": "Limpar filtro",
+    "revealValue": "Exibir valor (10 s)"
+  },
+  "stats": {
+    "rows": "{count, plural, =0 {# linhas} one {# linha} other {# linhas}}",
+    "columns": "{count, plural, =0 {# colunas} one {# coluna} other {# colunas}}",
+    "moreAvailable": "há mais disponíveis",
+    "filterSummary": "{filters, plural, =0 {# filtros} one {# filtro} other {# filtros}} • {shown, number} exibidas",
+    "clearAllFilters": "Limpar todos os filtros",
+    "autoLimited": "LIMITADO AUTOMATICAMENTE",
+    "warnings": "{count, plural, =0 {# AVISOS} one {# AVISO} other {# AVISOS}}",
+    "showSensitive": "Exibir dados sensíveis",
+    "maskSensitive": "Mascarar dados sensíveis",
+    "masked": "MASCARADO",
+    "mask": "MASCARAR",
+    "changes": "{count, plural, =0 {# alterações} one {# alteração} other {# alterações}}",
+    "applyChanges": "Aplicar alterações",
+    "discardChanges": "Descartar alterações",
+    "executionTime": "TEMPO DE EXECUÇÃO: {time}",
+    "cardView": "Visualização em cartões",
+    "tableView": "Visualização em tabela"
+  },
+  "loadMore": {
+    "loading": "Carregando...",
+    "action": "Carregar mais (500 linhas)"
+  },
+  "card": {
+    "row": "Linha {number}",
+    "moreFields": "+{count} campos adicionais"
+  },
+  "detail": {
+    "row": "Linha nº {number}",
+    "copied": "Copiado",
+    "copyFailed": "Falha ao copiar",
+    "copyJson": "Copiar JSON",
+    "copyField": "Copiar {field}",
+    "revealValue": "Exibir valor (10 s)"
+  },
+  "export": {
+    "action": "Exportar",
+    "writesLoaded": "{count, plural, =0 {Exporta as # linhas carregadas aqui.} one {Exporta a # linha carregada aqui.} other {Exporta as # linhas carregadas aqui.}}",
+    "writesAll": "{count, plural, =0 {Exporta todas as # linhas.} one {Exporta # linha.} other {Exporta todas as # linhas.}}",
+    "moreOnServer": "Ainda há linhas no servidor — carregue-as antes para incluí-las.",
+    "asCsv": "Exportar como CSV",
+    "asJson": "Exportar como JSON",
+    "asSqlInsert": "Exportar como SQL INSERT",
+    "asDdl": "Exportar como DDL (CREATE TABLE)"
+  }
+}

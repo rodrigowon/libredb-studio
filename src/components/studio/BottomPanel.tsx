@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { storage } from "@/lib/storage";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 
 export type BottomPanelMode =
   | "results"
@@ -93,6 +93,8 @@ const SchemaDiff = React.lazy(
 // The saved-chart dashboard. Its data is read on mount, not its module — the module
 // is split at the import above, along with the `DataCharts` this renders.
 function ChartDashboard({ result }: { result: QueryResult | null }) {
+  const t = useTranslations("DataTools.dashboard");
+  const tCharts = useTranslations("DataTools.charts.types");
   // The saved-chart list, read once from storage. Nothing here writes it back —
   // saving and deleting happen in DataCharts, which owns its own copy.
   const [savedCharts] = React.useState(() => storage.getSavedCharts());
@@ -101,8 +103,8 @@ function ChartDashboard({ result }: { result: QueryResult | null }) {
     return (
       <div className="h-full flex flex-col items-center justify-center bg-sunken text-fg-muted gap-2">
         <LayoutDashboard strokeWidth={1.5} className="w-10 h-10 opacity-30" />
-        <p className="text-xs">No saved charts yet</p>
-        <p className="text-xs text-fg-subtle">Save charts from the Charts tab to display them here</p>
+        <p className="text-xs">{t("emptyTitle")}</p>
+        <p className="text-xs text-fg-subtle">{t("emptyHint")}</p>
       </div>
     );
   }
@@ -114,7 +116,25 @@ function ChartDashboard({ result }: { result: QueryResult | null }) {
           <div key={chart.id} className="bg-raised border border-hairline-strong rounded-lg p-3">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-fg-secondary">{chart.name}</span>
-              <span className="text-xs text-fg-subtle">{chart.chartType}</span>
+              <span className="text-xs text-fg-subtle">
+                {chart.chartType === "bar"
+                  ? tCharts("bar")
+                  : chart.chartType === "line"
+                    ? tCharts("line")
+                    : chart.chartType === "pie"
+                      ? tCharts("pie")
+                      : chart.chartType === "area"
+                        ? tCharts("area")
+                        : chart.chartType === "scatter"
+                          ? tCharts("scatter")
+                          : chart.chartType === "histogram"
+                            ? tCharts("histogram")
+                            : chart.chartType === "stacked-bar"
+                              ? tCharts("stackedBar")
+                              : chart.chartType === "stacked-area"
+                                ? tCharts("stackedArea")
+                                : chart.chartType}
+              </span>
             </div>
             <div className="text-xs text-fg-muted">
               {chart.xAxis && <span>X: {chart.xAxis}</span>}
@@ -126,7 +146,7 @@ function ChartDashboard({ result }: { result: QueryResult | null }) {
               </div>
             ) : (
               <div className="mt-2 h-[100px] flex items-center justify-center text-fg-subtle text-xs">
-                Execute a query to see chart
+                {t("runQuery")}
               </div>
             )}
           </div>
@@ -204,6 +224,9 @@ export function BottomPanel({
   onDismissAgentArtifact,
 }: BottomPanelProps) {
   const t = useTranslations("Studio.navigation");
+  const tResults = useTranslations("Results");
+  const tDataTools = useTranslations("DataTools.view");
+  const format = useFormatter();
   const explainInput = useMemo(() => resolveExplainPlan(currentTab.explainPlan), [currentTab.explainPlan]);
 
   /*
@@ -249,6 +272,7 @@ export function BottomPanel({
   // How much of the result an export would write — the count the button carries and
   // the shortfall the menu states. Derived here so both read the same numbers.
   const exportScope = describeExportScope(displayedResult ?? { rows: [] });
+  const exportCountLabel = format.number(exportScope.rowCount);
 
   const tabs: { key: BottomPanelMode; label: string; icon: React.ReactNode; activeClass: string }[] = [
     {
@@ -349,7 +373,7 @@ export function BottomPanel({
               and EXEC TIME carries the duration.
             */}
             <span className="hidden @4xl/panel:inline text-xs font-mono text-fg-muted mr-2">
-              {displayedResult.rowCount} rows • {displayedResult.executionTime}ms
+              {tResults("stats.rows", { count: displayedResult.rowCount })} • {format.number(displayedResult.executionTime)}ms
             </span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -364,17 +388,19 @@ export function BottomPanel({
                     page, and a file of 500 rows off a table of two million looks
                     exactly like a complete answer once it has left the product.
                   */}
-                  <Download strokeWidth={1.5} className="w-3 h-3" /> Export
+                  <Download strokeWidth={1.5} className="w-3 h-3" /> {tResults("export.action")}
                   <span data-testid="export-row-count" className="font-mono text-fg-subtle">
-                    {exportScope.countLabel}
+                    {exportCountLabel}
                   </span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-raised border-hairline-strong text-fg-secondary">
                 <div data-testid="export-scope" className="px-2 py-1.5 text-xs text-fg-muted max-w-[15rem]">
-                  {exportScope.summary}
+                  {exportScope.shortfall !== null
+                    ? tResults("export.writesLoaded", { count: exportScope.rowCount })
+                    : tResults("export.writesAll", { count: exportScope.rowCount })}
                   {exportScope.shortfall !== null && (
-                    <span className="block mt-1 text-amber-400/80">{exportScope.shortfall}</span>
+                    <span className="block mt-1 text-amber-400/80">{tResults("export.moreOnServer")}</span>
                   )}
                 </div>
                 {exportArtifact !== null && (
@@ -390,25 +416,25 @@ export function BottomPanel({
                   onClick={() => onExportResults("csv", exportArtifact)}
                   className="text-xs cursor-pointer"
                 >
-                  Export as CSV
+                  {tResults("export.asCsv")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => onExportResults("json", exportArtifact)}
                   className="text-xs cursor-pointer"
                 >
-                  Export as JSON
+                  {tResults("export.asJson")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => onExportResults("sql-insert", exportArtifact)}
                   className="text-xs cursor-pointer"
                 >
-                  Export as SQL INSERT
+                  {tResults("export.asSqlInsert")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => onExportResults("sql-ddl", exportArtifact)}
                   className="text-xs cursor-pointer"
                 >
-                  Export as DDL (CREATE TABLE)
+                  {tResults("export.asDdl")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -448,8 +474,8 @@ export function BottomPanel({
         {/* One pair of boundaries for the whole switch: only one view is ever mounted,
             so the fallback is what the user sees while a split chunk is in flight and
             the error boundary is what they see when it never arrives. */}
-        <ChunkBoundary label="This view">
-          <React.Suspense fallback={<ViewLoading label="Loading the panel" />}>
+        <ChunkBoundary label={tDataTools("label")}>
+          <React.Suspense fallback={<ViewLoading label={tDataTools("loading")} />}>
             {mode === "pivot" ? (
               <PivotTable
                 result={currentTab.result}

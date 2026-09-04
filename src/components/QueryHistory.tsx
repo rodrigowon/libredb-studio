@@ -21,7 +21,7 @@ import {
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { useFormatter, useTranslations } from "next-intl";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +39,8 @@ type SortField = "executedAt" | "executionTime" | "rowCount";
 type SortOrder = "asc" | "desc";
 
 export function QueryHistory({ onSelectQuery, activeConnectionId, refreshTrigger }: QueryHistoryProps) {
+  const t = useTranslations("History.history");
+  const format = useFormatter();
   const [history, setHistory] = useState<QueryHistoryItem[]>(() => storage.getHistory());
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "success" | "error">("all");
@@ -84,7 +86,7 @@ export function QueryHistory({ onSelectQuery, activeConnectionId, refreshTrigger
   }, [history, search, filterStatus, isGlobal, activeConnectionId, sortField, sortOrder]);
 
   const handleClearHistory = () => {
-    if (confirm("Are you sure you want to clear all history?")) {
+    if (confirm(t("clearConfirm"))) {
       storage.clearHistory();
       setHistory([]);
     }
@@ -105,7 +107,16 @@ export function QueryHistory({ onSelectQuery, activeConnectionId, refreshTrigger
     const fileName = `query_history_${new Date().getTime()}.${format}`;
 
     if (format === "csv") {
-      const headers = ["Executed At", "Status", "Connection", "Tab", "Execution Time (ms)", "Rows", "Query", "Error"];
+      const headers = [
+        t("csv.executedAt"),
+        t("csv.status"),
+        t("csv.connection"),
+        t("csv.tab"),
+        t("csv.executionTime"),
+        t("csv.rows"),
+        t("csv.query"),
+        t("csv.error"),
+      ];
       // Every field goes through the shared writer. The query and the error message
       // used to be the only two that were escaped, so a connection or tab name
       // holding a comma shifted every column after it for that row.
@@ -140,8 +151,10 @@ export function QueryHistory({ onSelectQuery, activeConnectionId, refreshTrigger
               <HistoryIcon strokeWidth={1.5} className="w-3.5 h-3.5 text-emerald-400" />
             </div>
             <div>
-              <h3 className="text-xs font-medium text-fg flex items-center gap-2">Query History</h3>
-              <p className="text-xs text-fg-muted font-medium">Showing {filteredHistory.length} executions</p>
+              <h3 className="text-xs font-medium text-fg flex items-center gap-2">{t("title")}</h3>
+              <p className="text-xs text-fg-muted font-medium">
+                {t("showing", { count: filteredHistory.length })}
+              </p>
             </div>
           </div>
 
@@ -153,15 +166,15 @@ export function QueryHistory({ onSelectQuery, activeConnectionId, refreshTrigger
                   size="sm"
                   className="h-8 text-xs font-medium text-fg-tertiary hover:text-fg-bright gap-2"
                 >
-                  <Download strokeWidth={1.5} className="w-3 h-3" /> Export
+                  <Download strokeWidth={1.5} className="w-3 h-3" /> {t("export")}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-raised border-hairline-strong text-fg-secondary">
                 <DropdownMenuItem onClick={() => exportHistory("csv")} className="text-xs cursor-pointer">
-                  <span>Export as CSV</span>
+                  <span>{t("exportCsv")}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => exportHistory("json")} className="text-xs cursor-pointer">
-                  <span>Export as JSON</span>
+                  <span>{t("exportJson")}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -172,7 +185,7 @@ export function QueryHistory({ onSelectQuery, activeConnectionId, refreshTrigger
               onClick={handleClearHistory}
               className="h-8 text-xs font-medium text-red-400/70 hover:text-red-400 hover:bg-red-400/10"
             >
-              <Trash2 strokeWidth={1.5} className="w-3 h-3 mr-2" /> Clear
+              <Trash2 strokeWidth={1.5} className="w-3 h-3 mr-2" /> {t("clear")}
             </Button>
           </div>
         </div>
@@ -181,7 +194,7 @@ export function QueryHistory({ onSelectQuery, activeConnectionId, refreshTrigger
           <div className="relative flex-1 min-w-[240px]">
             <Search strokeWidth={1.5} className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-fg-muted" />
             <Input
-              placeholder="Search by query, connection or tab..."
+              placeholder={t("search")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 h-9 bg-fill border-hairline-strong text-xs focus:ring-emerald-500/20 rounded-lg"
@@ -189,6 +202,7 @@ export function QueryHistory({ onSelectQuery, activeConnectionId, refreshTrigger
             {search && (
               <button
                 onClick={() => setSearch("")}
+                aria-label={t("clearSearch")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted hover:text-fg-bright"
               >
                 <X strokeWidth={1.5} className="w-3 h-3" />
@@ -206,7 +220,7 @@ export function QueryHistory({ onSelectQuery, activeConnectionId, refreshTrigger
                   : "text-fg-muted hover:text-fg-secondary",
               )}
             >
-              <span>Active Conn</span>
+              <span>{t("activeConnection")}</span>
             </button>
             <button
               onClick={() => setIsGlobal(true)}
@@ -217,7 +231,7 @@ export function QueryHistory({ onSelectQuery, activeConnectionId, refreshTrigger
                   : "text-fg-muted hover:text-fg-secondary",
               )}
             >
-              <span>All Connections</span>
+              <span>{t("allConnections")}</span>
             </button>
           </div>
 
@@ -231,7 +245,7 @@ export function QueryHistory({ onSelectQuery, activeConnectionId, refreshTrigger
                   filterStatus === status ? "bg-fill-strong text-fg" : "text-fg-muted hover:text-fg-secondary",
                 )}
               >
-                {status}
+                {t(`status.${status}`)}
               </button>
             ))}
           </div>
@@ -242,8 +256,8 @@ export function QueryHistory({ onSelectQuery, activeConnectionId, refreshTrigger
         {filteredHistory.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center opacity-20 p-8 text-center">
             <HistoryIcon strokeWidth={1.5} className="w-16 h-16 mb-4 text-fg-subtle" />
-            <p className="text-xs font-medium">No history items found</p>
-            <p className="text-xs text-fg-muted mt-1">Run some queries to see them here</p>
+            <p className="text-xs font-medium">{t("emptyTitle")}</p>
+            <p className="text-xs text-fg-muted mt-1">{t("emptyHint")}</p>
           </div>
         )}
         {filteredHistory.length > 0 && (
@@ -251,13 +265,13 @@ export function QueryHistory({ onSelectQuery, activeConnectionId, refreshTrigger
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-fill-subtle border-b border-hairline text-xs font-medium text-fg-muted">
-                  <th className="px-4 py-3 w-10 text-center">Status</th>
+                  <th className="px-4 py-3 w-10 text-center">{t("columns.status")}</th>
                   <th
                     className="px-4 py-3 cursor-pointer hover:text-fg-secondary transition-colors group"
                     onClick={() => handleSort("executedAt")}
                   >
                     <div className="flex items-center gap-2">
-                      <span>Executed At</span>
+                      <span>{t("columns.executedAt")}</span>
                       <ArrowUpDown
                         className={cn(
                           "w-3 h-3 transition-opacity",
@@ -268,14 +282,14 @@ export function QueryHistory({ onSelectQuery, activeConnectionId, refreshTrigger
                       />
                     </div>
                   </th>
-                  <th className="px-4 py-3">Source</th>
-                  <th className="px-4 py-3">SQL Query</th>
+                  <th className="px-4 py-3">{t("columns.source")}</th>
+                  <th className="px-4 py-3">{t("columns.query")}</th>
                   <th
                     className="px-4 py-3 cursor-pointer hover:text-fg-secondary transition-colors group"
                     onClick={() => handleSort("executionTime")}
                   >
                     <div className="flex items-center gap-2">
-                      <span>Duration</span>
+                      <span>{t("columns.duration")}</span>
                       <ArrowUpDown
                         className={cn(
                           "w-3 h-3 transition-opacity",
@@ -291,7 +305,7 @@ export function QueryHistory({ onSelectQuery, activeConnectionId, refreshTrigger
                     onClick={() => handleSort("rowCount")}
                   >
                     <div className="flex items-center gap-2">
-                      <span>Rows</span>
+                      <span>{t("columns.rows")}</span>
                       <ArrowUpDown
                         className={cn(
                           "w-3 h-3 transition-opacity",
@@ -303,7 +317,7 @@ export function QueryHistory({ onSelectQuery, activeConnectionId, refreshTrigger
                     </div>
                   </th>
                   <th className="px-4 py-3 w-20">
-                    <span className="sr-only">Actions</span>
+                    <span className="sr-only">{t("columns.actions")}</span>
                   </th>
                 </tr>
               </thead>
@@ -328,10 +342,20 @@ export function QueryHistory({ onSelectQuery, activeConnectionId, refreshTrigger
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex flex-col">
                         <span className="text-fg font-medium">
-                          {item.executedAt ? format(new Date(item.executedAt), "MMM d, HH:mm:ss") : "-"}
+                          {item.executedAt
+                            ? format.dateTime(new Date(item.executedAt), {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                second: "2-digit",
+                              })
+                            : "-"}
                         </span>
                         <span className="text-xs text-fg-muted font-mono mt-0.5">
-                          {item.executedAt ? format(new Date(item.executedAt), "yyyy") : ""}
+                          {item.executedAt
+                            ? format.number(new Date(item.executedAt).getFullYear(), { useGrouping: false })
+                            : ""}
                         </span>
                       </div>
                     </td>
@@ -340,11 +364,11 @@ export function QueryHistory({ onSelectQuery, activeConnectionId, refreshTrigger
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-1.5 text-fg-secondary">
                           <Database strokeWidth={1.5} className="w-3 h-3 text-blue-400" />
-                          <span className="font-medium">{item.connectionName || "Unknown"}</span>
+                          <span className="font-medium">{item.connectionName || t("unknownConnection")}</span>
                         </div>
                         <div className="flex items-center gap-1.5 text-fg-muted text-xs">
                           <Hash strokeWidth={1.5} className="w-2.5 h-2.5" />
-                          <span>{item.tabName || "Default Tab"}</span>
+                          <span>{item.tabName || t("defaultTab")}</span>
                         </div>
                       </div>
                     </td>
@@ -367,12 +391,12 @@ export function QueryHistory({ onSelectQuery, activeConnectionId, refreshTrigger
                           item.executionTime > 500 ? "text-amber-400 bg-amber-400/10" : "text-fg-tertiary bg-fill",
                         )}
                       >
-                        {item.executionTime}ms
+                        {format.number(item.executionTime)}ms
                       </span>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <span className="text-fg-tertiary font-mono text-xs">
-                        {item.rowCount != null ? item.rowCount.toLocaleString() : "-"}
+                        {item.rowCount != null ? format.number(item.rowCount) : "-"}
                       </span>
                     </td>
                     <td className="px-4 py-4 text-right">
@@ -381,7 +405,7 @@ export function QueryHistory({ onSelectQuery, activeConnectionId, refreshTrigger
                         size="sm"
                         className="h-8 w-8 p-0 hover:bg-emerald-500/10 hover:text-emerald-400"
                         onClick={() => onSelectQuery(item.query)}
-                        title="Restore Query"
+                        title={t("restore")}
                       >
                         <RotateCcw className="w-3 h-3" />
                       </Button>

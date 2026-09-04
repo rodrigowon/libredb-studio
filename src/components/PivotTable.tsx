@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { DatabaseType, QueryResult } from "@/lib/types";
 import { quoteLiteral } from "@/lib/sql/values";
 import { quoteIdentifier } from "@/lib/sql/identifier";
+import { useFormatter, useTranslations } from "next-intl";
 
 interface PivotTableProps {
   result: QueryResult | null;
@@ -42,6 +43,8 @@ export function aggregate(values: unknown[], fn: AggFunction): string {
 }
 
 export function PivotTable({ result, onLoadQuery, databaseType }: PivotTableProps) {
+  const t = useTranslations("DataTools.pivot");
+  const format = useFormatter();
   const [rowField, setRowField] = useState<string | null>(null);
   const [colField, setColField] = useState<string | null>(null);
   const [valueField, setValueField] = useState<string | null>(null);
@@ -145,8 +148,8 @@ export function PivotTable({ result, onLoadQuery, databaseType }: PivotTableProp
     return (
       <div className="h-full flex flex-col items-center justify-center opacity-30">
         <Columns3 strokeWidth={1.5} className="w-8 h-8 mb-3" />
-        <p className="text-xs font-medium">Pivot Table</p>
-        <p className="text-xs text-fg-muted mt-1">Execute a query to create pivot tables</p>
+        <p className="text-xs font-medium">{t("title")}</p>
+        <p className="text-xs text-fg-muted mt-1">{t("emptyHint")}</p>
       </div>
     );
   }
@@ -155,13 +158,13 @@ export function PivotTable({ result, onLoadQuery, databaseType }: PivotTableProp
     <div className="h-full flex flex-col bg-sunken">
       <div className="flex items-center gap-3 px-4 py-2 border-b border-hairline bg-surface flex-wrap">
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-fg-muted font-medium">Rows:</span>
+          <span className="text-xs text-fg-muted font-medium">{t("rows")}:</span>
           <select
             value={rowField || ""}
             onChange={(e) => setRowField(e.target.value || null)}
             className="bg-overlay border border-hairline-strong rounded px-2 py-1 text-xs text-fg-secondary outline-none"
           >
-            <option value="">Select...</option>
+            <option value="">{t("select")}</option>
             {fields.map((f) => (
               <option key={f} value={f}>
                 {f}
@@ -171,13 +174,13 @@ export function PivotTable({ result, onLoadQuery, databaseType }: PivotTableProp
         </div>
 
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-fg-muted font-medium">Columns:</span>
+          <span className="text-xs text-fg-muted font-medium">{t("columns")}:</span>
           <select
             value={colField || ""}
             onChange={(e) => setColField(e.target.value || null)}
             className="bg-overlay border border-hairline-strong rounded px-2 py-1 text-xs text-fg-secondary outline-none"
           >
-            <option value="">None</option>
+            <option value="">{t("none")}</option>
             {fields
               .filter((f) => f !== rowField)
               .map((f) => (
@@ -189,13 +192,13 @@ export function PivotTable({ result, onLoadQuery, databaseType }: PivotTableProp
         </div>
 
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-fg-muted font-medium">Values:</span>
+          <span className="text-xs text-fg-muted font-medium">{t("values")}:</span>
           <select
             value={valueField || ""}
             onChange={(e) => setValueField(e.target.value || null)}
             className="bg-overlay border border-hairline-strong rounded px-2 py-1 text-xs text-fg-secondary outline-none"
           >
-            <option value="">Count</option>
+            <option value="">{t("count")}</option>
             {fields
               .filter((f) => f !== rowField && f !== colField)
               .map((f) => (
@@ -231,7 +234,7 @@ export function PivotTable({ result, onLoadQuery, databaseType }: PivotTableProp
             }}
             className="ml-auto flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-fg-muted hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
           >
-            <ArrowRight strokeWidth={1.5} className="w-3 h-3" /> Generate SQL
+            <ArrowRight strokeWidth={1.5} className="w-3 h-3" /> {t("generateSql")}
           </button>
         )}
       </div>
@@ -260,7 +263,16 @@ export function PivotTable({ result, onLoadQuery, databaseType }: PivotTableProp
                   <td className="px-3 py-1.5 text-fg-secondary border-r border-hairline font-medium">{row.rowKey}</td>
                   {pivotData.colKeys.map((ck) => (
                     <td key={ck} className="px-3 py-1.5 text-right text-amber-500/90 border-r border-hairline">
-                      {row.values.get(ck) || "0"}
+                      {(() => {
+                        const value = row.values.get(ck) || "0";
+                        const numeric = Number(value);
+                        return Number.isFinite(numeric)
+                          ? format.number(numeric, {
+                              minimumFractionDigits: value.includes(".") ? 2 : 0,
+                              maximumFractionDigits: 2,
+                            })
+                          : value;
+                      })()}
                     </td>
                   ))}
                 </tr>
@@ -271,14 +283,18 @@ export function PivotTable({ result, onLoadQuery, databaseType }: PivotTableProp
         {(!pivotData || pivotData.pivotRows.length === 0) && (
           <div className="flex flex-col items-center justify-center h-full opacity-30">
             <GripVertical strokeWidth={1.5} className="w-6 h-6 mb-2" />
-            <p className="text-xs">Select row and value fields to build pivot</p>
+            <p className="text-xs">{t("buildHint")}</p>
           </div>
         )}
       </div>
 
       {pivotData && (
         <div className="px-4 py-1.5 border-t border-hairline bg-surface text-xs text-fg-muted font-mono">
-          {`${pivotData.pivotRows.length} groups • ${pivotData.colKeys.length} columns • ${AGG_LABELS[aggFunction]} aggregation`}
+          {t("summary", {
+            groups: pivotData.pivotRows.length,
+            columns: pivotData.colKeys.length,
+            aggregation: AGG_LABELS[aggFunction],
+          })}
         </div>
       )}
     </div>

@@ -4,7 +4,8 @@ import "../helpers/mock-navigation";
 
 import React from "react";
 import { afterEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, render, fireEvent } from "@testing-library/react";
+import { cleanup, fireEvent } from "@testing-library/react";
+import { renderWithIntl as render } from "../helpers/render-with-intl";
 import { PivotTable, aggregate } from "@/components/PivotTable";
 import type { QueryResult } from "@/lib/types";
 
@@ -265,7 +266,7 @@ describe("PivotTable", () => {
     // 2 groups (Engineering, Sales)
     expect(text).toContain("2 groups");
     // 1 column (__all__)
-    expect(text).toContain("1 columns");
+    expect(text).toContain("1 column");
   });
 
   test("pivot table renders header with rowField name", () => {
@@ -294,14 +295,14 @@ describe("PivotTable", () => {
     };
     const { queryByText } = render(<PivotTable result={single} />);
     // Config bar should render but no auto-detection — shows "Select row and value fields" placeholder
-    expect(queryByText("Select row and value fields to build pivot")).not.toBeNull();
+    expect(queryByText("Select row and value fields to build a pivot table")).not.toBeNull();
   });
 
   test("clearing row field shows placeholder", () => {
     const { container, queryByText } = render(<PivotTable result={result} />);
     const rowSelect = container.querySelectorAll("select")[0];
     fireEvent.change(rowSelect!, { target: { value: "" } });
-    expect(queryByText("Select row and value fields to build pivot")).not.toBeNull();
+    expect(queryByText("Select row and value fields to build a pivot table")).not.toBeNull();
   });
 
   // --- New tests ---
@@ -403,7 +404,7 @@ describe("PivotTable", () => {
     // Default: 2 groups (Engineering, Sales), 1 column (__all__), COUNT aggregation
     const text = container.textContent || "";
     expect(text).toContain("2 groups");
-    expect(text).toContain("1 columns");
+    expect(text).toContain("1 column");
     expect(text).toContain("COUNT aggregation");
 
     // Set column field to 'status' — should show 2 columns (active, inactive)
@@ -434,15 +435,15 @@ describe("PivotTable", () => {
     fireEvent.click(queryByText("SUM")!);
     values = getValueCells();
     // SUM: Engineering = 90000+85000=175000.00, Sales = 70000+75000=145000.00
-    expect(values).toContain("175000.00");
-    expect(values).toContain("145000.00");
+    expect(values).toContain("175,000.00");
+    expect(values).toContain("145,000.00");
 
     // Switch to AVG
     fireEvent.click(queryByText("AVG")!);
     values = getValueCells();
     // AVG: Engineering = 87500.00, Sales = 72500.00
-    expect(values).toContain("87500.00");
-    expect(values).toContain("72500.00");
+    expect(values).toContain("87,500.00");
+    expect(values).toContain("72,500.00");
   });
 
   test("generateSQL without colField produces simple aggregation", () => {
@@ -460,5 +461,22 @@ describe("PivotTable", () => {
     expect(sql).toContain('"dept"');
     expect(sql).toContain('GROUP BY "dept"');
     expect(sql).toContain('ORDER BY "dept"');
+  });
+
+  test("localizes pivot chrome and numbers while preserving SQL identifiers", () => {
+    const onLoadQuery = mock((sql: string) => {
+      void sql;
+    });
+    const { container, getByText } = render(<PivotTable result={result} onLoadQuery={onLoadQuery} />, "pt-BR");
+
+    expect(container.textContent).toContain("Linhas:");
+    expect(container.textContent).toContain("Colunas:");
+    expect(getByText("Gerar SQL")).toBeTruthy();
+    fireEvent.click(getByText("SUM"));
+    expect(container.textContent).toContain("175.000,00");
+
+    fireEvent.click(getByText("Gerar SQL"));
+    expect(onLoadQuery.mock.calls[0][0]).toContain('SUM("salary")');
+    expect(onLoadQuery.mock.calls[0][0]).toContain('"dept"');
   });
 });

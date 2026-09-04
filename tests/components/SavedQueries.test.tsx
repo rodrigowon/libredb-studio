@@ -4,7 +4,8 @@ import "../helpers/mock-navigation";
 
 import React from "react";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { cleanup, fireEvent } from "@testing-library/react";
+import { renderWithIntl as render } from "../helpers/render-with-intl";
 
 const mockSavedQueries = [
   {
@@ -165,5 +166,23 @@ describe("SavedQueries", () => {
     rerender(<SavedQueries onSelectQuery={mock(() => {})} refreshTrigger={1} />);
 
     expect((getByPlaceholderText("Search saved queries...") as HTMLInputElement).value).toBe("Active");
+  });
+
+  test("localizes saved-query chrome and dates without rewriting persisted content", () => {
+    const { container, getByText, getByPlaceholderText } = render(
+      <SavedQueries onSelectQuery={mock(() => {})} />,
+      "pt-BR",
+    );
+    const expectedDate = new Intl.DateTimeFormat("pt-BR", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    }).format(new Date(mockSavedQueries[0].updatedAt));
+
+    expect(getByText("Consultas salvas")).toBeTruthy();
+    expect(getByPlaceholderText("Buscar consultas salvas...")).toBeTruthy();
+    expect(getByText("Active Users")).toBeTruthy();
+    expect(container.textContent).toContain(expectedDate);
   });
 });

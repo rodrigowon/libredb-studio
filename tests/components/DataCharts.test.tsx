@@ -193,7 +193,8 @@ mock.module("@/components/ui/select", () => ({
 
 // ── Imports AFTER mocks ─────────────────────────────────────────────────────
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { render, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, waitFor } from "@testing-library/react";
+import { renderWithIntl as render } from "../helpers/render-with-intl";
 import { DataCharts, PieSliceLabel } from "@/components/DataCharts";
 import { mockToastError } from "../helpers/mock-sonner";
 import type { QueryResult } from "@/lib/types";
@@ -369,7 +370,7 @@ describe("DataCharts", () => {
     expect(queryByText("Scatter")).not.toBeNull();
     expect(queryByText("Histogram")).not.toBeNull();
     expect(queryByText("Stacked")).not.toBeNull();
-    expect(queryByText("Stack Area")).not.toBeNull();
+    expect(queryByText("Stacked Area")).not.toBeNull();
   });
 
   // -----------------------------------------------------------------------
@@ -414,7 +415,7 @@ describe("DataCharts", () => {
 
   test("Aggregation selector present", () => {
     const { queryByText } = render(React.createElement(DataCharts, { result: mockNumericResult }));
-    expect(queryByText("Agg")).not.toBeNull();
+    expect(queryByText("Aggregation")).not.toBeNull();
   });
 
   test("date grouping selector appears when date columns exist", () => {
@@ -513,7 +514,7 @@ describe("DataCharts", () => {
 
   test("switches to stacked area chart", async () => {
     const { queryByText, queryByTestId } = render(React.createElement(DataCharts, { result: mockNumericResult }));
-    fireEvent.click(queryByText("Stack Area")!);
+    fireEvent.click(queryByText("Stacked Area")!);
     await waitFor(() => {
       expect(queryByTestId("mock-area-chart")).not.toBeNull();
     });
@@ -1267,5 +1268,18 @@ describe("DataCharts", () => {
 
       expect(queryByText("Need at least 2 rows for visualization")).not.toBeNull();
     });
+  });
+
+  test("localizes chart controls while preserving result field names", () => {
+    const { getByText, getAllByText } = render(
+      React.createElement(DataCharts, { result: mockNumericResult }),
+      "pt-BR",
+    );
+
+    for (const label of ["Barras", "Linha", "Pizza", "Área", "Dispersão", "Histograma", "Empilhado"]) {
+      expect(getByText(label)).toBeTruthy();
+    }
+    expect(getByText("Agregação")).toBeTruthy();
+    expect(getAllByText("revenue").length).toBeGreaterThan(0);
   });
 });

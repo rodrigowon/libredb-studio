@@ -1,0 +1,61 @@
+{
+  "empty": {
+    "title": "Query returned no data",
+    "hint": "The operation was successful, but the result set is currently empty.",
+    "engineWarnings": "The engine reported:"
+  },
+  "table": {
+    "sortedAscending": "sorted ascending",
+    "sortedDescending": "sorted descending",
+    "maskedColumn": "Masked column",
+    "filterColumn": "Filter column",
+    "filterPlaceholder": "Filter {column}...",
+    "clearFilter": "Clear filter",
+    "revealValue": "Reveal value (10s)"
+  },
+  "stats": {
+    "rows": "{count, plural, one {# row} other {# rows}}",
+    "columns": "{count, plural, one {# column} other {# columns}}",
+    "moreAvailable": "more available",
+    "filterSummary": "{filters, plural, one {# filter} other {# filters}} • {shown, number} shown",
+    "clearAllFilters": "Clear all filters",
+    "autoLimited": "AUTO-LIMITED",
+    "warnings": "{count, plural, one {# WARNING} other {# WARNINGS}}",
+    "showSensitive": "Show sensitive data",
+    "maskSensitive": "Mask sensitive data",
+    "masked": "MASKED",
+    "mask": "MASK",
+    "changes": "{count, plural, one {# change} other {# changes}}",
+    "applyChanges": "Apply changes",
+    "discardChanges": "Discard changes",
+    "executionTime": "EXEC TIME: {time}",
+    "cardView": "Card view",
+    "tableView": "Table view"
+  },
+  "loadMore": {
+    "loading": "Loading...",
+    "action": "Load More (500 rows)"
+  },
+  "card": {
+    "row": "Row {number}",
+    "moreFields": "+{count} more fields"
+  },
+  "detail": {
+    "row": "Row #{number}",
+    "copied": "Copied",
+    "copyFailed": "Copy failed",
+    "copyJson": "Copy JSON",
+    "copyField": "Copy {field}",
+    "revealValue": "Reveal value (10s)"
+  },
+  "export": {
+    "action": "Export",
+    "writesLoaded": "Writes the {count, plural, one {# row} other {# rows}} loaded here.",
+    "writesAll": "Writes all {count, plural, one {# row} other {# rows}}.",
+    "moreOnServer": "More rows are still on the server — load them first to include them.",
+    "asCsv": "Export as CSV",
+    "asJson": "Export as JSON",
+    "asSqlInsert": "Export as SQL INSERT",
+    "asDdl": "Export as DDL (CREATE TABLE)"
+  }
+}

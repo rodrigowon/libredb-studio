@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Hash, ChevronRight, Lock } from "lucide-react";
 import { type MaskingPattern, maskValueByPattern } from "@/lib/data-masking";
 import { formatCellValue } from "./utils";
+import { useTranslations } from "next-intl";
 
 export interface ResultCardProps {
   row: Record<string, unknown>;
@@ -27,6 +28,7 @@ export function ResultCard({
   maskingActive,
   sensitiveColumns,
 }: ResultCardProps) {
+  const t = useTranslations("Results.card");
   const primaryValue: unknown = row[primaryColumn];
   const idValue: unknown = idColumn ? row[idColumn] : null;
 
@@ -35,8 +37,8 @@ export function ResultCard({
     if (maskingActive && sensitiveColumns?.has(primaryColumn) && primaryValue != null) {
       return maskValueByPattern(primaryValue, sensitiveColumns.get(primaryColumn)!);
     }
-    return primaryValue != null ? String(primaryValue) : `Row ${index + 1}`;
-  }, [maskingActive, sensitiveColumns, primaryColumn, primaryValue, index]);
+    return primaryValue != null ? String(primaryValue) : t("row", { number: index + 1 });
+  }, [maskingActive, sensitiveColumns, primaryColumn, primaryValue, index, t]);
 
   // Show first 4 fields (excluding primary and id)
   const previewFields = fields.filter((f) => f !== primaryColumn && f !== idColumn).slice(0, 4);
@@ -86,7 +88,7 @@ export function ResultCard({
         })}
         {fields.length > previewFields.length + 2 && (
           <p className="text-xs text-fg-subtle text-center pt-1">
-            +{fields.length - previewFields.length - 2} more fields
+            {t("moreFields", { count: fields.length - previewFields.length - 2 })}
           </p>
         )}
       </div>

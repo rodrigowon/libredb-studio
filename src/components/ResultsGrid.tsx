@@ -30,6 +30,7 @@ import { ResultCard } from "@/components/results-grid/ResultCard";
 import { RowDetailSheet } from "@/components/results-grid/RowDetailSheet";
 import { StatsBar, LoadMoreFooter } from "@/components/results-grid/StatsBar";
 import { describeWarning, formatCellValue } from "@/components/results-grid/utils";
+import { useTranslations } from "next-intl";
 
 export interface CellChange {
   rowIndex: number;
@@ -37,10 +38,6 @@ export interface CellChange {
   originalValue: unknown;
   newValue: string;
 }
-
-const CLEAR_FILTER_LABEL = "Clear filter";
-const EMPTY_RESULT_HINT = "The operation was successful, but the result set is currently empty.";
-const ENGINE_WARNINGS_LABEL = "The engine reported:";
 
 /**
  * TanStack Table 9 does not ship every feature to every table: each one is
@@ -134,6 +131,7 @@ export function ResultsGrid({
   onDiscardChanges,
   onApplyChanges,
 }: ResultsGridProps) {
+  const t = useTranslations("Results");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [editingCell, setEditingCell] = useState<{ rowIndex: number; columnId: string } | null>(null);
   const [editValue, setEditValue] = useState<string>("");
@@ -239,13 +237,17 @@ export function ResultsGrid({
         // The type the wire format declared for THIS result - the only source for a
         // computed column, which has no catalog entry the schema tree could answer with.
         const declaredType = declaredTypeOf(result.columnTypes, field);
+        const sortDescription =
+          column.getIsSorted() === "asc"
+            ? t("table.sortedAscending")
+            : column.getIsSorted() === "desc"
+              ? t("table.sortedDescending")
+              : "";
         return (
           <div className="flex items-center gap-1 select-none group/header w-full">
             <button
               type="button"
-              aria-label={`${field}${declaredType ? `, ${declaredType}` : ""}${
-                column.getIsSorted() ? `, sorted ${column.getIsSorted() === "asc" ? "ascending" : "descending"}` : ""
-              }`}
+              aria-label={[field, declaredType, sortDescription].filter(Boolean).join(", ")}
               className="flex items-center gap-1 cursor-pointer flex-1 min-w-0 text-left"
               onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
             >
@@ -256,7 +258,7 @@ export function ResultsGrid({
                 </span>
               )}
               {isSensitive && (
-                <span title="Masked column">
+                <span title={t("table.maskedColumn")}>
                   <Lock strokeWidth={1.5} className="w-3 h-3 text-purple-400 shrink-0" />
                 </span>
               )}
@@ -277,7 +279,7 @@ export function ResultsGrid({
                 e.stopPropagation();
                 setActiveFilterCol(activeFilterCol === field ? null : field);
               }}
-              title="Filter column"
+              title={t("table.filterColumn")}
             >
               <Funnel strokeWidth={1.5} className="w-3 h-3" />
             </button>
@@ -289,7 +291,7 @@ export function ResultsGrid({
               >
                 <input
                   autoFocus
-                  placeholder={`Filter ${field}...`}
+                  placeholder={t("table.filterPlaceholder", { column: field })}
                   value={columnFilters.get(field) || ""}
                   onChange={(e) => {
                     const next = new Map(columnFilters);
@@ -312,7 +314,7 @@ export function ResultsGrid({
                       setActiveFilterCol(null);
                     }}
                   >
-                    {CLEAR_FILTER_LABEL}
+                    {t("table.clearFilter")}
                   </button>
                 )}
               </div>
@@ -380,7 +382,7 @@ export function ResultsGrid({
                     e.stopPropagation();
                     revealCell(cellKey);
                   }}
-                  title="Reveal value (10s)"
+                  title={t("table.revealValue")}
                 >
                   <Eye className="w-3 h-3 text-purple-400" />
                 </button>
@@ -447,6 +449,7 @@ export function ResultsGrid({
     revealedCells,
     userCanReveal,
     revealCell,
+    t,
   ]);
 
   const table = useTable({
@@ -503,10 +506,10 @@ export function ResultsGrid({
         <div className="w-16 h-16 rounded-2xl bg-panel flex items-center justify-center mb-6 border border-hairline shadow-2xl">
           <span className="text-2xl text-fg-muted">&#x2205;</span>
         </div>
-        <p className="text-xs font-medium text-fg-tertiary">Query returned no data</p>
+        <p className="text-xs font-medium text-fg-tertiary">{t("empty.title")}</p>
         {emptyWarnings.length > 0 && (
           <div className="mt-3 max-w-[280px] text-xs text-amber-400 leading-relaxed">
-            <p className="font-medium">{ENGINE_WARNINGS_LABEL}</p>
+            <p className="font-medium">{t("empty.engineWarnings")}</p>
             <ul className="mt-1 space-y-1">
               {emptyWarnings.map((warning, idx) => (
                 <li key={idx}>{describeWarning(warning)}</li>
@@ -514,7 +517,7 @@ export function ResultsGrid({
             </ul>
           </div>
         )}
-        <p className="text-xs text-fg-subtle mt-2 max-w-[280px] leading-relaxed">{EMPTY_RESULT_HINT}</p>
+        <p className="text-xs text-fg-subtle mt-2 max-w-[280px] leading-relaxed">{t("empty.hint")}</p>
       </div>
     );
   }

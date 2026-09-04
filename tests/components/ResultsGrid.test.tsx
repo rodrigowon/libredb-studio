@@ -137,7 +137,8 @@ mock.module("lucide-react", () => {
 
 // ── Imports AFTER mocks ─────────────────────────────────────────────────────
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { render, fireEvent, cleanup, act } from "@testing-library/react";
+import { fireEvent, cleanup, act } from "@testing-library/react";
+import { renderWithIntl as render } from "../helpers/render-with-intl";
 import { ResultsGrid, type CellChange } from "@/components/ResultsGrid";
 import type { QueryResult } from "@/lib/types";
 
@@ -1114,5 +1115,18 @@ describe("ResultsGrid", () => {
         expect(handle.getAttribute("aria-hidden")).toBe("true");
       }
     });
+  });
+
+  test("localizes empty and sorting states without changing result fields", () => {
+    const { getByText, getAllByText, getAllByRole, rerender } = render(
+      React.createElement(ResultsGrid, { result: mockEmptyResult }),
+      "pt-BR",
+    );
+    expect(getByText("A consulta não retornou dados")).toBeTruthy();
+
+    rerender(React.createElement(ResultsGrid, { result: mockResult }));
+    expect(getAllByText("name").length).toBeGreaterThan(0);
+    fireEvent.click(getAllByRole("button", { name: "name" })[0]);
+    expect(getAllByRole("button", { name: "name, ordenação crescente" }).length).toBeGreaterThan(0);
   });
 });

@@ -5,6 +5,7 @@ import { Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { SchemaSnapshot } from "@/lib/types";
+import { useFormatter, useTranslations } from "next-intl";
 
 interface SnapshotTimelineProps {
   snapshots: SchemaSnapshot[];
@@ -14,7 +15,6 @@ interface SnapshotTimelineProps {
 
 // Hoisted to module scope so bun lcov attributes these lines at module load;
 // multi-line JSX text and attribute tails are otherwise unattributable.
-const EMPTY_MESSAGE = "No snapshots taken yet. Take a snapshot to start tracking schema changes.";
 const NODE_CLASS = "relative flex flex-col items-center min-w-[100px] cursor-pointer group";
 // w-6 h-6 keeps a 24x24 minimum hit target: the control sits on top of the
 // stretched selection overlay, so a near miss must not select the snapshot.
@@ -22,6 +22,8 @@ const DELETE_BUTTON_CLASS =
   "absolute -top-3 -right-2 z-20 w-6 h-6 flex items-center justify-center text-fg-subtle hover:text-red-400 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity";
 
 export function SnapshotTimeline({ snapshots, onCompare, onDelete }: SnapshotTimelineProps) {
+  const t = useTranslations("SchemaDiff.timeline");
+  const format = useFormatter();
   const [selected, setSelected] = useState<string[]>([]);
 
   const handleClick = (id: string) => {
@@ -45,7 +47,7 @@ export function SnapshotTimeline({ snapshots, onCompare, onDelete }: SnapshotTim
   }, [selected, canCompare, onCompare]);
 
   if (snapshots.length === 0) {
-    return <div className="flex items-center justify-center py-4 text-fg-subtle text-xs">{EMPTY_MESSAGE}</div>;
+    return <div className="flex items-center justify-center py-4 text-fg-subtle text-xs">{t("empty")}</div>;
   }
 
   const sorted = [...snapshots].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -53,8 +55,8 @@ export function SnapshotTimeline({ snapshots, onCompare, onDelete }: SnapshotTim
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between px-2">
-        <span className="text-xs text-fg-muted font-medium">Timeline</span>
-        {canCompare && <span className="text-xs text-blue-400">Comparing 2 snapshots</span>}
+        <span className="text-xs text-fg-muted font-medium">{t("title")}</span>
+        {canCompare && <span className="text-xs text-blue-400">{t("comparing")}</span>}
       </div>
 
       <div className="relative flex items-center overflow-x-auto pb-2 px-2 gap-0">
@@ -100,16 +102,22 @@ export function SnapshotTimeline({ snapshots, onCompare, onDelete }: SnapshotTim
                   {snapshot.label || snapshot.connectionName}
                 </div>
                 <div className="text-[0.625rem] text-fg-subtle">
-                  {date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  {format.dateTime(date, {
+                    year: "numeric",
+                    month: "numeric",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </div>
                 <Badge variant="secondary" className="text-[0.625rem] mt-1">
-                  {snapshot.schema.length} tables
+                  {t("tables", { count: snapshot.schema.length })}
                 </Badge>
               </button>
 
               <button
                 onClick={handleDelete}
-                aria-label={`Delete ${snapshot.label || snapshot.connectionName}`}
+                aria-label={t("delete", { name: snapshot.label || snapshot.connectionName })}
                 className={DELETE_BUTTON_CLASS}
               >
                 <Trash2 strokeWidth={1.5} className="w-2.5 h-2.5" />

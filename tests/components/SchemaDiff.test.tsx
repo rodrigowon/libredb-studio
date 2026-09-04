@@ -199,7 +199,8 @@ mock.module("@/hooks/use-all-connections", () => ({
 // ── Imports AFTER mocks ──────────────────────────────────────────────────────
 
 import { describe, test, expect, beforeEach, afterEach, spyOn } from "bun:test";
-import { render, fireEvent, cleanup, act } from "@testing-library/react";
+import { fireEvent, cleanup, act } from "@testing-library/react";
+import { renderWithIntl as render } from "../helpers/render-with-intl";
 import { SchemaDiff } from "@/components/SchemaDiff";
 import { logger } from "@/lib/logger";
 import { mockSchema } from "../fixtures/schemas";
@@ -207,8 +208,8 @@ import { mockPostgresConnection } from "../fixtures/connections";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function renderDiff(overrides: Partial<Parameters<typeof SchemaDiff>[0]> = {}) {
-  return render(<SchemaDiff schema={mockSchema} connection={mockPostgresConnection} {...overrides} />);
+function renderDiff(overrides: Partial<Parameters<typeof SchemaDiff>[0]> = {}, locale: "en" | "pt-BR" = "en") {
+  return render(<SchemaDiff schema={mockSchema} connection={mockPostgresConnection} {...overrides} />, locale);
 }
 
 /** Trigger the source Select's onValueChange (source value starts as "current") */
@@ -326,7 +327,7 @@ describe("SchemaDiff", () => {
     test("shows instructions when no target selected", () => {
       const { getByText } = renderDiff();
       expect(getByText("Select source and target to compare schemas")).toBeTruthy();
-      expect(getByText("Take a snapshot first, then compare with the current schema")).toBeTruthy();
+      expect(getByText("Take a snapshot first, then compare it with the current schema")).toBeTruthy();
     });
 
     test("shows SnapshotTimeline when snapshots exist", () => {
@@ -447,7 +448,7 @@ describe("SchemaDiff", () => {
       const { getByText } = renderDiff();
       changeTarget("current");
       // source=current, target=current → same → null diff
-      expect(getByText("Cannot compare same schema with itself")).toBeTruthy();
+      expect(getByText("Cannot compare the same schema with itself")).toBeTruthy();
     });
 
     test("changing source updates diff", () => {
@@ -498,7 +499,7 @@ describe("SchemaDiff", () => {
       fireEvent.click(getByText("new_table"));
       // TableDiffDetail renders: table heading with action badge
       const badges = document.querySelectorAll('[data-testid="badge"]');
-      const addedBadge = Array.from(badges).find((b) => b.textContent === "added");
+      const addedBadge = Array.from(badges).find((b) => b.textContent === "Added");
       expect(addedBadge).toBeTruthy();
     });
 
@@ -632,21 +633,21 @@ describe("SchemaDiff", () => {
     test("shows table name and action badge", () => {
       const { container } = renderAndSelectTable("new_table");
       const badges = container.querySelectorAll('[data-testid="badge"]');
-      const addedBadge = Array.from(badges).find((b) => b.textContent === "added");
+      const addedBadge = Array.from(badges).find((b) => b.textContent === "Added");
       expect(addedBadge).toBeTruthy();
     });
 
     test("removed table shows removed badge", () => {
       const { container } = renderAndSelectTable("old_table");
       const badges = container.querySelectorAll('[data-testid="badge"]');
-      const removedBadge = Array.from(badges).find((b) => b.textContent === "removed");
+      const removedBadge = Array.from(badges).find((b) => b.textContent === "Removed");
       expect(removedBadge).toBeTruthy();
     });
 
     test("modified table shows modified badge", () => {
       const { container } = renderAndSelectTable("users");
       const badges = container.querySelectorAll('[data-testid="badge"]');
-      const modifiedBadge = Array.from(badges).find((b) => b.textContent === "modified");
+      const modifiedBadge = Array.from(badges).find((b) => b.textContent === "Modified");
       expect(modifiedBadge).toBeTruthy();
     });
 
@@ -1038,5 +1039,16 @@ describe("SchemaDiff", () => {
       expect(modifiedBadge).toBeTruthy();
       expect(modifiedBadge!.className).toContain("bg-yellow-500/20");
     });
+  });
+
+  test("localizes diff chrome while preserving Schema, Snapshot, Migration SQL and identifiers", () => {
+    const { getByText, container } = renderDiff({}, "pt-BR");
+    expect(getByText("Comparação de Schema")).toBeTruthy();
+    expect(getByText("Snapshot")).toBeTruthy();
+
+    changeTarget("snap-1");
+    expect(getByText("new_table")).toBeTruthy();
+    fireEvent.click(getByText("Migration SQL"));
+    expect(container.textContent).toContain("CREATE TABLE new_table");
   });
 });

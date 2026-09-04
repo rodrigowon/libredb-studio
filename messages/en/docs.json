@@ -1,0 +1,36 @@
+{
+  "title": "Database Docs",
+  "tableCount": "{count, plural, one {# table} other {# tables}}",
+  "regenerate": "Regenerate",
+  "aiDescribe": "AI Describe",
+  "exportMarkdown": "Export Markdown",
+  "search": "Search tables or columns...",
+  "aiGenerated": "AI-Generated Documentation",
+  "tableReference": "Table Reference",
+  "rows": "{count, plural, one {# row} other {# rows}}",
+  "columns": "{count, plural, one {# column} other {# columns}}",
+  "column": "Column",
+  "type": "Type",
+  "primary": "Primary",
+  "nullable": "Nullable",
+  "yes": "Yes",
+  "no": "No",
+  "unknownType": "Unknown",
+  "errors": {
+    "generationFailed": "Documentation generation failed",
+    "noReader": "The response stream is unavailable",
+    "unknown": "Unknown error"
+  },
+  "markdown": {
+    "title": "Database Documentation",
+    "databaseType": "Type",
+    "tables": "Tables",
+    "aiAnalysis": "AI Analysis",
+    "tableReference": "Table Reference",
+    "rows": "Rows",
+    "column": "Column",
+    "type": "Type",
+    "primary": "Primary",
+    "nullable": "Nullable"
+  }
+}

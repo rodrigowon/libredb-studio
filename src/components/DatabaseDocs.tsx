@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { TableSchema } from "@/lib/types";
 import { renderInline } from "@/components/rich-text";
 import { downloadText } from "@/lib/export/download";
+import { useFormatter, useTranslations } from "next-intl";
 
 interface DatabaseDocsProps {
   schema: TableSchema[];
@@ -20,6 +21,8 @@ interface ParsedSchemaTable {
 }
 
 export function DatabaseDocs({ schema, schemaContext, databaseType }: DatabaseDocsProps) {
+  const t = useTranslations("Docs");
+  const format = useFormatter();
   const [search, setSearch] = useState("");
   const [aiDocs, setAiDocs] = useState("");
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -71,11 +74,11 @@ export function DatabaseDocs({ schema, schemaContext, databaseType }: DatabaseDo
 
       if (!response.ok) {
         const err = await response.json();
-        throw new Error(err.error || "Documentation generation failed");
+        throw new Error(err.error || t("errors.generationFailed"));
       }
 
       const reader = response.body?.getReader();
-      if (!reader) throw new Error("No reader");
+      if (!reader) throw new Error(t("errors.noReader"));
 
       let full = "";
       while (true) {
@@ -85,31 +88,31 @@ export function DatabaseDocs({ schema, schemaContext, databaseType }: DatabaseDo
         setAiDocs(full);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      setError(err instanceof Error ? err.message : t("errors.unknown"));
     } finally {
       setIsAiLoading(false);
     }
   };
 
   const exportMarkdown = () => {
-    let md = `# Database Documentation\n\n`;
-    md += `**Type:** ${databaseType || "Unknown"}\n`;
-    md += `**Tables:** ${schema.length}\n\n`;
+    let md = `# ${t("markdown.title")}\n\n`;
+    md += `**${t("markdown.databaseType")}:** ${databaseType || t("unknownType")}\n`;
+    md += `**${t("markdown.tables")}:** ${format.number(schema.length)}\n\n`;
 
     if (aiDocs) {
-      md += `## AI Analysis\n\n${aiDocs}\n\n---\n\n`;
+      md += `## ${t("markdown.aiAnalysis")}\n\n${aiDocs}\n\n---\n\n`;
     }
 
-    md += `## Table Reference\n\n`;
+    md += `## ${t("markdown.tableReference")}\n\n`;
 
     for (const table of schema) {
       md += `### ${table.name}\n\n`;
-      if (table.rowCount !== undefined) md += `Rows: ${table.rowCount.toLocaleString()}\n\n`;
+      if (table.rowCount !== undefined) md += `${t("markdown.rows")}: ${format.number(table.rowCount)}\n\n`;
 
       if (table.columns && table.columns.length > 0) {
-        md += `| Column | Type | Primary | Nullable |\n|--------|------|---------|----------|\n`;
+        md += `| ${t("markdown.column")} | ${t("markdown.type")} | ${t("markdown.primary")} | ${t("markdown.nullable")} |\n|--------|------|---------|----------|\n`;
         for (const col of table.columns) {
-          md += `| ${col.name} | ${col.type} | ${col.isPrimary ? "Yes" : ""} | ${col.nullable !== false ? "Yes" : "No"} |\n`;
+          md += `| ${col.name} | ${col.type} | ${col.isPrimary ? t("yes") : ""} | ${col.nullable !== false ? t("yes") : t("no")} |\n`;
         }
         md += "\n";
       }
@@ -165,8 +168,8 @@ export function DatabaseDocs({ schema, schemaContext, databaseType }: DatabaseDo
           <div className="p-1 rounded bg-teal-500/10">
             <FileText strokeWidth={1.5} className="w-3 h-3 text-teal-400" />
           </div>
-          <span className="text-xs font-medium text-teal-400">Database Docs</span>
-          <span className="text-[0.625rem] text-fg-muted font-mono">{schema.length} tables</span>
+          <span className="text-xs font-medium text-teal-400">{t("title")}</span>
+          <span className="text-[0.625rem] text-fg-muted font-mono">{t("tableCount", { count: schema.length })}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <button
@@ -179,13 +182,13 @@ export function DatabaseDocs({ schema, schemaContext, databaseType }: DatabaseDo
           >
             {isAiLoading && <LoaderCircle strokeWidth={1.5} className="w-3 h-3 animate-spin" />}
             {!isAiLoading && <Sparkles strokeWidth={1.5} className="w-3 h-3" />}
-            {aiDocs ? "Regenerate" : "AI Describe"}
+            {aiDocs ? t("regenerate") : t("aiDescribe")}
           </button>
           <button
             onClick={exportMarkdown}
             className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-fill text-fg-tertiary text-xs font-medium hover:bg-fill-strong transition-colors"
           >
-            <Download strokeWidth={1.5} className="w-3 h-3" /> Export MD
+            <Download strokeWidth={1.5} className="w-3 h-3" /> {t("exportMarkdown")}
           </button>
         </div>
       </div>
@@ -196,7 +199,7 @@ export function DatabaseDocs({ schema, schemaContext, databaseType }: DatabaseDo
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search tables or columns..."
+            placeholder={t("search")}
             className="w-full bg-overlay border border-hairline-strong rounded-lg pl-7 pr-3 py-1.5 text-xs text-fg placeholder:text-fg-subtle outline-none focus:border-teal-500/30"
           />
         </div>
@@ -211,34 +214,34 @@ export function DatabaseDocs({ schema, schemaContext, databaseType }: DatabaseDo
           <div className="bg-teal-500/5 border border-teal-500/10 rounded-lg p-4 mb-4">
             <div className="flex items-center gap-2 mb-3">
               <Sparkles strokeWidth={1.5} className="w-3 h-3 text-teal-400" />
-              <span className="text-xs font-medium text-teal-400">AI-Generated Documentation</span>
+              <span className="text-xs font-medium text-teal-400">{t("aiGenerated")}</span>
               {isAiLoading && <LoaderCircle strokeWidth={1.5} className="w-3 h-3 animate-spin text-teal-400" />}
             </div>
             {aiDocs && <div className="prose prose-invert prose-xs max-w-none">{renderMarkdown(aiDocs)}</div>}
           </div>
         )}
 
-        <h3 className="text-xs font-medium text-fg-tertiary">Table Reference</h3>
+        <h3 className="text-xs font-medium text-fg-tertiary">{t("tableReference")}</h3>
         {filteredSchema.map((table) => (
           <div key={table.name} className="bg-surface border border-hairline rounded-lg overflow-hidden">
             <div className="px-3 py-2 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-medium text-fg">{table.name}</span>
                 {table.rowCount !== undefined && (
-                  <span className="text-xs text-fg-muted font-mono">{table.rowCount.toLocaleString()} rows</span>
+                  <span className="text-xs text-fg-muted font-mono">{t("rows", { count: table.rowCount })}</span>
                 )}
               </div>
-              <span className="text-xs text-fg-subtle">{table.columns?.length || 0} columns</span>
+              <span className="text-xs text-fg-subtle">{t("columns", { count: table.columns?.length || 0 })}</span>
             </div>
             {table.columns && table.columns.length > 0 && (
               <div className="border-t border-hairline">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="text-fg-muted">
-                      <th className="text-left px-3 py-1 font-normal">Column</th>
-                      <th className="text-left px-3 py-1 font-normal">Type</th>
+                      <th className="text-left px-3 py-1 font-normal">{t("column")}</th>
+                      <th className="text-left px-3 py-1 font-normal">{t("type")}</th>
                       <th className="text-left px-3 py-1 font-normal">PK</th>
-                      <th className="text-left px-3 py-1 font-normal">Nullable</th>
+                      <th className="text-left px-3 py-1 font-normal">{t("nullable")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -249,7 +252,7 @@ export function DatabaseDocs({ schema, schemaContext, databaseType }: DatabaseDo
                         <td className="px-3 py-1">
                           {col.isPrimary && <span className="text-amber-400 text-[0.625rem] font-medium">PK</span>}
                         </td>
-                        <td className="px-3 py-1 text-fg-subtle">{col.nullable !== false ? "Yes" : "No"}</td>
+                        <td className="px-3 py-1 text-fg-subtle">{col.nullable !== false ? t("yes") : t("no")}</td>
                       </tr>
                     ))}
                   </tbody>

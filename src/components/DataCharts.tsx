@@ -55,6 +55,7 @@ import { chartTheme } from "@/lib/charts/palette";
 import { useEffectiveTheme } from "@/hooks/use-effective-theme";
 import { downloadBlob } from "@/lib/export/download";
 import { logger } from "@/lib/logger";
+import { useLocale, useTranslations } from "next-intl";
 
 type ChartType = "bar" | "line" | "pie" | "area" | "scatter" | "histogram" | "stacked-bar" | "stacked-area";
 
@@ -238,14 +239,16 @@ export function analyzeData(result: QueryResult | null): DataAnalysis {
   };
 }
 
-export function formatNumber(value: number): string {
+export function formatNumber(value: number, locale = "en"): string {
   if (Math.abs(value) >= 1000000) {
-    return (value / 1000000).toFixed(1) + "M";
+    return new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(
+      value / 1000000,
+    ) + "M";
   }
   if (Math.abs(value) >= 1000) {
-    return (value / 1000).toFixed(1) + "K";
+    return new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value / 1000) + "K";
   }
-  return value.toLocaleString();
+  return new Intl.NumberFormat(locale).format(value);
 }
 
 interface TooltipProps {
@@ -256,9 +259,10 @@ interface TooltipProps {
     color: string;
   }>;
   label?: string;
+  locale?: string;
 }
 
-const CustomTooltip = ({ active, payload, label }: TooltipProps) => {
+const CustomTooltip = ({ active, payload, label, locale = "en" }: TooltipProps) => {
   if (!active || !payload || !payload.length) return null;
 
   return (
@@ -275,7 +279,7 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps) => {
             style={{ backgroundColor: entry.color }}
           />
           <span className="text-fg-secondary">{entry.name}:</span>
-          <span className="font-mono font-medium text-fg">{formatNumber(entry.value)}</span>
+          <span className="font-mono font-medium text-fg">{formatNumber(entry.value, locale)}</span>
         </p>
       ))}
     </div>
@@ -407,6 +411,8 @@ export function groupByDate(dateStr: string, grouping: DateGrouping): string {
 }
 
 export function DataCharts({ result, spec = null }: DataChartsProps) {
+  const t = useTranslations("DataTools.charts");
+  const locale = useLocale();
   const chartRef = useRef<HTMLDivElement>(null);
   const analysis = useMemo(() => analyzeData(result), [result]);
   /** The supplied specification, or null when there is none this result can carry. */
@@ -617,7 +623,7 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
             route: "DataCharts",
             error: error instanceof Error ? error.message : String(error),
           });
-          toast.error("PNG export failed", {
+          toast.error(t("pngExportFailed"), {
             description: error instanceof Error ? error.message : String(error),
           });
         }
@@ -634,7 +640,7 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
     // after a theme toggle the PNG was still painted on the ground the chart was
     // first rendered on — a light chart exported onto near-black. Same defect the
     // ERD export fixed in #384, in the surface that comment points at.
-    [viz.exportBackground],
+    [viz.exportBackground, t],
   );
 
   const toggleYAxis = (field: string) => {
@@ -648,25 +654,34 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
 
   // Empty state
   if (!analysis.isVisualizable) {
+    const reason =
+      analysis.reason === "No data to visualize"
+        ? t("reasons.noData")
+        : analysis.reason === "Need at least 2 rows for visualization"
+          ? t("reasons.needRows")
+          : analysis.reason === "No numeric fields found for Y-axis"
+            ? t("reasons.noNumeric")
+            : analysis.reason;
     return (
       <div className="h-full flex flex-col items-center justify-center bg-sunken text-fg-muted">
         <TrendingUp className="w-12 h-12 mb-4 opacity-30" />
-        <p className="text-xs font-medium mb-1">Cannot Visualize Data</p>
-        <p className="text-xs text-fg-subtle">{analysis.reason}</p>
+        <p className="text-xs font-medium mb-1">{t("cannotVisualize")}</p>
+        <p className="text-xs text-fg-subtle">{reason}</p>
       </div>
     );
   }
 
   const chartTypes: { type: ChartType; icon: React.ReactNode; label: string }[] = [
-    { type: "bar", icon: <ChartColumn strokeWidth={1.5} className="w-3.5 h-3.5" />, label: "Bar" },
-    { type: "line", icon: <LineChartIcon strokeWidth={1.5} className="w-3.5 h-3.5" />, label: "Line" },
-    { type: "pie", icon: <PieChartIcon strokeWidth={1.5} className="w-3.5 h-3.5" />, label: "Pie" },
-    { type: "area", icon: <AreaChartIcon strokeWidth={1.5} className="w-3.5 h-3.5" />, label: "Area" },
-    { type: "scatter", icon: <Circle strokeWidth={1.5} className="w-3.5 h-3.5" />, label: "Scatter" },
-    { type: "histogram", icon: <ChartNoAxesColumn strokeWidth={1.5} className="w-3.5 h-3.5" />, label: "Histogram" },
-    { type: "stacked-bar", icon: <ChartColumn strokeWidth={1.5} className="w-3.5 h-3.5" />, label: "Stacked" },
-    { type: "stacked-area", icon: <AreaChartIcon strokeWidth={1.5} className="w-3.5 h-3.5" />, label: "Stack Area" },
+    { type: "bar", icon: <ChartColumn strokeWidth={1.5} className="w-3.5 h-3.5" />, label: t("types.bar") },
+    { type: "line", icon: <LineChartIcon strokeWidth={1.5} className="w-3.5 h-3.5" />, label: t("types.line") },
+    { type: "pie", icon: <PieChartIcon strokeWidth={1.5} className="w-3.5 h-3.5" />, label: t("types.pie") },
+    { type: "area", icon: <AreaChartIcon strokeWidth={1.5} className="w-3.5 h-3.5" />, label: t("types.area") },
+    { type: "scatter", icon: <Circle strokeWidth={1.5} className="w-3.5 h-3.5" />, label: t("types.scatter") },
+    { type: "histogram", icon: <ChartNoAxesColumn strokeWidth={1.5} className="w-3.5 h-3.5" />, label: t("types.histogram") },
+    { type: "stacked-bar", icon: <ChartColumn strokeWidth={1.5} className="w-3.5 h-3.5" />, label: t("types.stackedBar") },
+    { type: "stacked-area", icon: <AreaChartIcon strokeWidth={1.5} className="w-3.5 h-3.5" />, label: t("types.stackedArea") },
   ];
+  const chartTypeLabel = (type: ChartType) => chartTypes.find((item) => item.type === type)?.label ?? type;
 
   const getFieldIcon = (type: FieldAnalysis["type"]) => {
     switch (type) {
@@ -711,10 +726,10 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
         {/* X-Axis Selector */}
         {chartType !== "pie" && (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-fg-subtle">X-Axis</span>
+            <span className="text-xs text-fg-subtle">{t("xAxis")}</span>
             <Select value={xAxis} onValueChange={setXAxis}>
               <SelectTrigger className="h-7 w-[140px] text-xs bg-fill border-hairline-strong">
-                <SelectValue placeholder="Select field" />
+                <SelectValue placeholder={t("selectField")} />
               </SelectTrigger>
               <SelectContent className="bg-overlay border-hairline-strong">
                 {analysis.fields.map((field) => (
@@ -732,11 +747,11 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
 
         {/* Y-Axis Selector (for pie, this becomes the value field) */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-fg-subtle">{chartType === "pie" ? "Value" : "Y-Axis"}</span>
+          <span className="text-xs text-fg-subtle">{chartType === "pie" ? t("value") : t("yAxis")}</span>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-7 text-xs bg-fill border-hairline-strong gap-1">
-                {yAxis.length > 0 ? yAxis.join(", ") : "Select fields"}
+                {yAxis.length > 0 ? yAxis.join(", ") : t("selectFields")}
                 <Settings2 strokeWidth={1.5} className="w-3 h-3 ml-1" />
               </Button>
             </DropdownMenuTrigger>
@@ -762,7 +777,7 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
             <span className="text-xs text-fg-subtle">Y</span>
             <Select value={scatterY} onValueChange={setScatterY}>
               <SelectTrigger className="h-7 w-[120px] text-xs bg-fill border-hairline-strong">
-                <SelectValue placeholder="Y field" />
+                <SelectValue placeholder={t("yField")} />
               </SelectTrigger>
               <SelectContent className="bg-overlay border-hairline-strong">
                 {analysis.numericFields
@@ -780,7 +795,7 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
         {/* Histogram buckets */}
         {chartType === "histogram" && (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-fg-subtle">Buckets</span>
+            <span className="text-xs text-fg-subtle">{t("buckets")}</span>
             <Select value={String(histogramBuckets)} onValueChange={(v) => setHistogramBuckets(Number(v))}>
               <SelectTrigger className="h-7 w-[70px] text-xs bg-fill border-hairline-strong">
                 <SelectValue />
@@ -799,7 +814,7 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
         {/* Aggregation */}
         {chartType !== "scatter" && chartType !== "histogram" && chartType !== "pie" && (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-fg-subtle">Agg</span>
+            <span className="text-xs text-fg-subtle">{t("aggregation")}</span>
             <Select value={aggregation} onValueChange={(v) => setAggregation(v as AggregationType)}>
               <SelectTrigger className="h-7 w-[80px] text-xs bg-fill border-hairline-strong">
                 <SelectValue />
@@ -807,7 +822,7 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
               <SelectContent className="bg-overlay border-hairline-strong">
                 {(["none", "sum", "avg", "count", "min", "max"] as const).map((a) => (
                   <SelectItem key={a} value={a} className="text-xs">
-                    {a}
+                    {a === "none" ? t("none") : a.toUpperCase()}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -818,7 +833,7 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
         {/* Date Grouping */}
         {analysis.dateFields.length > 0 && chartType !== "scatter" && chartType !== "histogram" && (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-fg-subtle">Group</span>
+            <span className="text-xs text-fg-subtle">{t("group")}</span>
             <Select
               value={dateGrouping || "none"}
               onValueChange={(v) => setDateGrouping(v === "none" ? "" : (v as DateGrouping))}
@@ -828,11 +843,11 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
               </SelectTrigger>
               <SelectContent className="bg-overlay border-hairline-strong">
                 <SelectItem value="none" className="text-xs">
-                  None
+                  {t("none")}
                 </SelectItem>
                 {(["hour", "day", "week", "month", "year"] as const).map((g) => (
                   <SelectItem key={g} value={g} className="text-xs capitalize">
-                    {g}
+                    {t(`dateGroups.${g}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -848,7 +863,7 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
           <div className="flex items-center gap-1">
             <input
               type="text"
-              placeholder="Chart name..."
+              placeholder={t("chartName")}
               value={saveName}
               onChange={(e) => setSaveName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSaveChart()}
@@ -856,7 +871,7 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
               autoFocus
             />
             <Button variant="ghost" size="sm" className="h-7 text-xs text-blue-400" onClick={handleSaveChart}>
-              Save
+              {t("save")}
             </Button>
             <Button
               variant="ghost"
@@ -864,7 +879,7 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
               className="h-7 text-xs text-fg-muted"
               onClick={() => setShowSaveDialog(false)}
             >
-              Cancel
+              {t("cancel")}
             </Button>
           </div>
         ) : (
@@ -875,13 +890,13 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
               className="h-7 text-xs text-fg-muted hover:text-fg-bright gap-1"
               onClick={() => setShowSaveDialog(true)}
             >
-              <Save strokeWidth={1.5} className="w-3 h-3" /> Save
+              <Save strokeWidth={1.5} className="w-3 h-3" /> {t("save")}
             </Button>
             {savedCharts.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="h-7 text-xs text-fg-muted hover:text-fg-bright gap-1">
-                    <FolderOpen strokeWidth={1.5} className="w-3 h-3" /> Saved ({savedCharts.length})
+                    <FolderOpen strokeWidth={1.5} className="w-3 h-3" /> {t("saved", { count: savedCharts.length })}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-overlay border-hairline-strong max-h-48 overflow-auto">
@@ -892,7 +907,7 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
                       className="text-xs cursor-pointer flex items-center justify-between gap-4"
                     >
                       <span>
-                        {chart.name} <span className="text-fg-subtle">({chart.chartType})</span>
+                        {chart.name} <span className="text-fg-subtle">({chartTypeLabel(chart.chartType)})</span>
                       </span>
                       <button
                         onClick={(e) => {
@@ -900,6 +915,7 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
                           deleteSavedChart(chart.id);
                         }}
                         className="text-fg-subtle hover:text-red-400"
+                        aria-label={t("deleteSaved", { name: chart.name })}
                       >
                         <X strokeWidth={1.5} className="w-3 h-3" />
                       </button>
@@ -919,15 +935,15 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
               size="sm"
               className="h-7 text-xs font-medium text-fg-muted hover:text-fg-bright gap-1"
             >
-              <Download strokeWidth={1.5} className="w-3 h-3" /> Export
+              <Download strokeWidth={1.5} className="w-3 h-3" /> {t("export")}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="bg-overlay border-hairline-strong">
             <DropdownMenuItem onClick={() => exportChart("png")} className="text-xs cursor-pointer">
-              Export as PNG
+              {t("exportPng")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => exportChart("svg")} className="text-xs cursor-pointer">
-              Export as SVG
+              {t("exportSvg")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -937,7 +953,7 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
       <div ref={chartRef} className="flex-1 p-4 min-h-0">
         {yAxis.length === 0 ? (
           <div className="h-full flex items-center justify-center text-fg-subtle text-xs">
-            Select at least one numeric field for the chart
+            {t("selectNumeric")}
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
@@ -951,8 +967,8 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
                   textAnchor="end"
                   height={60}
                 />
-                <YAxis tick={{ fill: viz.axis, fontSize: 11 }} tickFormatter={formatNumber} />
-                <Tooltip content={<CustomTooltip />} />
+                <YAxis tick={{ fill: viz.axis, fontSize: 11 }} tickFormatter={(value) => formatNumber(value, locale)} />
+                <Tooltip content={<CustomTooltip locale={locale} />} />
                 <Legend wrapperStyle={{ paddingTop: 20 }} {...legendProps} />
                 {plottedYAxis.map((field, index) => (
                   <Bar key={field} dataKey={field} fill={CHART_COLORS[index]} radius={[4, 4, 0, 0]} />
@@ -968,8 +984,8 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
                   textAnchor="end"
                   height={60}
                 />
-                <YAxis tick={{ fill: viz.axis, fontSize: 11 }} tickFormatter={formatNumber} />
-                <Tooltip content={<CustomTooltip />} />
+                <YAxis tick={{ fill: viz.axis, fontSize: 11 }} tickFormatter={(value) => formatNumber(value, locale)} />
+                <Tooltip content={<CustomTooltip locale={locale} />} />
                 <Legend wrapperStyle={{ paddingTop: 20 }} {...legendProps} />
                 {plottedYAxis.map((field, index) => (
                   <Line
@@ -993,8 +1009,8 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
                   textAnchor="end"
                   height={60}
                 />
-                <YAxis tick={{ fill: viz.axis, fontSize: 11 }} tickFormatter={formatNumber} />
-                <Tooltip content={<CustomTooltip />} />
+                <YAxis tick={{ fill: viz.axis, fontSize: 11 }} tickFormatter={(value) => formatNumber(value, locale)} />
+                <Tooltip content={<CustomTooltip locale={locale} />} />
                 <Legend wrapperStyle={{ paddingTop: 20 }} {...legendProps} />
                 {plottedYAxis.map((field, index) => (
                   <Area
@@ -1026,7 +1042,7 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
                   label={{ value: scatterY, angle: -90, position: "insideLeft", fill: viz.axis, fontSize: 11 }}
                 />
                 <ZAxis range={[40, 200]} />
-                <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: "3 3" }} />
+                <Tooltip content={<CustomTooltip locale={locale} />} cursor={{ strokeDasharray: "3 3" }} />
                 <Scatter name={`${xAxis} vs ${scatterY}`} data={chartData} fill={CHART_COLORS[0]} shape="circle" />
               </ScatterChart>
             ) : chartType === "histogram" ? (
@@ -1041,9 +1057,9 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
                 />
                 <YAxis
                   tick={{ fill: viz.axis, fontSize: 11 }}
-                  label={{ value: "Count", angle: -90, position: "insideLeft", fill: viz.axis, fontSize: 11 }}
+                  label={{ value: t("countAxis"), angle: -90, position: "insideLeft", fill: viz.axis, fontSize: 11 }}
                 />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<CustomTooltip locale={locale} />} />
                 <Bar dataKey="count" fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} />
               </BarChart>
             ) : chartType === "stacked-bar" ? (
@@ -1056,8 +1072,8 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
                   textAnchor="end"
                   height={60}
                 />
-                <YAxis tick={{ fill: viz.axis, fontSize: 11 }} tickFormatter={formatNumber} />
-                <Tooltip content={<CustomTooltip />} />
+                <YAxis tick={{ fill: viz.axis, fontSize: 11 }} tickFormatter={(value) => formatNumber(value, locale)} />
+                <Tooltip content={<CustomTooltip locale={locale} />} />
                 <Legend wrapperStyle={{ paddingTop: 20 }} {...legendProps} />
                 {plottedYAxis.map((field, index) => (
                   <Bar key={field} dataKey={field} stackId="stack" fill={CHART_COLORS[index]} />
@@ -1073,8 +1089,8 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
                   textAnchor="end"
                   height={60}
                 />
-                <YAxis tick={{ fill: viz.axis, fontSize: 11 }} tickFormatter={formatNumber} />
-                <Tooltip content={<CustomTooltip />} />
+                <YAxis tick={{ fill: viz.axis, fontSize: 11 }} tickFormatter={(value) => formatNumber(value, locale)} />
+                <Tooltip content={<CustomTooltip locale={locale} />} />
                 <Legend wrapperStyle={{ paddingTop: 20 }} {...legendProps} />
                 {plottedYAxis.map((field, index) => (
                   <Area
@@ -1107,7 +1123,7 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
                     <Cell key={`cell-${index}`} fill={CHART_COLORS[index]} />
                   ))}
                 </Pie>
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<CustomTooltip locale={locale} />} />
                 <Legend {...legendProps} />
               </PieChart>
             )}
@@ -1118,20 +1134,20 @@ export function DataCharts({ result, spec = null }: DataChartsProps) {
       {/* Footer Stats */}
       <div className="px-3 py-2 border-t border-hairline bg-surface flex items-center gap-4 text-xs text-fg-subtle">
         <span>
-          Rows: <span className="text-fg-tertiary font-mono">{result?.rows.length || 0}</span>
+          {t("rows", { count: result?.rows.length || 0 })}
         </span>
         <span>
-          Fields: <span className="text-fg-tertiary font-mono">{analysis.fields.length}</span>
+          {t("fields", { count: analysis.fields.length })}
         </span>
         <span>
-          Numeric: <span className="text-fg-tertiary font-mono">{analysis.numericFields.length}</span>
+          {t("numeric", { count: analysis.numericFields.length })}
         </span>
         {chartType === "pie" && chartData.length > MAX_SERIES && (
-          <span className="text-amber-500">Showing top {MAX_SERIES} values</span>
+          <span className="text-amber-500">{t("topValues", { count: MAX_SERIES })}</span>
         )}
         {MULTI_SERIES_CHART_TYPES.has(chartType) && droppedYAxisCount > 0 && (
           <span className="text-amber-500">
-            Showing first {MAX_SERIES} of {yAxis.length} series — see the Results grid for the rest
+            {t("limitedSeries", { shown: MAX_SERIES, total: yAxis.length })}
           </span>
         )}
       </div>

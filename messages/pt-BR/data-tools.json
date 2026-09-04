@@ -1,0 +1,75 @@
+{
+  "charts": {
+    "cannotVisualize": "Não foi possível visualizar os dados",
+    "reasons": {
+      "noData": "Não há dados para visualizar",
+      "needRows": "São necessárias pelo menos 2 linhas para criar uma visualização",
+      "noNumeric": "Nenhum campo numérico foi encontrado para o eixo Y"
+    },
+    "types": {
+      "bar": "Barras",
+      "line": "Linha",
+      "pie": "Pizza",
+      "area": "Área",
+      "scatter": "Dispersão",
+      "histogram": "Histograma",
+      "stackedBar": "Empilhado",
+      "stackedArea": "Área empilhada"
+    },
+    "xAxis": "Eixo X",
+    "yAxis": "Eixo Y",
+    "value": "Valor",
+    "selectField": "Selecionar campo",
+    "selectFields": "Selecionar campos",
+    "yField": "Campo Y",
+    "buckets": "Faixas",
+    "aggregation": "Agregação",
+    "group": "Agrupar",
+    "none": "Nenhuma",
+    "dateGroups": {
+      "hour": "Hora",
+      "day": "Dia",
+      "week": "Semana",
+      "month": "Mês",
+      "year": "Ano"
+    },
+    "chartName": "Nome do gráfico...",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "saved": "Salvos ({count, number})",
+    "deleteSaved": "Excluir {name}",
+    "export": "Exportar",
+    "exportPng": "Exportar como PNG",
+    "exportSvg": "Exportar como SVG",
+    "selectNumeric": "Selecione pelo menos um campo numérico para o gráfico",
+    "countAxis": "Contagem",
+    "rows": "Linhas: {count, number}",
+    "fields": "Campos: {count, number}",
+    "numeric": "Numéricos: {count, number}",
+    "topValues": "Exibindo os {count, number} maiores valores",
+    "limitedSeries": "Exibindo as primeiras {shown, number} de {total, number} séries — consulte o grid de Resultados para ver as demais",
+    "pngExportFailed": "Falha ao exportar PNG"
+  },
+  "pivot": {
+    "title": "Tabela dinâmica",
+    "emptyHint": "Execute uma consulta para criar tabelas dinâmicas",
+    "rows": "Linhas",
+    "columns": "Colunas",
+    "values": "Valores",
+    "select": "Selecionar...",
+    "none": "Nenhuma",
+    "count": "Contagem",
+    "generateSql": "Gerar SQL",
+    "buildHint": "Selecione os campos de linha e valor para montar a tabela dinâmica",
+    "summary": "{groups, plural, =0 {# grupos} one {# grupo} other {# grupos}} • {columns, plural, =0 {# colunas} one {# coluna} other {# colunas}} • agregação {aggregation}"
+  },
+  "dashboard": {
+    "emptyTitle": "Ainda não há gráficos salvos",
+    "emptyHint": "Salve gráficos na aba Gráficos para exibi-los aqui",
+    "runQuery": "Execute uma consulta para visualizar o gráfico"
+  },
+  "view": {
+    "label": "Esta visualização",
+    "loading": "Carregando o painel"
+  }
+}

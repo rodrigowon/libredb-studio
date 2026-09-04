@@ -4,7 +4,8 @@ import "../../helpers/mock-navigation";
 
 import React from "react";
 import { afterEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { cleanup, fireEvent } from "@testing-library/react";
+import { renderWithIntl as render } from "../../helpers/render-with-intl";
 import { LoadMoreFooter, StatsBar } from "@/components/results-grid/StatsBar";
 import type { QueryResult } from "@/lib/types";
 import type { CellChange } from "@/components/ResultsGrid";
@@ -259,5 +260,15 @@ describe("results-grid/LoadMoreFooter", () => {
 
     rerender(<LoadMoreFooter hasMore onLoadMore={onLoadMore} isLoadingMore />);
     expect(queryByText("Loading...")).not.toBeNull();
+  });
+
+  test("localizes pagination in Brazilian Portuguese", () => {
+    const { getByText, rerender } = render(
+      <LoadMoreFooter hasMore onLoadMore={mock(() => {})} isLoadingMore={false} />,
+      "pt-BR",
+    );
+    expect(getByText("Carregar mais (500 linhas)")).toBeTruthy();
+    rerender(<LoadMoreFooter hasMore onLoadMore={mock(() => {})} isLoadingMore />);
+    expect(getByText("Carregando...")).toBeTruthy();
   });
 });

@@ -42,7 +42,8 @@ mock.module("@/lib/storage", () => ({
 }));
 
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { render, fireEvent, within, cleanup } from "@testing-library/react";
+import { fireEvent, within, cleanup } from "@testing-library/react";
+import { renderWithIntl as render } from "../helpers/render-with-intl";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 
@@ -212,7 +213,7 @@ describe("QueryHistory", () => {
     const view = within(container);
 
     // Click the "success" filter button
-    const successButton = view.getByText("success");
+    const successButton = view.getByText("Success");
     await user.click(successButton);
 
     // Only the success item should remain
@@ -229,7 +230,7 @@ describe("QueryHistory", () => {
     const view = within(container);
 
     // Click the "error" filter button
-    const errorButton = view.getByText("error");
+    const errorButton = view.getByText("Error");
     await user.click(errorButton);
 
     // Only the error item should remain
@@ -270,7 +271,7 @@ describe("QueryHistory", () => {
     expect(view.queryByText("DROP TABLE bad")).not.toBeNull();
 
     // Switch back to "Active Conn"
-    await user.click(view.getByText("Active Conn"));
+    await user.click(view.getByText("Active Connection"));
 
     // Only c1 connection item should show
     expect(view.queryByText("SELECT * FROM users")).not.toBeNull();
@@ -593,5 +594,23 @@ describe("QueryHistory", () => {
     const secondRowText = rows[1].textContent || "";
     expect(firstRowText).toContain("SELECT * FROM users");
     expect(secondRowText).toContain("DROP TABLE bad");
+  });
+
+  test("localizes history chrome and dates while preserving SQL and database errors", () => {
+    const { container } = render(<QueryHistory {...createDefaultProps()} />, "pt-BR");
+    const view = within(container);
+    const expectedDate = new Intl.DateTimeFormat("pt-BR", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      timeZone: "UTC",
+    }).format(mockHistory[0].executedAt);
+
+    expect(view.getByText("Histórico de consultas")).toBeTruthy();
+    expect(container.textContent).toContain(expectedDate);
+    expect(view.getByText("SELECT * FROM users")).toBeTruthy();
+    expect(view.getByText("permission denied")).toBeTruthy();
   });
 });

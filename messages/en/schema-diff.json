@@ -1,0 +1,55 @@
+{
+  "title": "Schema Diff",
+  "source": "Source",
+  "target": "Target",
+  "selectSource": "Select source",
+  "selectTarget": "Select target",
+  "currentSchema": "Current Schema",
+  "versus": "vs",
+  "fetchFromConnection": "Fetch from connection",
+  "fetching": "Fetching...",
+  "liveSnapshot": "Live: {name}",
+  "labelPlaceholder": "Label (optional)...",
+  "save": "Save",
+  "cancel": "Cancel",
+  "snapshot": "Snapshot",
+  "diffView": "Diff View",
+  "sqlMigration": "SQL Migration",
+  "selectToCompare": "Select source and target to compare schemas",
+  "takeSnapshotHint": "Take a snapshot first, then compare it with the current schema",
+  "summary": "{added, number} added, {removed, number} removed, {modified, number} modified",
+  "selectTable": "Select a table to view diff details",
+  "noDifferences": "No differences found between source and target",
+  "sameSchema": "Cannot compare the same schema with itself",
+  "actions": {
+    "added": "Added",
+    "removed": "Removed",
+    "modified": "Modified"
+  },
+  "sections": {
+    "columns": "Columns",
+    "indexes": "Indexes",
+    "foreignKeys": "Foreign Keys"
+  },
+  "changes": {
+    "addedColumn": "Added column {details}",
+    "removedColumn": "Removed column {details}",
+    "typeChanged": "Type changed: {details}",
+    "nullableChanged": "Nullable changed: {details}",
+    "defaultChanged": "Default changed: {details}",
+    "primaryChanged": "Primary key changed: {details}",
+    "addedIndex": "Added index {details}",
+    "removedIndex": "Removed index {details}",
+    "columnsChanged": "Columns changed{details}",
+    "uniqueChanged": "Unique changed: {details}",
+    "addedForeignKey": "Added FK{details}",
+    "removedForeignKey": "Removed FK{details}"
+  },
+  "timeline": {
+    "empty": "No snapshots taken yet. Take a snapshot to start tracking schema changes.",
+    "title": "Timeline",
+    "comparing": "Comparing 2 snapshots",
+    "tables": "{count, plural, one {# table} other {# tables}}",
+    "delete": "Delete {name}"
+  }
+}

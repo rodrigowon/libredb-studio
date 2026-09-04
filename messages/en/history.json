@@ -1,0 +1,52 @@
+{
+  "history": {
+    "title": "Query History",
+    "showing": "Showing {count, plural, one {# execution} other {# executions}}",
+    "export": "Export",
+    "exportCsv": "Export as CSV",
+    "exportJson": "Export as JSON",
+    "clear": "Clear",
+    "clearConfirm": "Are you sure you want to clear all history?",
+    "search": "Search by query, connection or tab...",
+    "clearSearch": "Clear search",
+    "activeConnection": "Active Connection",
+    "allConnections": "All Connections",
+    "status": {
+      "all": "All",
+      "success": "Success",
+      "error": "Error"
+    },
+    "emptyTitle": "No history items found",
+    "emptyHint": "Run some queries to see them here",
+    "columns": {
+      "status": "Status",
+      "executedAt": "Executed At",
+      "source": "Source",
+      "query": "SQL Query",
+      "duration": "Duration",
+      "rows": "Rows",
+      "actions": "Actions"
+    },
+    "unknownConnection": "Unknown",
+    "defaultTab": "Default Tab",
+    "restore": "Restore Query",
+    "csv": {
+      "executedAt": "Executed At",
+      "status": "Status",
+      "connection": "Connection",
+      "tab": "Tab",
+      "executionTime": "Execution Time (ms)",
+      "rows": "Rows",
+      "query": "Query",
+      "error": "Error"
+    }
+  },
+  "saved": {
+    "title": "Saved Queries",
+    "search": "Search saved queries...",
+    "empty": "No saved queries found",
+    "deleteConfirm": "Are you sure you want to delete this saved query?",
+    "edit": "Edit {name}",
+    "delete": "Delete {name}"
+  }
+}

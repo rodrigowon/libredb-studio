@@ -10,6 +10,7 @@ import { type MaskingPattern, maskValueByPattern } from "@/lib/data-masking";
 import { writeToClipboard } from "@/components/copy-button";
 import { classifyValue } from "./renderers/classify";
 import { getRenderer } from "./renderers/registry";
+import { useTranslations } from "next-intl";
 
 export interface RowDetailSheetProps {
   row: Record<string, unknown>;
@@ -32,6 +33,7 @@ export function RowDetailSheet({
   sensitiveColumns,
   allowReveal,
 }: RowDetailSheetProps) {
+  const t = useTranslations("Results.detail");
   /**
    * Which copy just ran, and whether it actually happened (B43). A bare field name
    * could only say "copied", and the write it stood for might never have run: over
@@ -111,7 +113,7 @@ export function RowDetailSheet({
               <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
                 <FileBraces strokeWidth={1.5} className="w-3.5 h-3.5 text-blue-400" />
               </div>
-              Row #{rowIndex + 1}
+              {t("row", { number: rowIndex + 1 })}
             </SheetTitle>
             <Button
               variant="outline"
@@ -121,17 +123,17 @@ export function RowDetailSheet({
             >
               {copyOutcome?.key === "__all__" && copyOutcome.copied && (
                 <>
-                  <Check strokeWidth={1.5} className="w-3 h-3 mr-1 text-emerald-400" /> Copied
+                  <Check strokeWidth={1.5} className="w-3 h-3 mr-1 text-emerald-400" /> {t("copied")}
                 </>
               )}
               {copyOutcome?.key === "__all__" && !copyOutcome.copied && (
                 <>
-                  <TriangleAlert strokeWidth={1.5} className="w-3 h-3 mr-1 text-amber-400" /> Copy failed
+                  <TriangleAlert strokeWidth={1.5} className="w-3 h-3 mr-1 text-amber-400" /> {t("copyFailed")}
                 </>
               )}
               {copyOutcome?.key !== "__all__" && (
                 <>
-                  <Copy strokeWidth={1.5} className="w-3 h-3 mr-1" /> Copy JSON
+                  <Copy strokeWidth={1.5} className="w-3 h-3 mr-1" /> {t("copyJson")}
                 </>
               )}
             </Button>
@@ -170,7 +172,7 @@ export function RowDetailSheet({
                           size="sm"
                           className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={() => revealField(field)}
-                          title="Reveal value (10s)"
+                          title={t("revealValue")}
                         >
                           <Eye className="w-3.5 h-3.5 text-purple-400" />
                         </Button>
@@ -180,6 +182,7 @@ export function RowDetailSheet({
                         size="sm"
                         className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={() => copyValue(field, row[field])}
+                        aria-label={t("copyField", { field })}
                       >
                         {copyOutcome?.key === field && copyOutcome.copied && (
                           <Check strokeWidth={1.5} className="w-3.5 h-3.5 text-emerald-400" />

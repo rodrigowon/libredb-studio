@@ -1,0 +1,52 @@
+{
+  "history": {
+    "title": "Histórico de consultas",
+    "showing": "Exibindo {count, plural, =0 {# execuções} one {# execução} other {# execuções}}",
+    "export": "Exportar",
+    "exportCsv": "Exportar como CSV",
+    "exportJson": "Exportar como JSON",
+    "clear": "Limpar",
+    "clearConfirm": "Deseja realmente limpar todo o histórico?",
+    "search": "Buscar por consulta, conexão ou aba...",
+    "clearSearch": "Limpar busca",
+    "activeConnection": "Conexão ativa",
+    "allConnections": "Todas as conexões",
+    "status": {
+      "all": "Todos",
+      "success": "Sucesso",
+      "error": "Erro"
+    },
+    "emptyTitle": "Nenhum item encontrado no histórico",
+    "emptyHint": "Execute consultas para vê-las aqui",
+    "columns": {
+      "status": "Status",
+      "executedAt": "Executada em",
+      "source": "Origem",
+      "query": "Consulta SQL",
+      "duration": "Duração",
+      "rows": "Linhas",
+      "actions": "Ações"
+    },
+    "unknownConnection": "Desconhecida",
+    "defaultTab": "Aba padrão",
+    "restore": "Restaurar consulta",
+    "csv": {
+      "executedAt": "Executada em",
+      "status": "Status",
+      "connection": "Conexão",
+      "tab": "Aba",
+      "executionTime": "Tempo de execução (ms)",
+      "rows": "Linhas",
+      "query": "Consulta",
+      "error": "Erro"
+    }
+  },
+  "saved": {
+    "title": "Consultas salvas",
+    "search": "Buscar consultas salvas...",
+    "empty": "Nenhuma consulta salva encontrada",
+    "deleteConfirm": "Deseja realmente excluir esta consulta salva?",
+    "edit": "Editar {name}",
+    "delete": "Excluir {name}"
+  }
+}

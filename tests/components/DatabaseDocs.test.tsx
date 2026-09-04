@@ -4,7 +4,8 @@ import "../helpers/mock-navigation";
 
 import React from "react";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, waitFor } from "@testing-library/react";
+import { renderWithIntl as render } from "../helpers/render-with-intl";
 import userEvent from "@testing-library/user-event";
 import { DatabaseDocs } from "@/components/DatabaseDocs";
 import type { TableSchema } from "@/lib/types";
@@ -317,7 +318,7 @@ describe("DatabaseDocs", () => {
 
     const { queryByText } = render(<DatabaseDocs schema={schema} schemaContext="[]" databaseType="postgres" />);
 
-    await user.click(queryByText("Export MD")!);
+    await user.click(queryByText("Export Markdown")!);
 
     expect(createObjectURLMock).toHaveBeenCalled();
     expect(clickMock).toHaveBeenCalled();
@@ -356,7 +357,7 @@ describe("DatabaseDocs", () => {
       expect(queryByText("Regenerate")).not.toBeNull();
     });
 
-    await user.click(queryByText("Export MD")!);
+    await user.click(queryByText("Export Markdown")!);
 
     expect(createObjectURLMock).toHaveBeenCalled();
     const exportedBlob = (createObjectURLMock.mock.calls as unknown[][])[0][0] as Blob;
@@ -375,6 +376,19 @@ describe("DatabaseDocs", () => {
   test("shows AI Describe and Export MD buttons", () => {
     const { queryByText } = render(<DatabaseDocs schema={schema} schemaContext="[]" />);
     expect(queryByText("AI Describe")).not.toBeNull();
-    expect(queryByText("Export MD")).not.toBeNull();
+    expect(queryByText("Export Markdown")).not.toBeNull();
+  });
+
+  test("localizes documentation chrome while preserving schema names and SQL types", () => {
+    const { getByText, getAllByText, getByPlaceholderText } = render(
+      <DatabaseDocs schema={schema} schemaContext="[]" />,
+      "pt-BR",
+    );
+
+    expect(getByText("Documentação do banco")).toBeTruthy();
+    expect(getByPlaceholderText("Buscar tabelas ou colunas...")).toBeTruthy();
+    expect(getByText("users")).toBeTruthy();
+    expect(getAllByText("SERIAL").length).toBeGreaterThan(0);
+    expect(getByText("Exportar Markdown")).toBeTruthy();
   });
 });

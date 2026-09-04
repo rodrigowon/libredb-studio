@@ -6,7 +6,7 @@ import { SavedQuery } from "@/lib/types";
 import { Bookmark, Search, Trash2, PenLine, Tag, Calendar } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { format } from "date-fns";
+import { useFormatter, useTranslations } from "next-intl";
 
 interface SavedQueriesProps {
   onSelectQuery: (query: string) => void;
@@ -15,6 +15,8 @@ interface SavedQueriesProps {
 }
 
 export function SavedQueries({ onSelectQuery, connectionType, refreshTrigger }: SavedQueriesProps) {
+  const t = useTranslations("History.saved");
+  const format = useFormatter();
   const [queries, setQueries] = useState<SavedQuery[]>(() => storage.getSavedQueries());
   const [search, setSearch] = useState("");
 
@@ -36,7 +38,7 @@ export function SavedQueries({ onSelectQuery, connectionType, refreshTrigger }: 
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm("Are you sure you want to delete this saved query?")) {
+    if (confirm(t("deleteConfirm"))) {
       storage.deleteSavedQuery(id);
       setQueries(storage.getSavedQueries());
     }
@@ -46,13 +48,13 @@ export function SavedQueries({ onSelectQuery, connectionType, refreshTrigger }: 
     <div className="h-full flex flex-col bg-surface">
       <div className="p-4 border-b border-hairline flex flex-col gap-4">
         <h3 className="text-xs font-medium text-fg-tertiary flex items-center gap-2">
-          <Bookmark strokeWidth={1.5} className="w-3.5 h-3.5" /> Saved Queries
+          <Bookmark strokeWidth={1.5} className="w-3.5 h-3.5" /> {t("title")}
         </h3>
 
         <div className="relative">
           <Search strokeWidth={1.5} className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-fg-muted" />
           <Input
-            placeholder="Search saved queries..."
+            placeholder={t("search")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-8 h-8 bg-fill border-hairline-strong text-xs focus:ring-blue-500/20"
@@ -64,7 +66,7 @@ export function SavedQueries({ onSelectQuery, connectionType, refreshTrigger }: 
         {filteredQueries.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center opacity-20 p-8 text-center">
             <Bookmark strokeWidth={1.5} className="w-12 h-12 mb-4" />
-            <p className="text-xs italic">No saved queries found</p>
+            <p className="text-xs italic">{t("empty")}</p>
           </div>
         )}
         {filteredQueries.length > 0 && (
@@ -93,7 +95,7 @@ export function SavedQueries({ onSelectQuery, connectionType, refreshTrigger }: 
                     <Button
                       variant="ghost"
                       size="icon"
-                      aria-label={`Edit ${q.name}`}
+                      aria-label={t("edit", { name: q.name })}
                       className="h-6 w-6 text-fg-muted hover:text-fg-bright"
                       onClick={() => onSelectQuery(q.query)}
                     >
@@ -102,7 +104,7 @@ export function SavedQueries({ onSelectQuery, connectionType, refreshTrigger }: 
                     <Button
                       variant="ghost"
                       size="icon"
-                      aria-label={`Delete ${q.name}`}
+                      aria-label={t("delete", { name: q.name })}
                       className="h-6 w-6 text-fg-muted hover:text-red-400"
                       onClick={(e) => handleDelete(q.id, e)}
                     >
@@ -127,7 +129,8 @@ export function SavedQueries({ onSelectQuery, connectionType, refreshTrigger }: 
                     ))}
                   </div>
                   <span className="text-[0.625rem] text-fg-subtle flex items-center gap-1 font-mono">
-                    <Calendar className="w-2.5 h-2.5" /> {format(q.updatedAt, "MMM d, yyyy")}
+                    <Calendar className="w-2.5 h-2.5" />{" "}
+                    {format.dateTime(new Date(q.updatedAt), { year: "numeric", month: "short", day: "numeric" })}
                   </span>
                 </div>
               </div>

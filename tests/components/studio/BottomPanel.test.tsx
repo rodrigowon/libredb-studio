@@ -555,7 +555,7 @@ describe("BottomPanel", () => {
     );
 
     expect(getByText("Revenue")).not.toBeNull();
-    expect(getByText("bar")).not.toBeNull();
+    expect(getByText("Bar")).not.toBeNull();
     expect(getByText(/X: month/)).not.toBeNull();
     expect(getByText(/Y: revenue/)).not.toBeNull();
     expect(queryByTestId("datacharts")).not.toBeNull();
@@ -568,7 +568,7 @@ describe("BottomPanel", () => {
       <BottomPanel {...(props as React.ComponentProps<typeof BottomPanel>)} />,
     );
 
-    expect(getByText("Execute a query to see chart")).not.toBeNull();
+    expect(getByText("Execute a query to see the chart")).not.toBeNull();
     expect(queryByTestId("datacharts")).toBeNull();
   });
 

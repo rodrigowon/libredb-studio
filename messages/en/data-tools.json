@@ -1,0 +1,75 @@
+{
+  "charts": {
+    "cannotVisualize": "Cannot Visualize Data",
+    "reasons": {
+      "noData": "No data to visualize",
+      "needRows": "Need at least 2 rows for visualization",
+      "noNumeric": "No numeric fields found for Y-axis"
+    },
+    "types": {
+      "bar": "Bar",
+      "line": "Line",
+      "pie": "Pie",
+      "area": "Area",
+      "scatter": "Scatter",
+      "histogram": "Histogram",
+      "stackedBar": "Stacked",
+      "stackedArea": "Stacked Area"
+    },
+    "xAxis": "X-Axis",
+    "yAxis": "Y-Axis",
+    "value": "Value",
+    "selectField": "Select field",
+    "selectFields": "Select fields",
+    "yField": "Y field",
+    "buckets": "Buckets",
+    "aggregation": "Aggregation",
+    "group": "Group",
+    "none": "None",
+    "dateGroups": {
+      "hour": "Hour",
+      "day": "Day",
+      "week": "Week",
+      "month": "Month",
+      "year": "Year"
+    },
+    "chartName": "Chart name...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "saved": "Saved ({count, number})",
+    "deleteSaved": "Delete {name}",
+    "export": "Export",
+    "exportPng": "Export as PNG",
+    "exportSvg": "Export as SVG",
+    "selectNumeric": "Select at least one numeric field for the chart",
+    "countAxis": "Count",
+    "rows": "Rows: {count, number}",
+    "fields": "Fields: {count, number}",
+    "numeric": "Numeric: {count, number}",
+    "topValues": "Showing top {count, number} values",
+    "limitedSeries": "Showing first {shown, number} of {total, number} series — see the Results grid for the rest",
+    "pngExportFailed": "PNG export failed"
+  },
+  "pivot": {
+    "title": "Pivot Table",
+    "emptyHint": "Execute a query to create pivot tables",
+    "rows": "Rows",
+    "columns": "Columns",
+    "values": "Values",
+    "select": "Select...",
+    "none": "None",
+    "count": "Count",
+    "generateSql": "Generate SQL",
+    "buildHint": "Select row and value fields to build a pivot table",
+    "summary": "{groups, plural, one {# group} other {# groups}} • {columns, plural, one {# column} other {# columns}} • {aggregation} aggregation"
+  },
+  "dashboard": {
+    "emptyTitle": "No saved charts yet",
+    "emptyHint": "Save charts from the Charts tab to display them here",
+    "runQuery": "Execute a query to see the chart"
+  },
+  "view": {
+    "label": "This view",
+    "loading": "Loading the panel"
+  }
+}

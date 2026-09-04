@@ -26,6 +26,7 @@ import { diffSchemas } from "@/lib/schema-diff/diff-engine";
 import { generateMigrationSQL } from "@/lib/schema-diff/migration-generator";
 import type { SchemaDiff as SchemaDiffType, TableDiff } from "@/lib/schema-diff/types";
 import { SnapshotTimeline } from "@/components/SnapshotTimeline";
+import { useFormatter, useTranslations } from "next-intl";
 
 interface SchemaDiffProps {
   schema: TableSchema[];
@@ -33,6 +34,8 @@ interface SchemaDiffProps {
 }
 
 export function SchemaDiff({ schema, connection }: SchemaDiffProps) {
+  const t = useTranslations("SchemaDiff");
+  const format = useFormatter();
   const [snapshots, setSnapshots] = useState<SchemaSnapshot[]>(() => storage.getSchemaSnapshots());
   const [sourceId, setSourceId] = useState<string>("current");
   const [targetId, setTargetId] = useState<string>("");
@@ -120,7 +123,7 @@ export function SchemaDiff({ schema, connection }: SchemaDiffProps) {
           databaseType: conn.type,
           schema: data.schema,
           createdAt: new Date(),
-          label: `Live: ${conn.name}`,
+          label: t("liveSnapshot", { name: conn.name }),
         };
         storage.saveSchemaSnapshot(snapshot);
         setSnapshots(storage.getSchemaSnapshots());
@@ -134,7 +137,7 @@ export function SchemaDiff({ schema, connection }: SchemaDiffProps) {
         setFetchingRemote(false);
       }
     },
-    [allConnections],
+    [allConnections, t],
   );
 
   const getActionBadge = (action: string) => {
@@ -143,21 +146,21 @@ export function SchemaDiff({ schema, connection }: SchemaDiffProps) {
         return (
           <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">
             <Plus strokeWidth={1.5} className="w-2.5 h-2.5 mr-0.5" />
-            {"Added"}
+            {t("actions.added")}
           </Badge>
         );
       case "removed":
         return (
           <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-xs">
             <Minus className="w-2.5 h-2.5 mr-0.5" />
-            {"Removed"}
+            {t("actions.removed")}
           </Badge>
         );
       case "modified":
         return (
           <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 text-xs">
             <PenLine strokeWidth={1.5} className="w-2.5 h-2.5 mr-0.5" />
-            {"Modified"}
+            {t("actions.modified")}
           </Badge>
         );
       default:
@@ -166,7 +169,13 @@ export function SchemaDiff({ schema, connection }: SchemaDiffProps) {
   };
 
   const formatSnapshotLabel = (s: SchemaSnapshot) => {
-    const date = new Date(s.createdAt).toLocaleString();
+    const date = format.dateTime(new Date(s.createdAt), {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
     return `${s.label || s.connectionName} (${date})`;
   };
 
@@ -175,21 +184,21 @@ export function SchemaDiff({ schema, connection }: SchemaDiffProps) {
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-hairline bg-surface flex-wrap">
         <GitCompare strokeWidth={1.5} className="w-3.5 h-3.5 text-rose-400" />
-        <span className="text-xs font-medium text-fg-tertiary">Schema Diff</span>
+        <span className="text-xs font-medium text-fg-tertiary">{t("title")}</span>
 
         <div className="h-4 w-px bg-fill-strong" />
 
         {/* Source selector */}
         <div className="flex items-center gap-1">
-          <span className="text-xs text-fg-subtle">Source</span>
+          <span className="text-xs text-fg-subtle">{t("source")}</span>
           <Select value={sourceId} onValueChange={setSourceId}>
             <SelectTrigger className="h-7 w-[180px] text-xs bg-fill border-hairline-strong">
-              <SelectValue placeholder="Select source" />
+              <SelectValue placeholder={t("selectSource")} />
             </SelectTrigger>
             <SelectContent className="bg-overlay border-hairline-strong">
               <SelectItem value="current" className="text-xs">
                 <div className="flex items-center gap-1">
-                  <Database strokeWidth={1.5} className="w-3 h-3" /> Current Schema
+                  <Database strokeWidth={1.5} className="w-3 h-3" /> {t("currentSchema")}
                 </div>
               </SelectItem>
               {snapshots.map((s) => (
@@ -203,11 +212,11 @@ export function SchemaDiff({ schema, connection }: SchemaDiffProps) {
           </Select>
         </div>
 
-        <span className="text-fg-subtle text-xs">vs</span>
+        <span className="text-fg-subtle text-xs">{t("versus")}</span>
 
         {/* Target selector */}
         <div className="flex items-center gap-1">
-          <span className="text-xs text-fg-subtle">Target</span>
+          <span className="text-xs text-fg-subtle">{t("target")}</span>
           <Select
             value={targetId}
             onValueChange={(v) => {
@@ -219,12 +228,12 @@ export function SchemaDiff({ schema, connection }: SchemaDiffProps) {
             }}
           >
             <SelectTrigger className="h-7 w-[180px] text-xs bg-fill border-hairline-strong">
-              <SelectValue placeholder="Select target" />
+              <SelectValue placeholder={t("selectTarget")} />
             </SelectTrigger>
             <SelectContent className="bg-overlay border-hairline-strong">
               <SelectItem value="current" className="text-xs">
                 <div className="flex items-center gap-1">
-                  <Database strokeWidth={1.5} className="w-3 h-3" /> Current Schema
+                  <Database strokeWidth={1.5} className="w-3 h-3" /> {t("currentSchema")}
                 </div>
               </SelectItem>
               {snapshots.map((s) => (
@@ -237,7 +246,7 @@ export function SchemaDiff({ schema, connection }: SchemaDiffProps) {
               {allConnections.filter((c) => c.id !== connection?.id).length > 0 && (
                 <>
                   <div className="px-2 py-1 text-[0.625rem] text-fg-subtle border-t border-hairline mt-1">
-                    {"Fetch from connection"}
+                    {t("fetchFromConnection")}
                   </div>
                   {allConnections
                     .filter((c) => c.id !== connection?.id)
@@ -255,7 +264,7 @@ export function SchemaDiff({ schema, connection }: SchemaDiffProps) {
               )}
             </SelectContent>
           </Select>
-          {fetchingRemote && <span className="text-xs text-fg-muted animate-pulse">Fetching...</span>}
+          {fetchingRemote && <span className="text-xs text-fg-muted animate-pulse">{t("fetching")}</span>}
         </div>
 
         <div className="flex-1" />
@@ -265,7 +274,7 @@ export function SchemaDiff({ schema, connection }: SchemaDiffProps) {
           <div className="flex items-center gap-1">
             <input
               type="text"
-              placeholder="Label (optional)..."
+              placeholder={t("labelPlaceholder")}
               value={snapshotLabel}
               onChange={(e) => setSnapshotLabel(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && takeSnapshot()}
@@ -273,7 +282,7 @@ export function SchemaDiff({ schema, connection }: SchemaDiffProps) {
               autoFocus
             />
             <Button variant="ghost" size="sm" className="h-7 text-xs text-blue-400" onClick={takeSnapshot}>
-              {"Save"}
+              {t("save")}
             </Button>
             <Button
               variant="ghost"
@@ -281,7 +290,7 @@ export function SchemaDiff({ schema, connection }: SchemaDiffProps) {
               className="h-7 text-xs text-fg-muted"
               onClick={() => setShowLabelInput(false)}
             >
-              {"Cancel"}
+              {t("cancel")}
             </Button>
           </div>
         ) : (
@@ -292,7 +301,7 @@ export function SchemaDiff({ schema, connection }: SchemaDiffProps) {
             onClick={() => setShowLabelInput(true)}
             disabled={!connection}
           >
-            <Camera className="w-3 h-3" /> Snapshot
+            <Camera className="w-3 h-3" /> {t("snapshot")}
           </Button>
         )}
 
@@ -303,7 +312,7 @@ export function SchemaDiff({ schema, connection }: SchemaDiffProps) {
             className="h-7 text-xs font-medium text-fg-muted hover:text-fg-bright gap-1"
             onClick={() => setShowMigration(!showMigration)}
           >
-            <FileCode className="w-3 h-3" /> {showMigration ? "Diff View" : "SQL Migration"}
+            <FileCode className="w-3 h-3" /> {showMigration ? t("diffView") : t("sqlMigration")}
           </Button>
         )}
       </div>
@@ -313,8 +322,8 @@ export function SchemaDiff({ schema, connection }: SchemaDiffProps) {
         {!targetId ? (
           <div className="flex-1 flex flex-col items-center justify-center text-fg-subtle gap-3">
             <GitCompare strokeWidth={1.5} className="w-10 h-10 opacity-30" />
-            <p className="text-xs">Select source and target to compare schemas</p>
-            <p className="text-xs text-fg-faint">Take a snapshot first, then compare with the current schema</p>
+            <p className="text-xs">{t("selectToCompare")}</p>
+            <p className="text-xs text-fg-faint">{t("takeSnapshotHint")}</p>
 
             {/* Snapshot Timeline */}
             {snapshots.length > 0 && (
@@ -342,7 +351,11 @@ export function SchemaDiff({ schema, connection }: SchemaDiffProps) {
             <div className="w-64 border-r border-hairline overflow-auto">
               <div className="p-2 border-b border-hairline">
                 <div className="text-xs text-fg-muted px-2 mb-1">
-                  {diff.summary.added} added, {diff.summary.removed} removed, {diff.summary.modified} modified
+                  {t("summary", {
+                    added: diff.summary.added,
+                    removed: diff.summary.removed,
+                    modified: diff.summary.modified,
+                  })}
                 </div>
               </div>
               {diff.tables.map((table) => (
@@ -371,19 +384,19 @@ export function SchemaDiff({ schema, connection }: SchemaDiffProps) {
                 <TableDiffDetail diff={diff.tables.find((t) => t.tableName === selectedTable)!} />
               ) : (
                 <div className="h-full flex items-center justify-center text-fg-subtle text-xs">
-                  {"Select a table to view diff details"}
+                  {t("selectTable")}
                 </div>
               )}
             </div>
           </>
         ) : diff && !diff.hasChanges ? (
           <div className="flex-1 flex items-center justify-center text-fg-subtle gap-2">
-            <span className="text-xs">No differences found between source and target</span>
+            <span className="text-xs">{t("noDifferences")}</span>
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center text-fg-subtle gap-2">
             <TriangleAlert strokeWidth={1.5} className="w-3.5 h-3.5" />
-            <span className="text-xs">Cannot compare same schema with itself</span>
+            <span className="text-xs">{t("sameSchema")}</span>
           </div>
         )}
       </div>
@@ -392,6 +405,22 @@ export function SchemaDiff({ schema, connection }: SchemaDiffProps) {
 }
 
 function TableDiffDetail({ diff }: { diff: TableDiff }) {
+  const t = useTranslations("SchemaDiff");
+  const translateChange = (change: string) => {
+    if (change.startsWith("Added column ")) return t("changes.addedColumn", { details: change.slice(13) });
+    if (change.startsWith("Removed column ")) return t("changes.removedColumn", { details: change.slice(15) });
+    if (change.startsWith("Type changed: ")) return t("changes.typeChanged", { details: change.slice(14) });
+    if (change.startsWith("Nullable changed: ")) return t("changes.nullableChanged", { details: change.slice(18) });
+    if (change.startsWith("Default changed: ")) return t("changes.defaultChanged", { details: change.slice(17) });
+    if (change.startsWith("Primary key changed: ")) return t("changes.primaryChanged", { details: change.slice(21) });
+    if (change.startsWith("Added index ")) return t("changes.addedIndex", { details: change.slice(12) });
+    if (change.startsWith("Removed index ")) return t("changes.removedIndex", { details: change.slice(14) });
+    if (change.startsWith("Columns changed")) return t("changes.columnsChanged", { details: change.slice(15) });
+    if (change.startsWith("Unique changed: ")) return t("changes.uniqueChanged", { details: change.slice(16) });
+    if (change.startsWith("Added FK")) return t("changes.addedForeignKey", { details: change.slice(8) });
+    if (change.startsWith("Removed FK")) return t("changes.removedForeignKey", { details: change.slice(10) });
+    return change;
+  };
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -405,14 +434,14 @@ function TableDiffDetail({ diff }: { diff: TableDiff }) {
             diff.action === "modified" && "bg-yellow-500/20 text-yellow-400",
           )}
         >
-          {diff.action}
+          {t(`actions.${diff.action}`)}
         </Badge>
       </div>
 
       {/* Columns */}
       {diff.columns.length > 0 && (
         <div>
-          <h4 className="text-xs text-fg-muted mb-2 font-medium">Columns</h4>
+          <h4 className="text-xs text-fg-muted mb-2 font-medium">{t("sections.columns")}</h4>
           <div className="space-y-1">
             {/* Keyed by the name the row is ABOUT, not by its position: the diff is
                 recomputed whenever either side changes, and the rows come back in a
@@ -435,7 +464,7 @@ function TableDiffDetail({ diff }: { diff: TableDiff }) {
                   <div className="flex flex-col gap-0.5">
                     {col.changes.map((change) => (
                       <span key={change} className="text-xs text-fg-muted">
-                        {change}
+                        {translateChange(change)}
                       </span>
                     ))}
                   </div>
@@ -452,7 +481,7 @@ function TableDiffDetail({ diff }: { diff: TableDiff }) {
       {/* Indexes */}
       {diff.indexes.length > 0 && (
         <div>
-          <h4 className="text-xs text-fg-muted mb-2 font-medium">Indexes</h4>
+          <h4 className="text-xs text-fg-muted mb-2 font-medium">{t("sections.indexes")}</h4>
           <div className="space-y-1">
             {diff.indexes.map((idx) => (
               <div
@@ -467,7 +496,7 @@ function TableDiffDetail({ diff }: { diff: TableDiff }) {
                 <span className="font-mono text-fg-secondary">{idx.indexName}</span>
                 {idx.changes.map((change) => (
                   <span key={change} className="text-xs text-fg-muted">
-                    {change}
+                    {translateChange(change)}
                   </span>
                 ))}
                 <span className="ml-auto">{getActionIcon(idx.action)}</span>
@@ -480,7 +509,7 @@ function TableDiffDetail({ diff }: { diff: TableDiff }) {
       {/* Foreign Keys */}
       {diff.foreignKeys.length > 0 && (
         <div>
-          <h4 className="text-xs text-fg-muted mb-2 font-medium">Foreign Keys</h4>
+          <h4 className="text-xs text-fg-muted mb-2 font-medium">{t("sections.foreignKeys")}</h4>
           <div className="space-y-1">
             {/* Keyed by the action as well as the column: a foreign key repointed at
                 another table is TWO entries under one column name, because the diff
@@ -499,7 +528,7 @@ function TableDiffDetail({ diff }: { diff: TableDiff }) {
                 <span className="font-mono text-fg-secondary">{fk.columnName}</span>
                 {fk.changes.map((change) => (
                   <span key={change} className="text-xs text-fg-muted">
-                    {change}
+                    {translateChange(change)}
                   </span>
                 ))}
                 <span className="ml-auto">{getActionIcon(fk.action)}</span>

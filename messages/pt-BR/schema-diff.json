@@ -1,0 +1,55 @@
+{
+  "title": "Comparação de Schema",
+  "source": "Origem",
+  "target": "Destino",
+  "selectSource": "Selecionar origem",
+  "selectTarget": "Selecionar destino",
+  "currentSchema": "Schema atual",
+  "versus": "vs.",
+  "fetchFromConnection": "Buscar de outra conexão",
+  "fetching": "Buscando...",
+  "liveSnapshot": "Ao vivo: {name}",
+  "labelPlaceholder": "Rótulo (opcional)...",
+  "save": "Salvar",
+  "cancel": "Cancelar",
+  "snapshot": "Snapshot",
+  "diffView": "Visualização da comparação",
+  "sqlMigration": "Migration SQL",
+  "selectToCompare": "Selecione a origem e o destino para comparar os schemas",
+  "takeSnapshotHint": "Crie primeiro um Snapshot e depois compare-o com o Schema atual",
+  "summary": "{added, number} adicionadas, {removed, number} removidas, {modified, number} modificadas",
+  "selectTable": "Selecione uma tabela para ver os detalhes da comparação",
+  "noDifferences": "Nenhuma diferença encontrada entre a origem e o destino",
+  "sameSchema": "Não é possível comparar o mesmo Schema com ele próprio",
+  "actions": {
+    "added": "Adicionado",
+    "removed": "Removido",
+    "modified": "Modificado"
+  },
+  "sections": {
+    "columns": "Colunas",
+    "indexes": "Índices",
+    "foreignKeys": "Chaves estrangeiras"
+  },
+  "changes": {
+    "addedColumn": "Coluna adicionada: {details}",
+    "removedColumn": "Coluna removida: {details}",
+    "typeChanged": "Tipo alterado: {details}",
+    "nullableChanged": "Aceitação de nulo alterada: {details}",
+    "defaultChanged": "Valor padrão alterado: {details}",
+    "primaryChanged": "Chave primária alterada: {details}",
+    "addedIndex": "Índice adicionado: {details}",
+    "removedIndex": "Índice removido: {details}",
+    "columnsChanged": "Colunas alteradas{details}",
+    "uniqueChanged": "Unicidade alterada: {details}",
+    "addedForeignKey": "Chave estrangeira adicionada{details}",
+    "removedForeignKey": "Chave estrangeira removida{details}"
+  },
+  "timeline": {
+    "empty": "Ainda não há snapshots. Crie um Snapshot para começar a acompanhar as alterações do Schema.",
+    "title": "Linha do tempo",
+    "comparing": "Comparando 2 snapshots",
+    "tables": "{count, plural, =0 {# tabelas} one {# tabela} other {# tabelas}}",
+    "delete": "Excluir {name}"
+  }
+}

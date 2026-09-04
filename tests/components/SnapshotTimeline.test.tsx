@@ -4,7 +4,8 @@ import "../helpers/mock-navigation";
 
 import React from "react";
 import { afterEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { cleanup, fireEvent } from "@testing-library/react";
+import { renderWithIntl as render } from "../helpers/render-with-intl";
 import { SnapshotTimeline } from "@/components/SnapshotTimeline";
 import type { SchemaSnapshot } from "@/lib/types";
 
@@ -365,5 +366,25 @@ describe("SnapshotTimeline", () => {
     fireEvent.click(getByRole("button", { name: "Delete After migration" }));
     expect(onDelete).toHaveBeenCalledWith("s2");
     expect(onDelete).toHaveBeenCalledTimes(2);
+  });
+
+  test("localizes timeline dates and controls while preserving Snapshot labels", () => {
+    const { container, getByRole, getByText } = render(
+      <SnapshotTimeline snapshots={snapshots} onCompare={mock(() => {})} onDelete={mock(() => {})} />,
+      "pt-BR",
+    );
+    const expectedDate = new Intl.DateTimeFormat("pt-BR", {
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "UTC",
+    }).format(snapshots[0].createdAt);
+
+    expect(getByText("Linha do tempo")).toBeTruthy();
+    expect(container.textContent).toContain(expectedDate);
+    expect(getByText("Before migration")).toBeTruthy();
+    expect(getByRole("button", { name: "Excluir Before migration" })).toBeTruthy();
   });
 });

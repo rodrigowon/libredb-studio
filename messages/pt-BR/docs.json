@@ -1,0 +1,36 @@
+{
+  "title": "Documentação do banco",
+  "tableCount": "{count, plural, =0 {# tabelas} one {# tabela} other {# tabelas}}",
+  "regenerate": "Gerar novamente",
+  "aiDescribe": "Descrever com IA",
+  "exportMarkdown": "Exportar Markdown",
+  "search": "Buscar tabelas ou colunas...",
+  "aiGenerated": "Documentação gerada por IA",
+  "tableReference": "Referência de tabelas",
+  "rows": "{count, plural, =0 {# linhas} one {# linha} other {# linhas}}",
+  "columns": "{count, plural, =0 {# colunas} one {# coluna} other {# colunas}}",
+  "column": "Coluna",
+  "type": "Tipo",
+  "primary": "Primária",
+  "nullable": "Aceita nulo",
+  "yes": "Sim",
+  "no": "Não",
+  "unknownType": "Desconhecido",
+  "errors": {
+    "generationFailed": "Falha ao gerar a documentação",
+    "noReader": "O fluxo da resposta não está disponível",
+    "unknown": "Erro desconhecido"
+  },
+  "markdown": {
+    "title": "Documentação do banco",
+    "databaseType": "Tipo",
+    "tables": "Tabelas",
+    "aiAnalysis": "Análise por IA",
+    "tableReference": "Referência de tabelas",
+    "rows": "Linhas",
+    "column": "Coluna",
+    "type": "Tipo",
+    "primary": "Primária",
+    "nullable": "Aceita nulo"
+  }
+}

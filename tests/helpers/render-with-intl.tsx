@@ -6,7 +6,7 @@ import { loadMessages } from "@/i18n/load-messages";
 
 export function IntlTestProvider({ children, locale = "en" }: { children?: ReactNode; locale?: Locale }) {
   return (
-    <NextIntlClientProvider locale={locale} messages={loadMessages(locale)}>
+    <NextIntlClientProvider locale={locale} messages={loadMessages(locale)} timeZone="UTC">
       {children}
     </NextIntlClientProvider>
   );

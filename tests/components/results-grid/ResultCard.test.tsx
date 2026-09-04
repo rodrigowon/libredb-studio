@@ -4,7 +4,8 @@ import "../../helpers/mock-navigation";
 
 import React from "react";
 import { afterEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { cleanup, fireEvent } from "@testing-library/react";
+import { renderWithIntl as render } from "../../helpers/render-with-intl";
 import { ResultCard } from "@/components/results-grid/ResultCard";
 
 mock.module("@/lib/data-masking", () => ({
