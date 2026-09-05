@@ -22,7 +22,7 @@ mock.module("next/link", () => ({
 }));
 
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { render, fireEvent, waitFor, act, cleanup } from "@testing-library/react";
+import { fireEvent, waitFor, act, cleanup } from "@testing-library/react";
 
 import { mockGlobalFetch, restoreGlobalFetch } from "../../helpers/mock-fetch";
 import { mockRouterPush, mockRouterRefresh, setMockPathname, resetMockPathname } from "../../helpers/mock-navigation";
@@ -133,3 +133,5 @@ describe("AdminDashboard", () => {
     });
   });
 });
+
+import { renderWithIntl as render } from "../../helpers/render-with-intl";

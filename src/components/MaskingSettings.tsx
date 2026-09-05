@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import React, { useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,6 +37,7 @@ const ALL_MASK_TYPES: MaskType[] = [
 ];
 
 export function MaskingSettings() {
+  const t = useTranslations("Admin");
   const [config, setConfig] = useState<MaskingConfig>(() => loadMaskingConfig());
   const [editingPattern, setEditingPattern] = useState<MaskingPattern | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -48,14 +51,14 @@ export function MaskingSettings() {
 
   const handleSave = useCallback(() => {
     saveMaskingConfig(config);
-    toast.success("Masking configuration saved");
-  }, [config]);
+    toast.success(t("masking.saved"));
+  }, [config, t]);
 
   const handleReset = useCallback(() => {
     setConfig(DEFAULT_MASKING_CONFIG);
     saveMaskingConfig(DEFAULT_MASKING_CONFIG);
-    toast.success("Masking configuration reset to defaults");
-  }, []);
+    toast.success(t("masking.reset"));
+  }, [t]);
 
   const toggleGlobal = useCallback((enabled: boolean) => {
     setConfig((prev) => ({ ...prev, enabled }));
@@ -105,11 +108,11 @@ export function MaskingSettings() {
       .filter(Boolean);
 
     if (!editName.trim()) {
-      toast.error("Pattern name is required");
+      toast.error(t("masking.nameRequired"));
       return;
     }
     if (patterns.length === 0) {
-      toast.error("At least one column pattern is required");
+      toast.error(t("masking.patternRequired"));
       return;
     }
 
@@ -145,7 +148,7 @@ export function MaskingSettings() {
     }
 
     setIsDialogOpen(false);
-  }, [editName, editMaskType, editColumnPatterns, editCustomMask, isNewPattern, editingPattern]);
+  }, [editName, editMaskType, editColumnPatterns, editCustomMask, isNewPattern, editingPattern, t]);
 
   const deletePattern = useCallback((patternId: string) => {
     setConfig((prev) => ({
@@ -161,31 +164,28 @@ export function MaskingSettings() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-xs">
             <Shield className="h-5 w-5 text-purple-400" />
-            Data Masking Settings
-          </CardTitle>
+            {t("ui.DataMaskingSettings")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Global Enable */}
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium">Enable Data Masking Globally</p>
+              <p className="text-xs font-medium">{t("ui.EnableDataMaskingGlobally")}</p>
               <p className="text-xs text-muted-foreground">
-                When enabled, sensitive columns are automatically detected and masked
-              </p>
+                {t("ui.Whenenabledsensitivecolumnsareautomaticallydetectedandmasked")}</p>
             </div>
             <Switch checked={config.enabled} onCheckedChange={toggleGlobal} />
           </div>
 
           {/* Role Permissions */}
           <div className="space-y-3">
-            <h3 className="text-xs font-medium text-fg-secondary">Role Permissions</h3>
+            <h3 className="text-xs font-medium text-fg-secondary">{t("ui.RolePermissions")}</h3>
             <div className="grid gap-3 rounded-lg border border-hairline-strong p-4">
               {/* Admin Row */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="text-xs">
-                    Admin
-                  </Badge>
+                    {t("ui.Admin")}</Badge>
                 </div>
                 <div className="flex items-center gap-6">
                   <label
@@ -194,52 +194,47 @@ export function MaskingSettings() {
                   >
                     <Switch
                       id="masking-admin-can-toggle"
-                      aria-label="Admin can toggle"
+                      aria-label={t("ui.Admincantoggle")}
                       checked={config.roleSettings.admin.canToggle}
                       onCheckedChange={(v) => updateRoleSetting("admin", "canToggle", v)}
                     />
-                    Can toggle
-                  </label>
+                    {t("ui.Cantoggle")}</label>
                   <label
                     htmlFor="masking-admin-can-reveal"
                     className="flex items-center gap-2 text-xs text-fg-tertiary"
                   >
                     <Switch
                       id="masking-admin-can-reveal"
-                      aria-label="Admin can reveal"
+                      aria-label={t("ui.Admincanreveal")}
                       checked={config.roleSettings.admin.canReveal}
                       onCheckedChange={(v) => updateRoleSetting("admin", "canReveal", v)}
                     />
-                    Can reveal
-                  </label>
+                    {t("ui.Canreveal")}</label>
                 </div>
               </div>
               {/* User Row */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="text-xs">
-                    User
-                  </Badge>
+                    {t("ui.User")}</Badge>
                 </div>
                 <div className="flex items-center gap-6">
                   <label htmlFor="masking-user-can-toggle" className="flex items-center gap-2 text-xs text-fg-tertiary">
                     <Switch
                       id="masking-user-can-toggle"
-                      aria-label="User can toggle"
+                      aria-label={t("ui.Usercantoggle")}
                       checked={config.roleSettings.user.canToggle}
                       onCheckedChange={(v) => updateRoleSetting("user", "canToggle", v)}
                     />
-                    Can toggle
-                  </label>
+                    {t("ui.Cantoggle")}</label>
                   <label htmlFor="masking-user-can-reveal" className="flex items-center gap-2 text-xs text-fg-tertiary">
                     <Switch
                       id="masking-user-can-reveal"
-                      aria-label="User can reveal"
+                      aria-label={t("ui.Usercanreveal")}
                       checked={config.roleSettings.user.canReveal}
                       onCheckedChange={(v) => updateRoleSetting("user", "canReveal", v)}
                     />
-                    Can reveal
-                  </label>
+                    {t("ui.Canreveal")}</label>
                 </div>
               </div>
             </div>
@@ -248,11 +243,10 @@ export function MaskingSettings() {
           {/* Masking Patterns */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-medium text-fg-secondary">Masking Patterns</h3>
+              <h3 className="text-xs font-medium text-fg-secondary">{t("ui.MaskingPatterns")}</h3>
               <Button variant="outline" size="sm" className="h-7 text-xs" onClick={openNewDialog}>
                 <Plus strokeWidth={1.5} className="w-3 h-3 mr-1" />
-                Add Pattern
-              </Button>
+                {t("ui.AddPattern")}</Button>
             </div>
             <div className="max-h-[400px] overflow-y-auto rounded-lg border border-hairline editor-scrollbar">
               <div className="space-y-2 p-1">
@@ -268,8 +262,7 @@ export function MaskingSettings() {
                           <span className="text-xs font-medium text-fg">{pattern.name}</span>
                           {pattern.isBuiltin && (
                             <Badge variant="secondary" className="text-[0.625rem] h-4 px-1">
-                              builtin
-                            </Badge>
+                              {t("ui.builtin")}</Badge>
                           )}
                           <Badge variant="outline" className="text-[0.625rem] h-4 px-1">
                             {pattern.maskType}
@@ -281,7 +274,7 @@ export function MaskingSettings() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openEditDialog(pattern)}>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" aria-label={t("masking.edit", { name: pattern.name })} onClick={() => openEditDialog(pattern)}>
                         <Pencil strokeWidth={1.5} className="w-3 h-3 text-fg-muted" />
                       </Button>
                       {!pattern.isBuiltin && (
@@ -289,6 +282,7 @@ export function MaskingSettings() {
                           variant="ghost"
                           size="sm"
                           className="h-7 w-7 p-0 text-red-400 hover:text-red-300"
+                          aria-label={t("masking.remove", { name: pattern.name })}
                           onClick={() => deletePattern(pattern.id)}
                         >
                           <Trash2 strokeWidth={1.5} className="w-3 h-3" />
@@ -303,7 +297,7 @@ export function MaskingSettings() {
 
           {/* Preview */}
           <div className="space-y-3">
-            <h3 className="text-xs font-medium text-fg-secondary">Preview</h3>
+            <h3 className="text-xs font-medium text-fg-secondary">{t("ui.Preview")}</h3>
             <div className="rounded-lg border border-hairline bg-surface p-4 space-y-2">
               {config.patterns
                 .filter((p) => p.enabled)
@@ -328,46 +322,42 @@ export function MaskingSettings() {
           <div className="flex items-center justify-end gap-3 pt-2 border-t border-hairline">
             <Button variant="outline" size="sm" onClick={handleReset}>
               <RotateCcw className="w-3 h-3 mr-1" />
-              Reset Defaults
-            </Button>
+              {t("ui.ResetDefaults")}</Button>
             <Button size="sm" onClick={handleSave}>
               <Save strokeWidth={1.5} className="w-3 h-3 mr-1" />
-              Save Config
-            </Button>
+              {t("ui.SaveConfig")}</Button>
           </div>
         </CardContent>
       </Card>
 
       {/* Edit Pattern Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md" closeLabel={t("ui.Close")}>
           <DialogHeader>
-            <DialogTitle>{isNewPattern ? "Add Masking Pattern" : "Edit Masking Pattern"}</DialogTitle>
+            <DialogTitle>{isNewPattern ? t("ui.AddMaskingPattern") : t("ui.EditMaskingPattern")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <label htmlFor="masking-pattern-name" className="text-xs font-medium text-fg-secondary">
-                Name
-              </label>
+                {t("ui.Name")}</label>
               <Input
                 id="masking-pattern-name"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                placeholder="Pattern name"
+                placeholder={t("ui.Patternname")}
               />
             </div>
             <div className="space-y-2">
               <label htmlFor="masking-mask-type" className="text-xs font-medium text-fg-secondary">
-                Mask Type
-              </label>
+                {t("ui.MaskType")}</label>
               <Select value={editMaskType} onValueChange={(v) => setEditMaskType(v as MaskType)}>
                 <SelectTrigger id="masking-mask-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {ALL_MASK_TYPES.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t} — {MASK_TYPE_PREVIEWS[t].label}
+                  {ALL_MASK_TYPES.map((maskType) => (
+                    <SelectItem key={maskType} value={maskType}>
+                      {maskType} — {t(`masking.${maskType}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -376,20 +366,18 @@ export function MaskingSettings() {
             {editMaskType === "custom" && (
               <div className="space-y-2">
                 <label htmlFor="masking-custom-mask" className="text-xs font-medium text-fg-secondary">
-                  Custom Mask String
-                </label>
+                  {t("ui.CustomMaskString")}</label>
                 <Input
                   id="masking-custom-mask"
                   value={editCustomMask}
                   onChange={(e) => setEditCustomMask(e.target.value)}
-                  placeholder="e.g. ***"
+                  placeholder={t("ui.eg")}
                 />
               </div>
             )}
             <div className="space-y-2">
               <label htmlFor="masking-column-patterns" className="text-xs font-medium text-fg-secondary">
-                Column Patterns (one per line)
-              </label>
+                {t("ui.ColumnPatternsoneperline")}</label>
               <textarea
                 id="masking-column-patterns"
                 className="w-full h-32 bg-surface border border-hairline-strong rounded-md px-3 py-2 text-xs font-mono text-fg focus:outline-none focus:ring-1 focus:ring-purple-500/50 resize-none"
@@ -398,12 +386,11 @@ export function MaskingSettings() {
                 placeholder={"email\ne_mail\nuser_email"}
               />
               <p className="text-xs text-fg-muted">
-                Each line is matched against column names (case-insensitive). Supports regex.
-              </p>
+                {t("ui.EachlineismatchedagainstcolumnnamescaseinsensitiveSupportsregex")}</p>
             </div>
             {/* Preview */}
             <div className="rounded-lg border border-hairline bg-surface p-3">
-              <p className="text-xs text-fg-muted mb-1">Preview:</p>
+              <p className="text-xs text-fg-muted mb-1">{t("ui.PreviewColon")}</p>
               <p className="text-xs font-mono text-purple-300">
                 {getPreviewMasked(editMaskType, editMaskType === "custom" ? editCustomMask : undefined)}
               </p>
@@ -411,11 +398,9 @@ export function MaskingSettings() {
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(false)}>
-              Cancel
-            </Button>
+              {t("ui.Cancel")}</Button>
             <Button size="sm" onClick={handleDialogSave}>
-              Save
-            </Button>
+              {t("ui.Save")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -102,7 +102,7 @@ mock.module("@/lib/db-ui-config", () => ({
 }));
 
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { render, act, cleanup, fireEvent } from "@testing-library/react";
+import { act, cleanup, fireEvent } from "@testing-library/react";
 import React from "react";
 
 import { OperationsTab } from "@/components/admin/tabs/OperationsTab";
@@ -1812,4 +1812,26 @@ describe("OperationsTab", () => {
     // The rows and their controls are there; the operator's own filter hid them.
     expect(queryByTestId("operations-maintenance-unreachable")).toBeNull();
   });
+  test("localizes maintenance chrome but preserves SQL commands and database data", async () => {
+    let view!: ReturnType<typeof render>;
+    await act(async () => { view = render(<OperationsTab />, "pt-BR"); });
+    for (const command of ["ANALYZE", "VACUUM", "REINDEX"]) {
+      expect(view.getByRole("button", { name: "Executar " + command })).toBeTruthy();
+    }
+    expect(view.getByText("users")).toBeTruthy();
+    expect(view.getByText("PG Dev")).toBeTruthy();
+    expect(view.container.textContent).toContain("SELECT 1");
+    expect(view.container.textContent).toContain("1.000");
+    expect(mockRunMaintenance).not.toHaveBeenCalled();
+  });
+
+  test("preserves raw database errors in Portuguese", async () => {
+    monitoringOverride = { data: null, error: "PostgreSQL: permission denied for relation customers" };
+    let view!: ReturnType<typeof render>;
+    await act(async () => { view = render(<OperationsTab />, "pt-BR"); });
+    expect(view.container.textContent).toContain("PostgreSQL: permission denied for relation customers");
+  });
+
 });
+
+import { renderWithIntl as render } from "../../helpers/render-with-intl";

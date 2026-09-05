@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import React from "react";
 import { TriangleAlert } from "lucide-react";
 
@@ -21,10 +23,11 @@ interface PanelUnavailableProps {
  * and that sentence is what tells the user the table is not there.
  */
 export function PanelUnavailable({ message }: PanelUnavailableProps) {
+  const t = useTranslations("Monitoring");
   return (
     <div className="text-center py-8 text-muted-foreground" data-testid="panel-unavailable">
       <TriangleAlert strokeWidth={1.5} className="h-8 w-8 mx-auto mb-2 opacity-50" />
-      <p className="text-xs">This database could not answer this panel.</p>
+      <p className="text-xs">{t("ui.Thisdatabasecouldnotanswerthispanel")}</p>
       <p className="text-xs mt-1 max-w-xl mx-auto break-words" data-testid="panel-unavailable-message">
         {message}
       </p>

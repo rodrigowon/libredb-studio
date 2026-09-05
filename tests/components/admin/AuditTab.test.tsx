@@ -52,7 +52,7 @@ mock.module("@/lib/storage", () => ({
 }));
 
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { render, waitFor, act, cleanup, fireEvent } from "@testing-library/react";
+import { waitFor, act, cleanup, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 
@@ -549,4 +549,16 @@ describe("AuditTab", () => {
     expect(selectTrigger.textContent).toContain("Kill Session");
     expect(rowActions()).toEqual(["KILL"]);
   });
+  test("localizes audit filters and preserves stored SQL", () => {
+    const view = render(<AuditTab />, "pt-BR");
+    expect(view.getByRole("tab", { name: /Operações/ })).toBeTruthy();
+    fireEvent.mouseDown(view.getByRole("tab", { name: /Consultas/ }), { button: 0 });
+    expect(view.getByPlaceholderText("Buscar consulta...")).toBeTruthy();
+    expect(view.container.textContent).toContain("SELECT 1");
+    expect(view.container.textContent).toContain("DROP TABLE x");
+    expect(view.container.textContent).toContain("TestDB");
+  });
+
 });
+
+import { renderWithIntl as render } from "../../helpers/render-with-intl";

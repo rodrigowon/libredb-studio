@@ -57,7 +57,7 @@ mock.module("@/lib/data-masking", () => ({
 }));
 
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { render, fireEvent, within, cleanup, act } from "@testing-library/react";
+import { fireEvent, within, cleanup, act } from "@testing-library/react";
 import React from "react";
 
 import { MaskingSettings } from "@/components/MaskingSettings";
@@ -569,4 +569,14 @@ describe("MaskingSettings", () => {
       expect(body.getByLabelText("Column Patterns (one per line)")).not.toBeNull();
     });
   });
+  test("localizes masking labels without translating technical patterns", () => {
+    const view = render(<MaskingSettings />, "pt-BR");
+    expect(view.getByText("Configurações de mascaramento de dados")).toBeTruthy();
+    expect(view.getByText("Adicionar regra")).toBeTruthy();
+    expect(view.container.textContent).toContain("email");
+    expect(view.getByLabelText("Administrador pode revelar valores")).toBeTruthy();
+  });
+
 });
+
+import { renderWithIntl as render } from "../helpers/render-with-intl";

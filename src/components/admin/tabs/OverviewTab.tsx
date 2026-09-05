@@ -1,5 +1,7 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
+
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,7 +18,7 @@ import {
   ENVIRONMENT_LABELS,
 } from "@/lib/types";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, RadialBarChart, RadialBar } from "recharts";
-import { format, subDays, startOfDay } from "date-fns";
+import { subDays, startOfDay } from "date-fns";
 import {
   Activity,
   RefreshCw,
@@ -106,24 +108,25 @@ function getGaugeColorReverse(value: number, thresholds = { warning: 200, critic
   return GAUGE_COLORS.critical;
 }
 
-function formatRelativeTime(date: Date | string) {
+function formatRelativeTime(date: Date | string, locale: string, justNow: string) {
+  const relative = new Intl.RelativeTimeFormat(locale, { numeric: "always", style: "short" });
   const now = Date.now();
   const then = new Date(date).getTime();
   const diff = Math.max(0, now - then);
   const secs = Math.floor(diff / 1000);
-  if (secs < 60) return "just now";
+  if (secs < 60) return justNow;
   const mins = Math.floor(secs / 60);
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 60) return relative.format(-mins, "minute");
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return relative.format(-hours, "hour");
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return relative.format(-days, "day");
 }
 
-function formatNumber(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return n.toString();
+function formatNumber(n: number, locale: string) {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`;
+  if (n >= 1_000) return `${(n / 1_000).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}K`;
+  return n.toLocaleString(locale);
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -190,6 +193,7 @@ interface OverviewTabProps {
 }
 
 export function OverviewTab({ user }: OverviewTabProps) {
+  const locale = useLocale();
   // Query history is initial-only state: a lazy initializer reads localStorage exactly
   // once per mount. A bare read during render would be impure and would mint a new array
   // identity on every pass, invalidating every memo below it.
@@ -277,14 +281,14 @@ export function OverviewTab({ user }: OverviewTabProps) {
         return t >= dayStart.getTime() && t < dayEnd.getTime();
       });
       byDay.push({
-        day: format(dayStart, "EEE"),
+        day: dayStart.toLocaleDateString(locale, { weekday: "short" }),
         success: dayItems.filter((h) => h.status === "success").length,
         fail: dayItems.filter((h) => h.status !== "success").length,
       });
     }
 
     return { total, successful, failed, successRate, avgTime, byDay };
-  }, [history]);
+  }, [history, locale]);
 
   const healthScore = useMemo(() => {
     if (fleetHealth.length === 0) return 0;
@@ -326,10 +330,10 @@ export function OverviewTab({ user }: OverviewTabProps) {
       else totalBytes += num;
     }
     if (totalBytes === 0) return "0";
-    if (totalBytes >= 1024 * 1024 * 1024) return `${(totalBytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-    if (totalBytes >= 1024 * 1024) return `${(totalBytes / (1024 * 1024)).toFixed(0)} MB`;
-    return `${(totalBytes / 1024).toFixed(0)} KB`;
-  }, [fleetHealth]);
+    if (totalBytes >= 1024 * 1024 * 1024) return `${new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format((totalBytes / (1024 * 1024 * 1024)))} GB`;
+    if (totalBytes >= 1024 * 1024) return `${new Intl.NumberFormat(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format((totalBytes / (1024 * 1024)))} MB`;
+    return `${new Intl.NumberFormat(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format((totalBytes / 1024))} KB`;
+  }, [fleetHealth, locale]);
 
   // Activity feed: merge audit events + recent history
   const activityFeed = useMemo(() => {
@@ -432,6 +436,8 @@ function HeroStatusBanner({
   fleetLoading: boolean;
   onRefresh: () => void;
 }) {
+  const t = useTranslations("Admin");
+  const locale = useLocale();
   const animatedScore = useAnimatedCounter(healthScore);
   const animatedConns = useAnimatedCounter(connections.length);
   const animatedQueries = useAnimatedCounter(queryStats.total);
@@ -445,7 +451,7 @@ function HeroStatusBanner({
   const errorCount = fleetHealth.filter((h) => h.status === "error").length;
 
   const statusText =
-    errorCount > 0 ? "Attention Required" : degradedCount > 0 ? "Degraded Performance" : "All Systems Operational";
+    errorCount > 0 ? t("overview.attention") : degradedCount > 0 ? t("overview.degraded") : t("overview.operational");
 
   const statusColor = errorCount > 0 ? "text-red-400" : degradedCount > 0 ? "text-amber-400" : "text-emerald-400";
 
@@ -498,7 +504,7 @@ function HeroStatusBanner({
               <span className="text-3xl font-bold tabular-nums" style={{ color: gaugeColor }}>
                 {animatedScore}%
               </span>
-              <span className="text-xs text-fg-muted uppercase tracking-wider">Health</span>
+              <span className="text-xs text-fg-muted uppercase tracking-wider">{t("ui.Health")}</span>
             </div>
             {/* LIVE badge — in the padding below the ring, clear of the stroke. */}
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex items-center gap-1.5">
@@ -507,7 +513,7 @@ function HeroStatusBanner({
                 animate={{ scale: [1, 1.05, 1], opacity: [0.7, 1, 0.7] }}
                 transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
               />
-              <span className="text-[0.625rem] font-bold text-emerald-400 uppercase tracking-widest">Live</span>
+              <span className="text-[0.625rem] font-bold text-emerald-400 uppercase tracking-widest">{t("ui.Live")}</span>
             </div>
           </div>
 
@@ -520,18 +526,15 @@ function HeroStatusBanner({
                 <div className="flex gap-1.5 text-xs">
                   {healthyCount > 0 && (
                     <Badge variant="outline" className="border-emerald-500/30 text-emerald-400 h-5 text-[0.625rem]">
-                      {healthyCount} healthy
-                    </Badge>
+                      {healthyCount} {t("ui.healthy", { count: healthyCount })}</Badge>
                   )}
                   {degradedCount > 0 && (
                     <Badge variant="outline" className="border-amber-500/30 text-amber-400 h-5 text-[0.625rem]">
-                      {degradedCount} degraded
-                    </Badge>
+                      {degradedCount} {t("ui.degraded", { count: degradedCount })}</Badge>
                   )}
                   {errorCount > 0 && (
                     <Badge variant="outline" className="border-red-500/30 text-red-400 h-5 text-[0.625rem]">
-                      {errorCount} error
-                    </Badge>
+                      {errorCount} {t("ui.error")}</Badge>
                   )}
                 </div>
               </div>
@@ -549,25 +552,24 @@ function HeroStatusBanner({
                   disabled={fleetLoading}
                 >
                   <RefreshCw className={`w-3 h-3 mr-1 ${fleetLoading ? "animate-spin" : ""}`} />
-                  Refresh
-                </Button>
+                  {t("ui.Refresh")}</Button>
               </div>
             </div>
 
             {/* Counter Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <CounterCard icon={Link2} label="Connections" value={animatedConns} suffix="" color="text-blue-400" />
+              <CounterCard icon={Link2} label={t("ui.Connections")} value={animatedConns} suffix="" color="text-blue-400" />
               <CounterCard
                 icon={Zap}
-                label="Total Queries"
+                label={t("ui.TotalQueries")}
                 value={animatedQueries}
                 suffix=""
                 color="text-purple-400"
-                formatValue={formatNumber}
+                formatValue={(value) => formatNumber(value, locale)}
               />
               <CounterCard
                 icon={HardDrive}
-                label="DB Size"
+                label={t("ui.DBSize")}
                 value={totalDBSize}
                 suffix=""
                 color="text-emerald-400"
@@ -575,7 +577,7 @@ function HeroStatusBanner({
               />
               <CounterCard
                 icon={Activity}
-                label="Today"
+                label={t("ui.Today")}
                 value={animatedToday}
                 suffix=""
                 color="text-amber-400"
@@ -608,6 +610,7 @@ function CounterCard({
   isString?: boolean;
   formatValue?: (n: number) => string;
 }) {
+  const t = useTranslations("Admin");
   const displayValue = isString ? value : formatValue ? formatValue(value as number) : value;
 
   return (
@@ -625,8 +628,7 @@ function CounterCard({
           {trend > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
           <span>
             {trend > 0 ? "+" : ""}
-            {trend} vs yesterday
-          </span>
+            {trend} {t("ui.vsyesterday")}</span>
         </div>
       )}
     </div>
@@ -644,6 +646,7 @@ function FleetHealthSection({
   fleetLoading: boolean;
   connections: DatabaseConnection[];
 }) {
+  const t = useTranslations("Admin");
   if (connections.length === 0) return null;
 
   const getStatusColor = (status: string) => {
@@ -679,9 +682,9 @@ function FleetHealthSection({
     <motion.div variants={itemVariants}>
       <div className="flex items-center gap-2 mb-3">
         <Radio className="h-4 w-4 text-blue-400" />
-        <h2 className="text-sm font-bold text-fg-secondary">Fleet Status</h2>
+        <h2 className="text-sm font-bold text-fg-secondary">{t("ui.FleetStatus")}</h2>
         <span className="text-xs text-fg-subtle">
-          {fleetHealth.length} endpoint{fleetHealth.length !== 1 ? "s" : ""}
+          {fleetHealth.length} {t("ui.endpoint")}{fleetHealth.length !== 1 ? "s" : ""}
         </span>
       </div>
 
@@ -773,7 +776,7 @@ function FleetHealthSection({
                   {item.activeConnections !== undefined && (
                     <>
                       <span className="text-fg-faint">&middot;</span>
-                      <span className="font-mono text-fg-tertiary">{item.activeConnections} conn</span>
+                      <span className="font-mono text-fg-tertiary">{item.activeConnections} {t("ui.conn", { count: item.activeConnections })}</span>
                     </>
                   )}
                 </div>
@@ -803,22 +806,23 @@ function KeyMetricsSection({
   todayQueries: number;
   yesterdayQueries: number;
 }) {
+  const t = useTranslations("Admin");
   return (
     <motion.div variants={itemVariants}>
       <div className="flex items-center gap-2 mb-3">
         <Gauge className="h-4 w-4 text-blue-400" />
-        <h2 className="text-sm font-bold text-fg-secondary">Key Metrics</h2>
+        <h2 className="text-sm font-bold text-fg-secondary">{t("ui.KeyMetrics")}</h2>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <MetricGauge
-          label="Query Success"
+          label={t("ui.QuerySuccess")}
           value={queryStats.successRate}
           unit="%"
           color={getGaugeColor(queryStats.successRate)}
         />
-        <MetricGauge label="Fleet Health" value={healthScore} unit="%" color={getGaugeColor(healthScore)} />
+        <MetricGauge label={t("ui.FleetHealth")} value={healthScore} unit="%" color={getGaugeColor(healthScore)} />
         <MetricGauge
-          label="Avg Response"
+          label={t("ui.AvgResponse")}
           value={Math.min(avgLatency, 500)}
           displayValue={`${avgLatency}`}
           unit="ms"
@@ -826,7 +830,7 @@ function KeyMetricsSection({
           color={getGaugeColorReverse(avgLatency)}
         />
         <MetricBigNumber
-          label="Total Queries"
+          label={t("ui.TotalQueries")}
           value={queryStats.total}
           trend={todayQueries - yesterdayQueries}
           icon={Zap}
@@ -852,6 +856,7 @@ function MetricGauge({
   maxValue?: number;
 }) {
   const pct = Math.round((value / maxValue) * 100);
+  const locale = useLocale();
   const animatedValue = useAnimatedCounter(value);
   const gaugeData = [{ value: pct, fill: color }];
 
@@ -872,7 +877,7 @@ function MetricGauge({
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-xl font-bold tabular-nums" style={{ color }}>
-            {displayValue ?? animatedValue}
+            {displayValue ?? animatedValue.toLocaleString(locale)}
           </span>
           <span className="text-[0.625rem] text-fg-muted">{unit}</span>
         </div>
@@ -893,6 +898,8 @@ function MetricBigNumber({
   trend: number;
   icon: React.ComponentType<{ className?: string }>;
 }) {
+  const t = useTranslations("Admin");
+  const locale = useLocale();
   const animatedValue = useAnimatedCounter(value);
 
   return (
@@ -900,15 +907,14 @@ function MetricBigNumber({
       <div className="p-2 rounded-lg bg-purple-500/10 mb-2">
         <Icon className="w-5 h-5 text-purple-400" />
       </div>
-      <span className="text-3xl font-bold text-fg tabular-nums">{formatNumber(animatedValue)}</span>
+      <span className="text-3xl font-bold text-fg tabular-nums">{formatNumber(animatedValue, locale)}</span>
       <span className="text-xs text-fg-muted mt-1 uppercase tracking-wider">{label}</span>
       {trend !== 0 && (
         <div className={`flex items-center gap-0.5 mt-1.5 text-xs ${trend > 0 ? "text-emerald-400" : "text-red-400"}`}>
           {trend > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
           <span>
             {trend > 0 ? "+" : ""}
-            {trend} today
-          </span>
+            {trend} {t("ui.today")}</span>
         </div>
       )}
     </div>
@@ -924,6 +930,8 @@ function AnalyticsSection({
   queryStats: { total: number; byDay: { day: string; success: number; fail: number }[] };
   activityFeed: ActivityFeedItem[];
 }) {
+  const t = useTranslations("Admin");
+  const locale = useLocale();
   const tooltipStyle = chartTooltipStyle(useEffectiveTheme());
 
   return (
@@ -933,10 +941,9 @@ function AnalyticsSection({
         <div className="rounded-xl border border-hairline bg-panel p-5">
           <h3 className="text-sm font-bold text-fg-secondary mb-4 flex items-center gap-2">
             <Activity className="h-4 w-4 text-blue-400" />
-            Query Volume (7 days)
-          </h3>
+            {t("ui.QueryVolume7days")}</h3>
           {queryStats.total === 0 ? (
-            <div className="flex items-center justify-center py-8 text-sm text-fg-subtle">No query history yet.</div>
+            <div className="flex items-center justify-center py-8 text-sm text-fg-subtle">{t("ui.Noqueryhistoryyet")}</div>
           ) : (
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -963,7 +970,7 @@ function AnalyticsSection({
                   <Area
                     type="monotone"
                     dataKey="success"
-                    name="Success"
+                    name={t("ui.Success")}
                     stroke="#10b981"
                     strokeWidth={2}
                     fill="url(#gradSuccess)"
@@ -973,7 +980,7 @@ function AnalyticsSection({
                   <Area
                     type="monotone"
                     dataKey="fail"
-                    name="Failed"
+                    name={t("ui.Failed")}
                     stroke="#ef4444"
                     strokeWidth={2}
                     fill="url(#gradFail)"
@@ -990,10 +997,9 @@ function AnalyticsSection({
         <div className="rounded-xl border border-hairline bg-panel p-5">
           <h3 className="text-sm font-bold text-fg-secondary mb-4 flex items-center gap-2">
             <Clock className="h-4 w-4 text-blue-400" />
-            Recent Activity
-          </h3>
+            {t("ui.RecentActivity")}</h3>
           {activityFeed.length === 0 ? (
-            <div className="flex items-center justify-center py-8 text-sm text-fg-subtle">No recent activity.</div>
+            <div className="flex items-center justify-center py-8 text-sm text-fg-subtle">{t("ui.Norecentactivity")}</div>
           ) : (
             <div className="max-h-[260px] overflow-y-auto editor-scrollbar space-y-1">
               <AnimatePresence>
@@ -1023,7 +1029,7 @@ function AnalyticsSection({
                       ) : (
                         <CircleX className="w-3 h-3 text-red-500" />
                       )}
-                      <span className="text-xs text-fg-subtle whitespace-nowrap">{formatRelativeTime(item.time)}</span>
+                      <span className="text-xs text-fg-subtle whitespace-nowrap">{formatRelativeTime(item.time, locale, t("overview.justNow"))}</span>
                     </div>
                   </motion.div>
                 ))}
@@ -1039,10 +1045,11 @@ function AnalyticsSection({
 // ─── SECTION 5: Quick Actions ────────────────────────────────────────────────
 
 function QuickActionsSection() {
+  const t = useTranslations("Admin");
   const actions = [
     {
-      label: "Maintenance",
-      description: "VACUUM, ANALYZE, and optimize your databases",
+      label: t("ui.Maintenance"),
+      description: t("overview.maintenanceDescription"),
       icon: Wrench,
       href: "/admin/operations",
       gradient: "from-blue-500/20 to-cyan-500/20",
@@ -1050,8 +1057,8 @@ function QuickActionsSection() {
       borderColor: "hover:border-blue-500/30",
     },
     {
-      label: "Security & Masking",
-      description: "Configure data masking rules and access control",
+      label: t("overview.security"),
+      description: t("overview.securityDescription"),
       icon: Shield,
       href: "/admin/security",
       gradient: "from-emerald-500/20 to-teal-500/20",
@@ -1059,8 +1066,8 @@ function QuickActionsSection() {
       borderColor: "hover:border-emerald-500/30",
     },
     {
-      label: "Real-time Monitoring",
-      description: "Live metrics, connection pools, and alert thresholds",
+      label: t("overview.monitoring"),
+      description: t("overview.monitoringDescription"),
       icon: Activity,
       href: "/admin/monitoring",
       gradient: "from-purple-500/20 to-pink-500/20",
@@ -1073,7 +1080,7 @@ function QuickActionsSection() {
     <motion.div variants={itemVariants}>
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="h-4 w-4 text-blue-400" />
-        <h2 className="text-sm font-bold text-fg-secondary">Quick Actions</h2>
+        <h2 className="text-sm font-bold text-fg-secondary">{t("ui.QuickActions")}</h2>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {actions.map((action) => (
@@ -1095,7 +1102,7 @@ function QuickActionsSection() {
               <h3 className="text-sm font-bold text-fg mb-1">{action.label}</h3>
               <p className="text-xs text-fg-muted mb-3">{action.description}</p>
               <div className="flex items-center gap-1 text-xs text-fg-subtle group-hover:text-fg-tertiary transition-colors">
-                <span>Open</span>
+                <span>{t("ui.Open")}</span>
                 <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
               </div>
             </div>
@@ -1109,22 +1116,23 @@ function QuickActionsSection() {
 // ─── Empty State ─────────────────────────────────────────────────────────────
 
 function EmptyState() {
+  const t = useTranslations("Admin");
   const visibleProviderTypes = getEnabledDatabaseTypes();
   const features = [
     {
       icon: Database,
-      label: `${visibleProviderTypes.length} DB Types`,
+      label: t("overview.dbTypes", { count: visibleProviderTypes.length }),
       description: visibleProviderTypes.map((type) => getDBConfig(type).label).join(", "),
     },
     {
       icon: Sparkles,
-      label: "AI Assistance",
-      description: "Plan explanations, safety checks and schema docs, on your own model",
+      label: t("overview.ai"),
+      description: t("overview.aiDescription"),
     },
     {
       icon: Activity,
-      label: "Real-time Monitor",
-      description: "Live metrics, alerts, and connection pool monitoring",
+      label: t("overview.monitor"),
+      description: t("overview.monitorDescription"),
     },
   ];
 
@@ -1167,11 +1175,9 @@ function EmptyState() {
         </motion.div>
 
         <motion.h2 variants={itemVariants} className="text-2xl font-bold text-fg mb-2">
-          Welcome to Command Center
-        </motion.h2>
+          {t("ui.WelcometoCommandCenter")}</motion.h2>
         <motion.p variants={itemVariants} className="text-sm text-fg-muted max-w-md mb-8">
-          Connect your first database to unlock real-time fleet monitoring, analytics, and intelligent query assistance.
-        </motion.p>
+          {t("ui.Connectyourfirstdatabasetounlockrealtimefleetmonitoringanalyticsandintelligentqueryassistance")}</motion.p>
 
         {/* Feature cards */}
         <motion.div
@@ -1199,7 +1205,7 @@ function EmptyState() {
             asChild
             className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 shadow-[0_0_30px_rgba(59,130,246,0.3)] hover:shadow-[0_0_40px_rgba(59,130,246,0.4)] transition-all"
           >
-            <Link href="/">Connect Your First Database</Link>
+            <Link href="/">{t("ui.ConnectYourFirstDatabase")}</Link>
           </Button>
         </motion.div>
       </motion.div>

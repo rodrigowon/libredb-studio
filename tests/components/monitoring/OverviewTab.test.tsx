@@ -4,7 +4,7 @@ import "../../helpers/mock-navigation";
 
 import React from "react";
 import { afterEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup} from "@testing-library/react";
 import { OverviewTab } from "@/components/monitoring/tabs/OverviewTab";
 import type { MonitoringData } from "@/lib/db/types";
 import type { TimeSeriesPoint } from "@/lib/time-series-buffer";
@@ -429,4 +429,13 @@ describe("Quick Stats publishes no cap-bounded figure as a count", () => {
       Number(getByTestId("quick-stat-active").textContent) + Number(getByTestId("quick-stat-idle").textContent);
     expect(total).toBe(50);
   });
+  test("localizes metric chrome while preserving database version and units", () => {
+    const view = render(<OverviewTab data={makeData()} loading={false} />, "pt-BR");
+    expect(view.getByText("Tamanho do banco")).toBeTruthy();
+    expect(view.getByText("PostgreSQL 16.3")).toBeTruthy();
+    expect(view.getByText("1.8 GB")).toBeTruthy();
+  });
+
 });
+
+import { renderWithIntl as render } from "../../helpers/render-with-intl";

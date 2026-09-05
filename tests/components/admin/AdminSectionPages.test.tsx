@@ -24,7 +24,7 @@ const { default: AdminSecurityPage } = await import("@/app/admin/security/page")
 const { default: AdminAuditPage } = await import("@/app/admin/audit/page");
 
 import { afterEach, describe, expect, test } from "bun:test";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup} from "@testing-library/react";
 
 describe("Admin section pages", () => {
   afterEach(() => {
@@ -55,3 +55,5 @@ describe("Admin section pages", () => {
     expect(getByTestId("audit-tab")).not.toBeNull();
   });
 });
+
+import { renderWithIntl as render } from "../../helpers/render-with-intl";

@@ -68,7 +68,7 @@ mock.module("next/link", () => ({
 }));
 
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { render, waitFor, act, cleanup, fireEvent } from "@testing-library/react";
+import { waitFor, act, cleanup, fireEvent } from "@testing-library/react";
 import React from "react";
 
 import { mockGlobalFetch, restoreGlobalFetch } from "../../helpers/mock-fetch";
@@ -351,9 +351,10 @@ describe("OverviewTab", () => {
       expect(queryByText("Executed query orders")).not.toBeNull();
       expect(queryByText("Killed session session-42")).not.toBeNull();
       // formatRelativeTime: minutes / hours / days branches
-      expect(queryByText("5m ago")).not.toBeNull();
-      expect(queryByText("5h ago")).not.toBeNull();
-      expect(queryByText("3d ago")).not.toBeNull();
+      const relative = new Intl.RelativeTimeFormat("en", { numeric: "always", style: "short" });
+      expect(queryByText(relative.format(-5, "minute"))).not.toBeNull();
+      expect(queryByText(relative.format(-5, "hour"))).not.toBeNull();
+      expect(queryByText(relative.format(-3, "day"))).not.toBeNull();
     });
   });
 
@@ -678,3 +679,5 @@ describe("OverviewTab", () => {
     expect(color).toBe("#3f3f46");
   });
 });
+
+import { renderWithIntl as render } from "../../helpers/render-with-intl";

@@ -1,5 +1,7 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
+
 import { useEffect, useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -23,11 +25,12 @@ import type { AuditEvent } from "@/lib/audit";
 import { storage } from "@/lib/storage";
 import type { QueryHistoryItem } from "@/lib/types";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { format, subDays, startOfDay } from "date-fns";
+import { subDays, startOfDay } from "date-fns";
 import { useEffectiveTheme } from "@/hooks/use-effective-theme";
 import { chartTooltipStyle } from "@/lib/charts/palette";
 
 export function AuditTab() {
+  const t = useTranslations("Admin");
   return (
     <div className="space-y-6">
       <Tabs defaultValue="operations">
@@ -37,22 +40,19 @@ export function AuditTab() {
             className="gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-400 data-[state=active]:bg-transparent data-[state=active]:text-blue-400 text-fg-muted text-xs px-4"
           >
             <Wrench className="h-3.5 w-3.5" />
-            Operations
-          </TabsTrigger>
+            {t("ui.Operations")}</TabsTrigger>
           <TabsTrigger
             value="queries"
             className="gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-400 data-[state=active]:bg-transparent data-[state=active]:text-blue-400 text-fg-muted text-xs px-4"
           >
             <SearchIcon className="h-3.5 w-3.5" />
-            Queries
-          </TabsTrigger>
+            {t("ui.Queries")}</TabsTrigger>
           <TabsTrigger
             value="stats"
             className="gap-2 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-400 data-[state=active]:bg-transparent data-[state=active]:text-blue-400 text-fg-muted text-xs px-4"
           >
             <ChartColumn className="h-3.5 w-3.5" />
-            Stats
-          </TabsTrigger>
+            {t("ui.Stats")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="operations" className="mt-4">
@@ -87,6 +87,8 @@ async function loadAuditEvents(type: string): Promise<AuditEvent[]> {
 }
 
 function OperationsAudit() {
+  const locale = useLocale();
+  const t = useTranslations("Admin");
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -152,23 +154,23 @@ function OperationsAudit() {
       <div className="flex items-center gap-2 flex-wrap">
         <Select value={typeFilter} onValueChange={handleTypeChange}>
           <SelectTrigger className="w-[140px] h-8 text-xs bg-panel border-hairline-strong">
-            <SelectValue placeholder="Type" />
+            <SelectValue placeholder={t("ui.Type")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="maintenance">Maintenance</SelectItem>
-            <SelectItem value="kill_session">Kill Session</SelectItem>
-            <SelectItem value="masking_config">Masking</SelectItem>
-            <SelectItem value="threshold_config">Thresholds</SelectItem>
-            <SelectItem value="login_success">Login Success</SelectItem>
-            <SelectItem value="login_failure">Login Failure</SelectItem>
-            <SelectItem value="logout">Logout</SelectItem>
-            <SelectItem value="permission_denied">Permission Denied</SelectItem>
-            <SelectItem value="rate_limit_exceeded">Rate Limited</SelectItem>
+            <SelectItem value="all">{t("ui.AllTypes")}</SelectItem>
+            <SelectItem value="maintenance">{t("ui.Maintenance")}</SelectItem>
+            <SelectItem value="kill_session">{t("ui.KillSession")}</SelectItem>
+            <SelectItem value="masking_config">{t("ui.Masking")}</SelectItem>
+            <SelectItem value="threshold_config">{t("ui.Thresholds")}</SelectItem>
+            <SelectItem value="login_success">{t("ui.LoginSuccess")}</SelectItem>
+            <SelectItem value="login_failure">{t("ui.LoginFailure")}</SelectItem>
+            <SelectItem value="logout">{t("ui.Logout")}</SelectItem>
+            <SelectItem value="permission_denied">{t("ui.PermissionDenied")}</SelectItem>
+            <SelectItem value="rate_limit_exceeded">{t("ui.RateLimited")}</SelectItem>
           </SelectContent>
         </Select>
         <Input
-          placeholder="Search..."
+          placeholder={t("ui.Search")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-[180px] h-8 text-xs bg-panel border-hairline-strong"
@@ -181,17 +183,15 @@ function OperationsAudit() {
           disabled={loading}
         >
           <RefreshCw className={`w-3 h-3 mr-1.5 ${loading ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
+          {t("ui.Refresh")}</Button>
       </div>
 
       {/* Stats Summary */}
       <div className="flex items-center gap-4 text-xs text-fg-muted">
         <span>
-          Total: <span className="font-bold text-fg-secondary">{events.length}</span> ops
-        </span>
+          {t("ui.TotalColon")}{" "}<span className="font-bold text-fg-secondary">{events.length.toLocaleString(locale)}</span> {t("ui.ops", { count: events.length })}</span>
         <span>
-          Success: <span className="font-bold text-emerald-400">{successRate}%</span>
+          {t("ui.SuccessColon")}{" "}<span className="font-bold text-emerald-400">{successRate.toLocaleString(locale)}%</span>
         </span>
       </div>
 
@@ -206,22 +206,21 @@ function OperationsAudit() {
         ) : filteredEvents.length === 0 ? (
           <div className="p-8 text-center text-fg-subtle text-sm">
             <Wrench className="h-8 w-8 mx-auto mb-2 opacity-30" />
-            <p>No audit events found.</p>
-            <p className="text-xs mt-1 text-fg-faint">Operations will appear here when maintenance tasks are run.</p>
+            <p>{t("ui.Noauditeventsfound")}</p>
+            <p className="text-xs mt-1 text-fg-faint">{t("ui.Operationswillappearherewhenmaintenancetasksarerun")}</p>
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow className="border-hairline hover:bg-transparent">
                 <TableHead className="text-xs text-fg-muted font-bold uppercase w-[30px]" />
-                <TableHead className="text-xs text-fg-muted font-bold uppercase">Time</TableHead>
-                <TableHead className="text-xs text-fg-muted font-bold uppercase">Action</TableHead>
-                <TableHead className="text-xs text-fg-muted font-bold uppercase">Target</TableHead>
+                <TableHead className="text-xs text-fg-muted font-bold uppercase">{t("ui.Time")}</TableHead>
+                <TableHead className="text-xs text-fg-muted font-bold uppercase">{t("ui.Action")}</TableHead>
+                <TableHead className="text-xs text-fg-muted font-bold uppercase">{t("ui.Target")}</TableHead>
                 <TableHead className="text-xs text-fg-muted font-bold uppercase hidden md:table-cell">
-                  Connection
-                </TableHead>
-                <TableHead className="text-xs text-fg-muted font-bold uppercase hidden lg:table-cell">User</TableHead>
-                <TableHead className="text-right text-xs text-fg-muted font-bold uppercase">Duration</TableHead>
+                  {t("ui.Connection")}</TableHead>
+                <TableHead className="text-xs text-fg-muted font-bold uppercase hidden lg:table-cell">{t("ui.User")}</TableHead>
+                <TableHead className="text-right text-xs text-fg-muted font-bold uppercase">{t("ui.Duration")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -235,7 +234,7 @@ function OperationsAudit() {
                     )}
                   </TableCell>
                   <TableCell className="py-2 font-mono text-xs text-fg-muted">
-                    {new Date(event.timestamp).toLocaleString([], {
+                    {new Date(event.timestamp).toLocaleString(locale, {
                       month: "short",
                       day: "numeric",
                       hour: "2-digit",
@@ -255,7 +254,7 @@ function OperationsAudit() {
                   </TableCell>
                   <TableCell className="py-2 text-xs text-fg-muted hidden lg:table-cell">{event.user}</TableCell>
                   <TableCell className="py-2 text-right font-mono text-xs text-fg-muted">
-                    {event.duration ? `${event.duration}ms` : "-"}
+                    {event.duration ? `${event.duration.toLocaleString(locale)}ms` : "-"}
                   </TableCell>
                 </TableRow>
               ))}
@@ -268,6 +267,8 @@ function OperationsAudit() {
 }
 
 function QueryAudit() {
+  const locale = useLocale();
+  const t = useTranslations("Admin");
   // Read once, at mount: the initializer runs only on the initial render, so the
   // localStorage hit does not repeat and `history`'s identity stays stable.
   const [history] = useState<QueryHistoryItem[]>(() => storage.getHistory());
@@ -297,25 +298,23 @@ function QueryAudit() {
       <div className="flex items-center gap-2 flex-wrap">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[120px] h-8 text-xs bg-panel border-hairline-strong">
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder={t("ui.Status")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="success">Success</SelectItem>
-            <SelectItem value="error">Error</SelectItem>
+            <SelectItem value="all">{t("ui.All")}</SelectItem>
+            <SelectItem value="success">{t("ui.Success")}</SelectItem>
+            <SelectItem value="error">{t("ui.Error")}</SelectItem>
           </SelectContent>
         </Select>
         <Input
-          placeholder="Search query..."
+          placeholder={t("ui.Searchquery")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-[200px] h-8 text-xs bg-panel border-hairline-strong"
         />
         <div className="text-xs text-fg-muted ml-auto">
-          <span className="font-bold text-fg-secondary">{history.length}</span> queries
-          <span className="mx-2">&middot;</span>
-          <span className="text-emerald-400 font-bold">{successRate}%</span> success
-        </div>
+          <span className="font-bold text-fg-secondary">{history.length.toLocaleString(locale)}</span> {t("ui.queries", { count: history.length })}<span className="mx-2">&middot;</span>
+          <span className="text-emerald-400 font-bold">{successRate.toLocaleString(locale)}%</span> {t("ui.success")}</div>
       </div>
 
       {/* Query History Table */}
@@ -323,22 +322,20 @@ function QueryAudit() {
         {filteredHistory.length === 0 ? (
           <div className="p-8 text-center text-fg-subtle text-sm">
             <SearchIcon className="h-8 w-8 mx-auto mb-2 opacity-30" />
-            <p>No query history found.</p>
+            <p>{t("ui.Noqueryhistoryfound")}</p>
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow className="border-hairline hover:bg-transparent">
                 <TableHead className="text-xs text-fg-muted font-bold uppercase w-[30px]" />
-                <TableHead className="text-xs text-fg-muted font-bold uppercase">Time</TableHead>
-                <TableHead className="text-xs text-fg-muted font-bold uppercase">Query</TableHead>
+                <TableHead className="text-xs text-fg-muted font-bold uppercase">{t("ui.Time")}</TableHead>
+                <TableHead className="text-xs text-fg-muted font-bold uppercase">{t("ui.Query")}</TableHead>
                 <TableHead className="text-xs text-fg-muted font-bold uppercase hidden md:table-cell">
-                  Connection
-                </TableHead>
-                <TableHead className="text-right text-xs text-fg-muted font-bold uppercase">Duration</TableHead>
+                  {t("ui.Connection")}</TableHead>
+                <TableHead className="text-right text-xs text-fg-muted font-bold uppercase">{t("ui.Duration")}</TableHead>
                 <TableHead className="text-right text-xs text-fg-muted font-bold uppercase hidden sm:table-cell">
-                  Rows
-                </TableHead>
+                  {t("ui.Rows")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -352,7 +349,7 @@ function QueryAudit() {
                     )}
                   </TableCell>
                   <TableCell className="py-2 font-mono text-xs text-fg-muted whitespace-nowrap">
-                    {new Date(item.executedAt).toLocaleString([], {
+                    {new Date(item.executedAt).toLocaleString(locale, {
                       month: "short",
                       day: "numeric",
                       hour: "2-digit",
@@ -368,7 +365,7 @@ function QueryAudit() {
                     {item.connectionName || "-"}
                   </TableCell>
                   <TableCell className="py-2 text-right font-mono text-xs text-fg-muted">
-                    {item.executionTime}ms
+                    {item.executionTime.toLocaleString(locale)}ms
                   </TableCell>
                   <TableCell className="py-2 text-right font-mono text-xs text-fg-muted hidden sm:table-cell">
                     {item.rowCount ?? "-"}
@@ -384,6 +381,8 @@ function QueryAudit() {
 }
 
 function AuditStats() {
+  const locale = useLocale();
+  const t = useTranslations("Admin");
   // Read once, at mount — see QueryAudit above.
   const [history] = useState<QueryHistoryItem[]>(() => storage.getHistory());
   const tooltipStyle = chartTooltipStyle(useEffectiveTheme());
@@ -403,7 +402,7 @@ function AuditStats() {
         const t = new Date(h.executedAt).getTime();
         return t >= dayStart.getTime() && t < dayEnd.getTime();
       }).length;
-      byDay.push({ day: format(dayStart, "EEE"), count });
+      byDay.push({ day: dayStart.toLocaleDateString(locale, { weekday: "short" }), count });
     }
 
     // Most active connections
@@ -420,30 +419,30 @@ function AuditStats() {
       .slice(0, 5);
 
     return { total, successful, successRate, avgTime, byDay, topConnections };
-  }, [history]);
+  }, [history, locale]);
 
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="rounded-xl border border-hairline bg-panel p-4">
-          <div className="text-xs text-fg-muted mb-1">Total Queries</div>
-          <div className="text-2xl font-bold text-fg tabular-nums">{stats.total}</div>
+          <div className="text-xs text-fg-muted mb-1">{t("ui.TotalQueries")}</div>
+          <div className="text-2xl font-bold text-fg tabular-nums">{stats.total.toLocaleString(locale)}</div>
         </div>
         <div className="rounded-xl border border-hairline bg-panel p-4">
-          <div className="text-xs text-fg-muted mb-1">Success Rate</div>
-          <div className="text-2xl font-bold text-emerald-400 tabular-nums">{stats.successRate}%</div>
+          <div className="text-xs text-fg-muted mb-1">{t("ui.SuccessRate")}</div>
+          <div className="text-2xl font-bold text-emerald-400 tabular-nums">{stats.successRate.toLocaleString(locale)}%</div>
           <Progress value={stats.successRate} className="h-1 mt-2" />
         </div>
         <div className="rounded-xl border border-hairline bg-panel p-4">
-          <div className="text-xs text-fg-muted mb-1">Avg Duration</div>
+          <div className="text-xs text-fg-muted mb-1">{t("ui.AvgDuration")}</div>
           <div className="text-2xl font-bold text-fg tabular-nums">
-            {stats.avgTime}
+            {stats.avgTime.toLocaleString(locale)}
             <span className="text-sm text-fg-muted ml-1">ms</span>
           </div>
         </div>
         <div className="rounded-xl border border-hairline bg-panel p-4">
-          <div className="text-xs text-fg-muted mb-1">Failed</div>
+          <div className="text-xs text-fg-muted mb-1">{t("ui.Failed")}</div>
           <div className="text-2xl font-bold text-red-400 tabular-nums">{stats.total - stats.successful}</div>
         </div>
       </div>
@@ -453,10 +452,9 @@ function AuditStats() {
         <div className="rounded-xl border border-hairline bg-panel p-5">
           <h3 className="text-sm font-bold text-fg-secondary mb-4 flex items-center gap-2">
             <Activity className="h-4 w-4 text-blue-400" />
-            Query Activity (7 days)
-          </h3>
+            {t("ui.QueryActivity7days")}</h3>
           {stats.total === 0 ? (
-            <div className="flex items-center justify-center py-8 text-sm text-fg-subtle">No query history yet.</div>
+            <div className="flex items-center justify-center py-8 text-sm text-fg-subtle">{t("ui.Noqueryhistoryyet")}</div>
           ) : (
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -470,7 +468,7 @@ function AuditStats() {
                     width={30}
                   />
                   <Tooltip contentStyle={tooltipStyle} />
-                  <Bar dataKey="count" name="Queries" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="count" name={t("ui.Queries")} fill="#3b82f6" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -481,10 +479,9 @@ function AuditStats() {
         <div className="rounded-xl border border-hairline bg-panel p-5">
           <h3 className="text-sm font-bold text-fg-secondary mb-4 flex items-center gap-2">
             <Clock className="h-4 w-4 text-blue-400" />
-            Most Active Connections
-          </h3>
+            {t("ui.MostActiveConnections")}</h3>
           {stats.topConnections.length === 0 ? (
-            <div className="flex items-center justify-center py-8 text-sm text-fg-subtle">No data yet.</div>
+            <div className="flex items-center justify-center py-8 text-sm text-fg-subtle">{t("ui.Nodatayet")}</div>
           ) : (
             <div className="space-y-3">
               {stats.topConnections.map((tc) => {
@@ -494,7 +491,7 @@ function AuditStats() {
                     <div className="flex items-center justify-between text-xs">
                       <span className="truncate max-w-[160px] text-fg-tertiary">{tc.name}</span>
                       <span className="text-fg-muted">
-                        {tc.count} ({pct}%)
+                        {tc.count.toLocaleString(locale)} ({pct}%)
                       </span>
                     </div>
                     <Progress value={pct} className="h-1" />

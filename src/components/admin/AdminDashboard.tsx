@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { LocaleSwitcher } from "@/components/locale-switcher";
+import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
@@ -22,13 +24,14 @@ interface AdminDashboardProps {
 }
 
 export default function AdminDashboard({ children }: AdminDashboardProps) {
+  const t = useTranslations("Admin");
   const router = useRouter();
   const pathname = usePathname();
   const activeSection = adminSectionFromPathname(pathname);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
-    toast.success("Logged out successfully");
+    toast.success(t("loggedOut"));
     router.push("/login");
     router.refresh();
   };
@@ -38,10 +41,11 @@ export default function AdminDashboard({ children }: AdminDashboardProps) {
       <header className="border-b border-hairline bg-surface">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-3 flex items-center justify-between">
           <div className="space-y-0.5">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-fg">Admin Dashboard</h1>
-            <p className="text-xs text-fg-muted">Manage your application and infrastructure.</p>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-fg">{t("title")}</h1>
+            <p className="text-xs text-fg-muted">{t("description")}</p>
           </div>
           <div className="flex gap-2">
+            <LocaleSwitcher />
             <Button
               variant="outline"
               size="sm"
@@ -49,7 +53,7 @@ export default function AdminDashboard({ children }: AdminDashboardProps) {
               onClick={() => router.push("/")}
             >
               <ArrowLeft className="mr-2 h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Editor</span>
+              <span className="hidden sm:inline">{t("editor")}</span>
             </Button>
             <Button
               variant="outline"
@@ -58,7 +62,7 @@ export default function AdminDashboard({ children }: AdminDashboardProps) {
               onClick={handleLogout}
             >
               <LogOut className="mr-2 h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Logout</span>
+              <span className="hidden sm:inline">{t("logout")}</span>
             </Button>
           </div>
         </div>
@@ -67,11 +71,11 @@ export default function AdminDashboard({ children }: AdminDashboardProps) {
       <div className="border-b border-hairline bg-surface">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <nav
-            aria-label="Admin sections"
+            aria-label={t("sections")}
             className="h-11 flex items-center gap-0 w-full justify-start overflow-x-auto"
           >
             {ADMIN_SECTIONS.map((section) => {
-              const { label, icon: Icon } = SECTION_NAV[section];
+              const { icon: Icon } = SECTION_NAV[section];
               const isActive = activeSection === section;
               return (
                 <Link
@@ -89,7 +93,7 @@ export default function AdminDashboard({ children }: AdminDashboardProps) {
                   )}
                 >
                   <Icon className="h-4 w-4" strokeWidth={1.5} />
-                  <span className="hidden sm:inline">{label}</span>
+                  <span className="hidden sm:inline">{t(`nav.${section}`)}</span>
                 </Link>
               );
             })}

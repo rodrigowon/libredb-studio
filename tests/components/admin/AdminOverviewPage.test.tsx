@@ -16,7 +16,7 @@ mock.module("@/components/admin/tabs/OverviewTab", () => ({
 }));
 
 import { afterEach, beforeEach, describe, expect, test, mock as bunMock } from "bun:test";
-import { act, cleanup, render, waitFor } from "@testing-library/react";
+import { act, cleanup, waitFor } from "@testing-library/react";
 import React from "react";
 import { mockGlobalFetch, restoreGlobalFetch } from "../../helpers/mock-fetch";
 
@@ -76,3 +76,5 @@ describe("AdminOverviewPage", () => {
     }
   });
 });
+
+import { renderWithIntl as render } from "../../helpers/render-with-intl";

@@ -3,8 +3,14 @@ import { mockToastSuccess, mockToastError } from "../helpers/mock-sonner";
 import "../helpers/mock-navigation";
 
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { renderHook, act, waitFor } from "@testing-library/react";
+import { renderHook as baseRenderHook, act, waitFor, type RenderHookOptions } from "@testing-library/react";
 import { mockGlobalFetch, restoreGlobalFetch } from "../helpers/mock-fetch";
+
+import { IntlTestProvider } from "../helpers/render-with-intl";
+
+function renderHook<Result, Props>(callback: (props: Props) => Result, options?: RenderHookOptions<Props>) {
+  return baseRenderHook(callback, { wrapper: IntlTestProvider, ...options });
+}
 
 import { useMonitoringData } from "@/hooks/use-monitoring-data";
 import type { DatabaseConnection } from "@/lib/types";

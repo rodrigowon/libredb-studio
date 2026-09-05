@@ -4,7 +4,7 @@ import "../../helpers/mock-navigation";
 
 import React from "react";
 import { afterEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup} from "@testing-library/react";
 
 // ── Mock MonitoringDashboard to capture props ───────────────────────────────
 
@@ -59,3 +59,5 @@ describe("MonitoringEmbed", () => {
     expect(queryByText("MonitoringDashboard")).not.toBeNull();
   });
 });
+
+import { renderWithIntl as render } from "../../helpers/render-with-intl";

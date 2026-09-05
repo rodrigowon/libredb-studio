@@ -1,5 +1,8 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
+import { useMonitoringLabel } from "@/i18n/use-monitoring-label";
+
 import React, { useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -82,10 +85,10 @@ function TableMaintenanceUnreachableNote({
   actions,
   missingTable,
 }: Readonly<{ actions: string[]; missingTable: string | null }>) {
-  const where = missingTable === null ? "no row to run it on" : `no row for "${missingTable}" to run it on`;
+  const t = useTranslations("Admin.operations");
   return (
     <p className="px-4 pb-4 text-xs text-fg-muted leading-relaxed" data-testid="operations-maintenance-unreachable">
-      {`Per-table maintenance (${actions.join(", ")}) is run from a row of this list, and this page has ${where}.`}
+      {t(missingTable === null ? "unreachable" : "missingTable", { actions: actions.join(", "), table: missingTable ?? "" })}
     </p>
   );
 }
@@ -101,6 +104,9 @@ interface OperationLogEntry {
 }
 
 export function OperationsTab() {
+  const locale = useLocale();
+  const translateLabel = useMonitoringLabel();
+  const t = useTranslations("Admin");
   // Only the operator's CHOICE is state; the list and the selected object are both
   // calculated during render from it. `useAllConnections` is read here, above the
   // hooks that take `selectedConnection` as an argument, because the derivation has
@@ -290,22 +296,20 @@ export function OperationsTab() {
     switch (state) {
       case "active":
         return (
-          <Badge className="bg-green-500/10 text-green-400 border border-green-500/20 text-[0.625rem]">Active</Badge>
+          <Badge className="bg-green-500/10 text-green-400 border border-green-500/20 text-[0.625rem]">{t("ui.Active")}</Badge>
         );
       case "idle":
         return (
           <Badge variant="secondary" className="text-[0.625rem]">
-            Idle
-          </Badge>
+            {t("ui.Idle")}</Badge>
         );
       case "idle in transaction":
         return (
           <Badge className="bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 text-[0.625rem]">
-            Idle TX
-          </Badge>
+            {t("ui.IdleTX")}</Badge>
         );
       case "idle in transaction (aborted)":
-        return <Badge className="bg-red-500/10 text-red-400 border border-red-500/20 text-[0.625rem]">Abort</Badge>;
+        return <Badge className="bg-red-500/10 text-red-400 border border-red-500/20 text-[0.625rem]">{t("ui.Abort")}</Badge>;
       default:
         return (
           <Badge variant="outline" className="text-[0.625rem]">
@@ -319,8 +323,8 @@ export function OperationsTab() {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center">
         <Database className="h-12 w-12 text-fg-faint mb-4" />
-        <h3 className="text-lg font-semibold text-fg-secondary mb-2">No Database Connections</h3>
-        <p className="text-fg-muted text-sm">Please add a database connection from the editor first.</p>
+        <h3 className="text-lg font-semibold text-fg-secondary mb-2">{t("ui.NoDatabaseConnections")}</h3>
+        <p className="text-fg-muted text-sm">{t("ui.Pleaseaddadatabaseconnectionfromtheeditorfirst")}</p>
       </div>
     );
   }
@@ -331,7 +335,7 @@ export function OperationsTab() {
       <div className="flex items-center justify-between">
         <Select value={selectedConnection?.id || ""} onValueChange={handleConnectionChange}>
           <SelectTrigger className="w-full sm:w-[280px] bg-panel border-hairline-strong text-fg-secondary">
-            <SelectValue placeholder="Select connection">
+            <SelectValue placeholder={t("ui.Selectconnection")}>
               {selectedConnection ? (
                 <div className="flex items-center gap-2">
                   <Database className="h-4 w-4 flex-shrink-0" />
@@ -339,7 +343,7 @@ export function OperationsTab() {
                   <span className="text-xs text-fg-muted hidden sm:inline">({selectedConnection.type})</span>
                 </div>
               ) : (
-                "Select connection"
+                t("ui.Selectconnection")
               )}
             </SelectValue>
           </SelectTrigger>
@@ -363,8 +367,7 @@ export function OperationsTab() {
           disabled={loading}
         >
           <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
+          {t("ui.Refresh")}</Button>
       </div>
 
       {error && !data && (
@@ -379,7 +382,7 @@ export function OperationsTab() {
         <div>
           <div className="flex items-center gap-2 mb-3">
             <ShieldAlert className="h-4 w-4 text-blue-400" />
-            <h3 className="text-sm font-bold text-fg-secondary">Global Operations</h3>
+            <h3 className="text-sm font-bold text-fg-secondary">{t("ui.GlobalOperations")}</h3>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Analyze */}
@@ -397,12 +400,12 @@ export function OperationsTab() {
                     disabled={!!actionLoading || !selectedConnection}
                   >
                     {actionLoading === "analyze-global" ? <RefreshCw className="w-3 h-3 animate-spin mr-1" /> : null}
-                    {labels?.analyzeGlobalLabel ?? "Run Analyze"}
+                    {translateLabel(labels?.analyzeGlobalLabel ?? "Run Analyze")}
                   </Button>
                 </div>
-                <h4 className="text-sm font-bold text-fg mb-1">{labels?.analyzeGlobalTitle ?? "Update Statistics"}</h4>
+                <h4 className="text-sm font-bold text-fg mb-1">{translateLabel(labels?.analyzeGlobalTitle ?? "Update Statistics")}</h4>
                 <p className="text-xs text-fg-muted leading-relaxed">
-                  {labels?.analyzeGlobalDesc ?? "Updates query planner statistics for all tables."}
+                  {translateLabel(labels?.analyzeGlobalDesc ?? "Updates query planner statistics for all tables.")}
                 </p>
               </div>
             )}
@@ -424,12 +427,12 @@ export function OperationsTab() {
                     {actionLoading === `${vacuumOperation}-global` ? (
                       <RefreshCw className="w-3 h-3 animate-spin mr-1" />
                     ) : null}
-                    {labels?.vacuumGlobalLabel ?? "Run Vacuum"}
+                    {translateLabel(labels?.vacuumGlobalLabel ?? "Run Vacuum")}
                   </Button>
                 </div>
-                <h4 className="text-sm font-bold text-fg mb-1">{labels?.vacuumGlobalTitle ?? "Reclaim Space"}</h4>
+                <h4 className="text-sm font-bold text-fg mb-1">{translateLabel(labels?.vacuumGlobalTitle ?? "Reclaim Space")}</h4>
                 <p className="text-xs text-fg-muted leading-relaxed">
-                  {labels?.vacuumGlobalDesc ?? "Removes dead rows and returns space to the OS."}
+                  {translateLabel(labels?.vacuumGlobalDesc ?? "Removes dead rows and returns space to the OS.")}
                 </p>
               </div>
             )}
@@ -453,12 +456,12 @@ export function OperationsTab() {
                     disabled={!!actionLoading || !selectedConnection}
                   >
                     {actionLoading === "reindex-global" ? <RefreshCw className="w-3 h-3 animate-spin mr-1" /> : null}
-                    {labels?.reindexGlobalLabel ?? "Run Reindex"}
+                    {translateLabel(labels?.reindexGlobalLabel ?? "Run Reindex")}
                   </Button>
                 </div>
-                <h4 className="text-sm font-bold text-fg mb-1">{labels?.reindexGlobalTitle ?? "Rebuild Indexes"}</h4>
+                <h4 className="text-sm font-bold text-fg mb-1">{translateLabel(labels?.reindexGlobalTitle ?? "Rebuild Indexes")}</h4>
                 <p className="text-xs text-fg-muted leading-relaxed">
-                  {labels?.reindexGlobalDesc ?? "Reconstructs all indexes in the database."}
+                  {translateLabel(labels?.reindexGlobalDesc ?? "Reconstructs all indexes in the database.")}
                 </p>
               </div>
             )}
@@ -467,11 +470,10 @@ export function OperationsTab() {
             <div className="p-4 rounded-xl border border-red-500/10 bg-red-500/5 flex flex-col justify-center">
               <div className="flex items-center gap-2 text-red-400 mb-2">
                 <ShieldAlert className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase tracking-wider">Warning</span>
+                <span className="text-xs font-bold uppercase tracking-wider">{t("ui.Warning")}</span>
               </div>
               <p className="text-xs text-red-400/70 leading-relaxed italic">
-                These operations can be resource-intensive. Avoid running them during peak traffic hours.
-              </p>
+                {t("ui.TheseoperationscanberesourceintensiveAvoidrunningthemduringpeaktraffichours")}</p>
             </div>
           </div>
         </div>
@@ -486,11 +488,11 @@ export function OperationsTab() {
               <div className="flex items-center gap-2">
                 <Table2 className="w-4 h-4 text-blue-400" />
                 <span className="text-xs font-bold text-fg-secondary">
-                  {tablesUnavailable ? "Tables" : `Tables (${tables.length})`}
+                  {tablesUnavailable ? t("operations.tables") : t("operations.tablesCount", { count: tables.length })}
                 </span>
               </div>
               <Input
-                placeholder="Filter..."
+                placeholder={t("ui.Filter")}
                 value={tableSearch}
                 onChange={(e) => setTableSearch(e.target.value)}
                 className="w-[140px] h-7 text-xs bg-raised border-hairline-strong"
@@ -505,7 +507,7 @@ export function OperationsTab() {
                 </div>
               ) : filteredTables.length === 0 ? (
                 <div className="p-8 text-center text-fg-subtle text-sm" data-testid="operations-tables-empty">
-                  {tablesUnavailable ?? "No tables found."}
+                  {tablesUnavailable ?? t("operations.noTables")}
                 </div>
               ) : (
                 <div className="divide-y divide-hairline">
@@ -522,7 +524,7 @@ export function OperationsTab() {
                           {table.tableName}
                         </div>
                         <div className="flex items-center gap-2 text-xs text-fg-muted">
-                          <span className="font-mono">{table.rowCount.toLocaleString()} rows</span>
+                          <span className="font-mono">{table.rowCount.toLocaleString(locale)} {t("ui.rows")}</span>
                           <span>-</span>
                           <span className="font-mono">{table.tableSize}</span>
                           {(table.bloatRatio ?? 0) > 10 && (
@@ -530,8 +532,7 @@ export function OperationsTab() {
                               variant="outline"
                               className="text-[0.625rem] text-yellow-400 border-yellow-500/20 h-4"
                             >
-                              {(table.bloatRatio ?? 0).toFixed(0)}% bloat
-                            </Badge>
+                              {new Intl.NumberFormat(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format((table.bloatRatio ?? 0))}{t("ui.Percentbloat")}</Badge>
                           )}
                         </div>
                       </div>
@@ -542,7 +543,7 @@ export function OperationsTab() {
                             size="icon"
                             variant="ghost"
                             className={`w-7 h-7 text-fg-muted ${hover}`}
-                            title={label}
+                            title={translateLabel(label)}
                             onClick={() => handleRunMaintenance(type, table.tableName)}
                             disabled={!!actionLoading}
                           >
@@ -561,7 +562,7 @@ export function OperationsTab() {
             </div>
             {maintenanceUnreachable && (
               <TableMaintenanceUnreachableNote
-                actions={tableActions.map((a) => a.label)}
+                actions={tableActions.map((a) => translateLabel(a.label))}
                 missingTable={deepLinkRowMissing ? deepLinkedTable : null}
               />
             )}
@@ -574,29 +575,29 @@ export function OperationsTab() {
             <div className="flex items-center gap-2 mb-3">
               <Users className="w-4 h-4 text-green-400" />
               <span className="text-xs font-bold text-fg-secondary">
-                {sessionsUnavailable ? "Sessions" : `Sessions (${sessions.length})`}
+                {sessionsUnavailable ? t("operations.sessions") : t("operations.sessionsCount", { count: sessions.length })}
               </span>
             </div>
             <div className="grid grid-cols-4 gap-2">
               <div className="rounded-lg bg-fill p-2 text-center">
                 <div className="text-lg font-bold text-fg tabular-nums">{activeCount}</div>
-                <div className="text-[0.625rem] text-fg-muted uppercase font-bold">Active</div>
+                <div className="text-[0.625rem] text-fg-muted uppercase font-bold">{t("ui.Active")}</div>
               </div>
               <div className="rounded-lg bg-fill p-2 text-center">
                 <div className="text-lg font-bold text-fg tabular-nums">{idleCount}</div>
-                <div className="text-[0.625rem] text-fg-muted uppercase font-bold">Idle</div>
+                <div className="text-[0.625rem] text-fg-muted uppercase font-bold">{t("ui.Idle")}</div>
               </div>
               <div className="rounded-lg bg-fill p-2 text-center">
                 <div className={`text-lg font-bold tabular-nums ${idleInTxCount > 0 ? "text-yellow-400" : "text-fg"}`}>
                   {idleInTxCount}
                 </div>
-                <div className="text-[0.625rem] text-fg-muted uppercase font-bold">In TX</div>
+                <div className="text-[0.625rem] text-fg-muted uppercase font-bold">{t("ui.InTX")}</div>
               </div>
               <div className="rounded-lg bg-fill p-2 text-center">
                 <div className={`text-lg font-bold tabular-nums ${waitingCount > 0 ? "text-orange-400" : "text-fg"}`}>
                   {waitingCount}
                 </div>
-                <div className="text-[0.625rem] text-fg-muted uppercase font-bold">Wait</div>
+                <div className="text-[0.625rem] text-fg-muted uppercase font-bold">{t("ui.Wait")}</div>
               </div>
             </div>
           </div>
@@ -612,20 +613,19 @@ export function OperationsTab() {
                 {/* The order is deliberate: `sessionsUnavailable` is set only when the
                     READ failed, while `sessionsEmptyState` explains an engine that
                     publishes no session list at all (#518). */}
-                {sessionsUnavailable ?? labels?.sessionsEmptyState ?? "No active sessions found."}
+                {sessionsUnavailable ?? translateLabel(labels?.sessionsEmptyState ?? "No active sessions found.")}
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow className="border-hairline hover:bg-transparent">
                     <TableHead className="text-xs text-fg-muted font-bold uppercase w-[60px]">PID</TableHead>
-                    <TableHead className="text-xs text-fg-muted font-bold uppercase">User</TableHead>
-                    <TableHead className="text-xs text-fg-muted font-bold uppercase">State</TableHead>
+                    <TableHead className="text-xs text-fg-muted font-bold uppercase">{t("ui.User")}</TableHead>
+                    <TableHead className="text-xs text-fg-muted font-bold uppercase">{t("ui.State")}</TableHead>
                     <TableHead className="text-xs text-fg-muted font-bold uppercase hidden md:table-cell">
-                      Query
-                    </TableHead>
-                    <TableHead className="text-xs text-fg-muted font-bold uppercase">Time</TableHead>
-                    <TableHead className="text-right text-xs text-fg-muted font-bold uppercase w-10">Act</TableHead>
+                      {t("ui.Query")}</TableHead>
+                    <TableHead className="text-xs text-fg-muted font-bold uppercase">{t("ui.Duration")}</TableHead>
+                    <TableHead className="text-right text-xs text-fg-muted font-bold uppercase w-10">{t("ui.Act")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -643,7 +643,7 @@ export function OperationsTab() {
                               <div className="max-w-[120px] truncate cursor-help">{session.query || "-"}</div>
                             </TooltipTrigger>
                             <TooltipContent side="bottom" className="max-w-lg">
-                              <pre className="text-xs whitespace-pre-wrap">{session.query || "No query"}</pre>
+                              <pre className="text-xs whitespace-pre-wrap">{session.query || t("operations.noQuery")}</pre>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -667,6 +667,7 @@ export function OperationsTab() {
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6 text-fg-subtle hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
+                          aria-label={t("ui.KillSession")}
                           onClick={() => handleKillClick(session)}
                           disabled={killingPid === session.pid}
                         >
@@ -691,13 +692,13 @@ export function OperationsTab() {
         <div className="rounded-xl border border-hairline bg-panel">
           <div className="p-4 border-b border-hairline flex items-center gap-2">
             <Clock className="w-4 h-4 text-fg-muted" />
-            <span className="text-xs font-bold text-fg-secondary">Operation Log (this session)</span>
+            <span className="text-xs font-bold text-fg-secondary">{t("ui.OperationLogthissession")}</span>
           </div>
           <div className="max-h-[200px] overflow-y-auto divide-y divide-hairline">
             {operationLog.map((entry) => (
               <div key={entry.id} className="flex items-center gap-3 px-4 py-2 text-xs hover:bg-fill transition-colors">
                 <span className="text-fg-subtle font-mono text-xs w-[50px] shrink-0">
-                  {entry.timestamp.toLocaleTimeString([], {
+                  {entry.timestamp.toLocaleTimeString(locale, {
                     hour: "2-digit",
                     minute: "2-digit",
                   })}
@@ -727,27 +728,22 @@ export function OperationsTab() {
       <AlertDialog open={!!confirmKill} onOpenChange={() => setConfirmKill(null)}>
         <AlertDialogContent className="bg-surface border-hairline-strong">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-fg">Terminate Session?</AlertDialogTitle>
+            <AlertDialogTitle className="text-fg">{t("ui.TerminateSession")}</AlertDialogTitle>
             <AlertDialogDescription className="text-fg-tertiary">
-              Are you sure you want to terminate session{" "}
-              <span className="font-mono font-bold text-fg">{confirmKill?.pid}</span>
-              ?
+              {t.rich("operations.confirmSession", { pid: confirmKill?.pid ?? "", session: (chunks) => <span className="font-mono font-bold text-fg">{chunks}</span> })}
               <br />
               <br />
-              User: <span className="font-medium text-fg-secondary">{confirmKill?.user}</span>
+              {t("ui.UserColon")}{" "}<span className="font-medium text-fg-secondary">{confirmKill?.user}</span>
               <br />
-              State: <span className="font-medium text-fg-secondary">{confirmKill?.state}</span>
+              {t("ui.StateColon")}{" "}<span className="font-medium text-fg-secondary">{confirmKill?.state}</span>
               <br />
               <br />
-              This action will forcefully end the connection and may cause data loss if the session has uncommitted
-              transactions.
-            </AlertDialogDescription>
+              {t("ui.Thisactionwillforcefullyendtheconnectionandmaycausedatalossifthesessionhasuncommittedtransactions")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-hairline-strong text-fg-tertiary">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="border-hairline-strong text-fg-tertiary">{t("ui.Cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmKill} className="bg-red-600 text-white hover:bg-red-500">
-              Terminate
-            </AlertDialogAction>
+              {t("ui.Terminate")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

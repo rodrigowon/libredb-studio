@@ -1,5 +1,7 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
+
 import React from "react";
 import { HardDrive, Database, Archive, FolderOpen } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +15,7 @@ import type { MonitoringData } from "@/lib/db/types";
 // guarded nothing, so a negative rendered as "-1 B", a non-finite as "NaN B" and an
 // exabyte as "1073741824.00 GB". The shared one refuses a negative or a non-finite with
 // "N/A" and spells PB and EB, which is the distinction this whole tab is about.
-import { formatBytes } from "@/lib/db/utils/pool-manager";
+import { formatMonitoringBytes } from "@/i18n/format-monitoring-bytes";
 import { PanelUnavailable } from "../PanelUnavailable";
 
 interface StorageTabProps {
@@ -22,6 +24,8 @@ interface StorageTabProps {
 }
 
 export function StorageTab({ data, loading }: StorageTabProps) {
+  const locale = useLocale();
+  const t = useTranslations("Monitoring");
   if (loading && !data) {
     return <StorageSkeleton />;
   }
@@ -125,7 +129,7 @@ export function StorageTab({ data, loading }: StorageTabProps) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         <Card className="p-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 sm:p-4 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">DB Size</CardTitle>
+            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">{t("ui.DBSize")}</CardTitle>
             <Database strokeWidth={1.5} className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500" />
           </CardHeader>
           <CardContent className="p-2 sm:p-4 pt-0">
@@ -135,7 +139,7 @@ export function StorageTab({ data, loading }: StorageTabProps) {
 
         <Card className="p-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 sm:p-4 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">Tables</CardTitle>
+            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">{t("ui.Tables")}</CardTitle>
             <HardDrive strokeWidth={1.5} className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
           </CardHeader>
           <CardContent className="p-2 sm:p-4 pt-0">
@@ -148,25 +152,25 @@ export function StorageTab({ data, loading }: StorageTabProps) {
               fabricated denominator under an honest numerator (measured in the DOM).
             */}
             <div className="text-lg sm:text-2xl font-medium truncate" data-testid="storage-stat-tables">
-              {sizeKnown && tableSizeKnown ? formatBytes(totalTableSize) : "N/A"}
+              {sizeKnown && tableSizeKnown ? formatMonitoringBytes(totalTableSize, locale) : "N/A"}
             </div>
             {totalSize > 0 && tableSizeKnown && (
-              <p className="text-xs sm:text-xs text-muted-foreground mt-1">{tablePercent.toFixed(1)}%</p>
+              <p className="text-xs sm:text-xs text-muted-foreground mt-1">{new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(tablePercent)}%</p>
             )}
           </CardContent>
         </Card>
 
         <Card className="p-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 sm:p-4 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">Indexes</CardTitle>
+            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">{t("ui.Indexes")}</CardTitle>
             <Archive strokeWidth={1.5} className="h-3 w-3 sm:h-4 sm:w-4 text-purple-500" />
           </CardHeader>
           <CardContent className="p-2 sm:p-4 pt-0">
             <div className="text-lg sm:text-2xl font-medium truncate" data-testid="storage-stat-indexes">
-              {sizeKnown && indexSizeKnown ? formatBytes(totalIndexSize) : "N/A"}
+              {sizeKnown && indexSizeKnown ? formatMonitoringBytes(totalIndexSize, locale) : "N/A"}
             </div>
             {totalSize > 0 && indexSizeKnown && (
-              <p className="text-xs sm:text-xs text-muted-foreground mt-1">{indexPercent.toFixed(1)}%</p>
+              <p className="text-xs sm:text-xs text-muted-foreground mt-1">{new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(indexPercent)}%</p>
             )}
           </CardContent>
         </Card>
@@ -189,8 +193,7 @@ export function StorageTab({ data, loading }: StorageTabProps) {
         <CardHeader className="p-3 sm:p-4 pb-2">
           <CardTitle className="text-xs sm:text-xs font-medium flex items-center gap-2">
             <HardDrive strokeWidth={1.5} className="h-3 w-3 sm:h-4 sm:w-4" />
-            Storage Breakdown
-          </CardTitle>
+            {t("ui.StorageBreakdown")}</CardTitle>
         </CardHeader>
         <CardContent className="p-3 sm:p-4 pt-0 space-y-3 sm:space-y-4">
           {overviewUnavailable ? (
@@ -201,10 +204,9 @@ export function StorageTab({ data, loading }: StorageTabProps) {
                 <div className="flex items-center justify-between text-xs sm:text-xs mb-1">
                   <span className="flex items-center gap-1 sm:gap-2">
                     <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-sm bg-green-500" />
-                    Tables
-                  </span>
+                    {t("ui.Tables")}</span>
                   <span className="font-medium" data-testid="storage-breakdown-tables">
-                    {tableSizeKnown ? formatBytes(totalTableSize) : "N/A"}
+                    {tableSizeKnown ? formatMonitoringBytes(totalTableSize, locale) : "N/A"}
                   </span>
                 </div>
                 <Progress value={tablePercent} className="h-1.5 sm:h-2" />
@@ -214,10 +216,9 @@ export function StorageTab({ data, loading }: StorageTabProps) {
                 <div className="flex items-center justify-between text-xs sm:text-xs mb-1">
                   <span className="flex items-center gap-1 sm:gap-2">
                     <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-sm bg-purple-500" />
-                    Indexes
-                  </span>
+                    {t("ui.Indexes")}</span>
                   <span className="font-medium" data-testid="storage-breakdown-indexes">
-                    {indexSizeKnown ? formatBytes(totalIndexSize) : "N/A"}
+                    {indexSizeKnown ? formatMonitoringBytes(totalIndexSize, locale) : "N/A"}
                   </span>
                 </div>
                 <Progress value={indexPercent} className="h-1.5 sm:h-2 [&>div]:bg-purple-500" />
@@ -239,14 +240,12 @@ export function StorageTab({ data, loading }: StorageTabProps) {
                       slow-query empty state does, and this tab is passed no labels.
                     */}
                     <span className="hidden sm:inline" data-testid="storage-breakdown-other-label">
-                      Other (unattributed)
-                    </span>
+                      {t("ui.Otherunattributed")}</span>
                     <span className="sm:hidden" data-testid="storage-breakdown-other-label-compact">
-                      Other
-                    </span>
+                      {t("ui.Other")}</span>
                   </span>
                   <span className="font-medium" data-testid="storage-breakdown-other">
-                    {remainderKnown ? formatBytes(otherBytes) : "N/A"}
+                    {remainderKnown ? formatMonitoringBytes(otherBytes, locale) : "N/A"}
                   </span>
                 </div>
                 <Progress value={otherPercent} className="h-1.5 sm:h-2 [&>div]:bg-muted-foreground" />
@@ -258,7 +257,7 @@ export function StorageTab({ data, loading }: StorageTabProps) {
             // copy rather than a sentence there is none of.
             <div className="text-center py-8 text-muted-foreground">
               <HardDrive strokeWidth={1.5} className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-xs">No storage size information available.</p>
+              <p className="text-xs">{t("ui.Nostoragesizeinformationavailable")}</p>
             </div>
           )}
         </CardContent>
@@ -269,8 +268,7 @@ export function StorageTab({ data, loading }: StorageTabProps) {
         <CardHeader className="p-3 sm:p-4 pb-2">
           <CardTitle className="text-xs sm:text-xs font-medium flex items-center gap-2">
             <FolderOpen strokeWidth={1.5} className="h-3 w-3 sm:h-4 sm:w-4" />
-            Tablespaces
-          </CardTitle>
+            {t("ui.Tablespaces")}</CardTitle>
         </CardHeader>
         <CardContent className="p-0 sm:p-4 sm:pt-0">
           {storageUnavailable ? (
@@ -278,17 +276,17 @@ export function StorageTab({ data, loading }: StorageTabProps) {
           ) : storage.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <FolderOpen strokeWidth={1.5} className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-xs">No tablespace information available.</p>
+              <p className="text-xs">{t("ui.Notablespaceinformationavailable")}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs">Name</TableHead>
-                    <TableHead className="text-xs hidden md:table-cell">Location</TableHead>
-                    <TableHead className="text-right text-xs">Size</TableHead>
-                    <TableHead className="text-right text-xs hidden sm:table-cell">Usage</TableHead>
+                    <TableHead className="text-xs">{t("ui.Name")}</TableHead>
+                    <TableHead className="text-xs hidden md:table-cell">{t("ui.Location")}</TableHead>
+                    <TableHead className="text-right text-xs">{t("ui.Size")}</TableHead>
+                    <TableHead className="text-right text-xs hidden sm:table-cell">{t("ui.Usage")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -305,8 +303,7 @@ export function StorageTab({ data, loading }: StorageTabProps) {
                           </span>
                           {ts.name === "pg_default" && (
                             <Badge variant="secondary" className="text-xs sm:text-xs hidden sm:inline-flex">
-                              Default
-                            </Badge>
+                              {t("ui.Default")}</Badge>
                           )}
                           {ts.name === "WAL" && (
                             <Badge variant="outline" className="text-xs sm:text-xs hidden sm:inline-flex">
@@ -323,7 +320,7 @@ export function StorageTab({ data, loading }: StorageTabProps) {
                         {ts.usagePercent !== undefined ? (
                           <div className="flex items-center justify-end gap-1 sm:gap-2">
                             <Progress value={ts.usagePercent} className="w-12 sm:w-16 h-1.5 sm:h-2" />
-                            <span className="text-xs w-10 sm:w-12">{ts.usagePercent.toFixed(0)}%</span>
+                            <span className="text-xs w-10 sm:w-12">{new Intl.NumberFormat(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(ts.usagePercent)}%</span>
                           </div>
                         ) : (
                           "-"
@@ -343,8 +340,7 @@ export function StorageTab({ data, loading }: StorageTabProps) {
         <CardHeader className="p-3 sm:p-4 pb-2">
           <CardTitle className="text-xs sm:text-xs font-medium flex items-center gap-2">
             <Database strokeWidth={1.5} className="h-3 w-3 sm:h-4 sm:w-4" />
-            Largest Tables
-          </CardTitle>
+            {t("ui.LargestTables")}</CardTitle>
         </CardHeader>
         <CardContent className="p-0 sm:p-4 sm:pt-0">
           {tablesUnavailable ? (
@@ -352,16 +348,16 @@ export function StorageTab({ data, loading }: StorageTabProps) {
           ) : tables.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Database strokeWidth={1.5} className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-xs">No table information available.</p>
+              <p className="text-xs">{t("ui.Notableinformationavailable")}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs">Table</TableHead>
-                    <TableHead className="text-right text-xs">Size</TableHead>
-                    <TableHead className="text-right text-xs hidden sm:table-cell">% of DB</TableHead>
+                    <TableHead className="text-xs">{t("ui.Table")}</TableHead>
+                    <TableHead className="text-right text-xs">{t("ui.Size")}</TableHead>
+                    <TableHead className="text-right text-xs hidden sm:table-cell">{t("ui.PercentofDB")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -400,7 +396,7 @@ export function StorageTab({ data, loading }: StorageTabProps) {
                             {shareKnown ? (
                               <div className="flex items-center justify-end gap-1 sm:gap-2">
                                 <Progress value={percent} className="w-12 sm:w-16 h-1.5 sm:h-2" />
-                                <span className="text-xs w-10 sm:w-12">{percent.toFixed(1)}%</span>
+                                <span className="text-xs w-10 sm:w-12">{new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(percent)}%</span>
                               </div>
                             ) : (
                               "-"

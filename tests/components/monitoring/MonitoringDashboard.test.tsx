@@ -211,7 +211,7 @@ mock.module("@/components/monitoring/tabs/PoolTab", () => ({
 }));
 
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { render, act, cleanup, waitFor } from "@testing-library/react";
+import { act, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 
@@ -498,3 +498,5 @@ describe("MonitoringDashboard", () => {
     expect(providerMetadataCalls[providerMetadataCalls.length - 1]?.id).toBe("c2");
   });
 });
+
+import { renderWithIntl as render } from "../../helpers/render-with-intl";

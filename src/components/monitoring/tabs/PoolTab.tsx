@@ -1,6 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import { useLocale, useTranslations } from "next-intl";
+
+import { useMonitoringLabel } from "@/i18n/use-monitoring-label";
+
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Server, Activity, Clock, LoaderCircle, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +26,10 @@ interface PoolTabProps {
 }
 
 export function PoolTab({ connection }: PoolTabProps) {
+  const translateLabel = useMonitoringLabel();
+  const t = useTranslations("Monitoring");
+  const translationsRef = useRef(t);
+  useEffect(() => { translationsRef.current = t; }, [t]);
   // Only two things are state: which request the reader has asked for, and the
   // one that has come back. Everything the render needs - loading, stats, error
   // - follows from comparing the two, so nothing has to be set in the effect.
@@ -49,7 +57,7 @@ export function PoolTab({ connection }: PoolTabProps) {
     })
       .then(async (res) => {
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Failed to fetch pool stats");
+        if (!res.ok) throw new Error(data.error || translationsRef.current("status.poolFailed"));
         return data as PoolStats;
       })
       .then((data) => {
@@ -62,7 +70,7 @@ export function PoolTab({ connection }: PoolTabProps) {
         setSettled((prev) => ({
           key: requestKey,
           stats: prev?.stats ?? null,
-          error: err instanceof Error ? err.message : "Unknown error",
+          error: err instanceof Error ? err.message : translationsRef.current("messages.unknown"),
         }));
       });
 
@@ -74,8 +82,7 @@ export function PoolTab({ connection }: PoolTabProps) {
   if (!connection) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground">
-        Select a connection to view pool statistics
-      </div>
+        {t("ui.Selectaconnectiontoviewpoolstatistics")}</div>
     );
   }
 
@@ -83,8 +90,7 @@ export function PoolTab({ connection }: PoolTabProps) {
     return (
       <div className="flex items-center justify-center h-full gap-2 text-muted-foreground">
         <LoaderCircle strokeWidth={1.5} className="h-4 w-4 animate-spin" />
-        Loading pool statistics...
-      </div>
+        {t("ui.Loadingpoolstatistics")}</div>
     );
   }
 
@@ -93,8 +99,7 @@ export function PoolTab({ connection }: PoolTabProps) {
       <div className="flex flex-col items-center justify-center h-full gap-2 text-destructive">
         <p className="text-xs">{error}</p>
         <Button variant="outline" size="sm" onClick={reload}>
-          Try Again
-        </Button>
+          {t("ui.TryAgain")}</Button>
       </div>
     );
   }
@@ -119,7 +124,7 @@ export function PoolTab({ connection }: PoolTabProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Server strokeWidth={1.5} className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-          <h2 className="text-xs sm:text-base font-medium">Connection Pool</h2>
+          <h2 className="text-xs sm:text-base font-medium">{t("ui.ConnectionPool")}</h2>
         </div>
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={reload} disabled={loading}>
           <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
@@ -128,7 +133,7 @@ export function PoolTab({ connection }: PoolTabProps) {
 
       {measured === null && (
         <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg p-3">
-          {stats?.message ?? "No connection pool information available."}
+          {stats?.message ? translateLabel(stats.message) : t("status.noPool")}
         </div>
       )}
 
@@ -144,30 +149,32 @@ export function PoolTab({ connection }: PoolTabProps) {
  * "N/A" and drops its sub-label rather than showing a zero nobody read.
  */
 function PoolStatsGrid({ measured, usagePercent }: Readonly<{ measured: PoolStats | null; usagePercent: number }>) {
+  const locale = useLocale();
+  const t = useTranslations("Monitoring");
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
       <Card className="p-0">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-4 pb-1 sm:pb-2">
-          <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">Total</CardTitle>
+          <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">{t("ui.Total")}</CardTitle>
           <Server strokeWidth={1.5} className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500" />
         </CardHeader>
         <CardContent className="p-3 sm:p-4 pt-0">
-          <div className="text-lg sm:text-2xl font-medium">{measured !== null ? measured.total : "N/A"}</div>
-          {measured !== null && <p className="text-xs sm:text-xs text-muted-foreground mt-1">Max pool size</p>}
+          <div className="text-lg sm:text-2xl font-medium">{measured !== null ? measured.total.toLocaleString(locale) : "N/A"}</div>
+          {measured !== null && <p className="text-xs sm:text-xs text-muted-foreground mt-1">{t("ui.Maxpoolsize")}</p>}
         </CardContent>
       </Card>
 
       <Card className="p-0">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-4 pb-1 sm:pb-2">
-          <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">Active</CardTitle>
+          <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">{t("ui.Active")}</CardTitle>
           <Activity strokeWidth={1.5} className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
         </CardHeader>
         <CardContent className="p-3 sm:p-4 pt-0">
-          <div className="text-lg sm:text-2xl font-medium">{measured !== null ? measured.active : "N/A"}</div>
+          <div className="text-lg sm:text-2xl font-medium">{measured !== null ? measured.active.toLocaleString(locale) : "N/A"}</div>
           {measured !== null && (
             <>
               <Progress value={usagePercent} className="h-1 mt-1 sm:mt-2" />
-              <p className="text-xs sm:text-xs text-muted-foreground mt-1">{usagePercent}% utilized</p>
+              <p className="text-xs sm:text-xs text-muted-foreground mt-1">{usagePercent}{t("ui.Percentutilized")}</p>
             </>
           )}
         </CardContent>
@@ -175,18 +182,18 @@ function PoolStatsGrid({ measured, usagePercent }: Readonly<{ measured: PoolStat
 
       <Card className="p-0">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-4 pb-1 sm:pb-2">
-          <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">Idle</CardTitle>
+          <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">{t("ui.Idle")}</CardTitle>
           <Clock strokeWidth={1.5} className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-500" />
         </CardHeader>
         <CardContent className="p-3 sm:p-4 pt-0">
-          <div className="text-lg sm:text-2xl font-medium">{measured !== null ? measured.idle : "N/A"}</div>
-          {measured !== null && <p className="text-xs sm:text-xs text-muted-foreground mt-1">Available</p>}
+          <div className="text-lg sm:text-2xl font-medium">{measured !== null ? measured.idle.toLocaleString(locale) : "N/A"}</div>
+          {measured !== null && <p className="text-xs sm:text-xs text-muted-foreground mt-1">{t("ui.Available")}</p>}
         </CardContent>
       </Card>
 
       <Card className="p-0">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-4 pb-1 sm:pb-2">
-          <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">Waiting</CardTitle>
+          <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">{t("ui.Waiting")}</CardTitle>
           {measured !== null && (
             <Badge variant={measured.waiting ? "destructive" : "secondary"} className="text-xs">
               {measured.waiting}
@@ -194,10 +201,10 @@ function PoolStatsGrid({ measured, usagePercent }: Readonly<{ measured: PoolStat
           )}
         </CardHeader>
         <CardContent className="p-3 sm:p-4 pt-0">
-          <div className="text-lg sm:text-2xl font-medium">{measured !== null ? measured.waiting : "N/A"}</div>
+          <div className="text-lg sm:text-2xl font-medium">{measured !== null ? measured.waiting.toLocaleString(locale) : "N/A"}</div>
           {measured !== null && (
             <p className="text-xs sm:text-xs text-muted-foreground mt-1">
-              {measured.waiting ? "Queued requests" : "No queue"}
+              {measured.waiting ? t("status.queued") : t("status.noQueue")}
             </p>
           )}
         </CardContent>

@@ -24,7 +24,7 @@ mock.module("@/lib/monitoring-thresholds", () => ({
 }));
 
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { render, fireEvent, act, waitFor, cleanup } from "@testing-library/react";
+import { fireEvent, act, waitFor, cleanup } from "@testing-library/react";
 import React from "react";
 
 import { SecurityTab } from "@/components/admin/tabs/SecurityTab";
@@ -462,4 +462,18 @@ describe("SecurityTab", () => {
       expect(queryByText("Reset Defaults")).not.toBeNull();
     });
   });
+  test("localizes Access and Limits without changing threshold controls", () => {
+    const view = render(<SecurityTab />, "pt-BR");
+    expect(view.getByText("Mascaramento de dados")).toBeTruthy();
+    clickRadixTab(view.getByRole("tab", { name: /Acesso/ }));
+    expect(view.getByText("Autenticação")).toBeTruthy();
+    expect(view.getByText("JWT / Cookie HTTP-only")).toBeTruthy();
+    clickRadixTab(view.getByRole("tab", { name: /Limites/ }));
+    expect(view.getByText("Limites de monitoramento")).toBeTruthy();
+    expect(view.getByText("Taxa de acertos no cache")).toBeTruthy();
+    expect(view.getByText("Salvar configuração")).toBeTruthy();
+  });
+
 });
+
+import { renderWithIntl as render } from "../../helpers/render-with-intl";

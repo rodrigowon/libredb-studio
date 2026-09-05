@@ -4,7 +4,7 @@ import "../../helpers/mock-navigation";
 
 import { mock, describe, test, expect, afterEach } from "bun:test";
 import React from "react";
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, waitFor } from "@testing-library/react";
 import { SessionsTab } from "@/components/monitoring/tabs/SessionsTab";
 import type { MonitoringData, ProviderLabels } from "@/lib/db/types";
 
@@ -317,3 +317,5 @@ describe("the session summary never counts a refused read as zero", () => {
     expect(getByText("Sessions (0)")).not.toBeNull();
   });
 });
+
+import { renderWithIntl as render } from "../../helpers/render-with-intl";

@@ -4,7 +4,7 @@ import "../../helpers/mock-navigation";
 
 import React from "react";
 import { afterEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup} from "@testing-library/react";
 import { PerformanceTab } from "@/components/monitoring/tabs/PerformanceTab";
 import type { MonitoringData } from "@/lib/db/types";
 import type { TimeSeriesPoint } from "@/lib/time-series-buffer";
@@ -290,4 +290,14 @@ describe("a refused performance read", () => {
 
     expect(queryByTestId("panel-unavailable")).toBeNull();
   });
+  test("formats metric decimals in pt-BR without altering the measurement", () => {
+    const data = makeData();
+    const view = render(<PerformanceTab data={data} loading={false} />, "pt-BR");
+    expect(view.getByText("98,2")).toBeTruthy();
+    expect(view.getByText("Excelente")).toBeTruthy();
+    expect(data.performance?.cacheHitRatio).toBe(98.2);
+  });
+
 });
+
+import { renderWithIntl as render } from "../../helpers/render-with-intl";

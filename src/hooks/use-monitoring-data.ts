@@ -5,6 +5,7 @@ import type { DatabaseConnection } from "@/lib/types";
 import { buildConnectionPayload } from "./use-connection-payload";
 import type { MonitoringData, MonitoringOptions } from "@/lib/db/types";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { TimeSeriesBuffer, type TimeSeriesPoint } from "@/lib/time-series-buffer";
 
 interface UseMonitoringDataReturn {
@@ -28,6 +29,9 @@ export function useMonitoringData(
   connection: DatabaseConnection | null,
   options?: MonitoringOptions,
 ): UseMonitoringDataReturn {
+  const t = useTranslations("Monitoring.messages");
+  const translationsRef = useRef(t);
+  useEffect(() => { translationsRef.current = t; }, [t]);
   const [dataState, setData] = useState<MonitoringData | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorState, setError] = useState<string | null>(null);
@@ -126,7 +130,7 @@ export function useMonitoringData(
       const result = await res.json();
 
       if (!res.ok) {
-        throw new Error(result.error || "Failed to fetch monitoring data");
+        throw new Error(result.error || translationsRef.current("fetchFailed"));
       }
 
       // Only update state if component is still mounted
@@ -159,7 +163,7 @@ export function useMonitoringData(
       }
       if (!isMountedRef.current) return;
 
-      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      const errorMessage = err instanceof Error ? err.message : translationsRef.current("unknown");
       setError(errorMessage);
       // Don't clear existing data on error, show stale data
     } finally {
@@ -230,17 +234,17 @@ export function useMonitoringData(
         const result = await res.json();
 
         if (!res.ok) {
-          throw new Error(result.error || "Failed to kill session");
+          throw new Error(result.error || translationsRef.current("killFailed"));
         }
 
-        toast.success(`Session ${pid} terminated successfully`);
+        toast.success(translationsRef.current("killed", { pid }));
 
         // Refresh data after killing session
         await fetchData();
 
         return true;
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "Failed to kill session";
+        const errorMessage = err instanceof Error ? err.message : translationsRef.current("killFailed");
         toast.error(errorMessage);
         return false;
       }
@@ -267,7 +271,7 @@ export function useMonitoringData(
         const result = await res.json();
 
         if (!res.ok) {
-          throw new Error(result.error || `Failed to run ${type}`);
+          throw new Error(result.error || translationsRef.current("runFailed", { type }));
         }
 
         // A 200 says the statement reached the engine, not that the engine did the work:
@@ -279,7 +283,7 @@ export function useMonitoringData(
         // whole surface recorded a completed operation. A provider that reports no verdict
         // keeps the old reading: only an explicit `false` is a refusal.
         if (result.success === false) {
-          toast.error(result.message || `${type} failed`);
+          toast.error(result.message || translationsRef.current("failed", { type }));
           // Refreshed anyway: a refused operation can still have moved part of the state
           // it was asked about (Oracle rebuilds index by index), so the panels must not
           // keep showing what was true before the attempt.
@@ -287,14 +291,14 @@ export function useMonitoringData(
           return false;
         }
 
-        toast.success(result.message || `${type} completed successfully`);
+        toast.success(result.message || translationsRef.current("completed", { type }));
 
         // Refresh data after maintenance
         await fetchData();
 
         return true;
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : `Failed to run ${type}`;
+        const errorMessage = err instanceof Error ? err.message : translationsRef.current("runFailed", { type });
         toast.error(errorMessage);
         return false;
       }

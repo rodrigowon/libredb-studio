@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { useEffectiveTheme } from "@/hooks/use-effective-theme";
 import { chartTooltipStyle } from "@/lib/charts/palette";
@@ -13,20 +14,22 @@ interface MetricChartProps {
 }
 
 export function MetricChart({ data, color, title, unit = "" }: MetricChartProps) {
+  const locale = useLocale();
+  const t = useTranslations("Monitoring.status");
   // Before the early return below: a hook may not sit behind a conditional.
   const mode = useEffectiveTheme();
 
   if (data.length < 2) {
     return (
       <div className="h-[120px] flex items-center justify-center text-xs text-muted-foreground">
-        Collecting data for {title}...
+        {t("collecting", { title })}
       </div>
     );
   }
 
   const formatTime = (ts: number) => {
     const d = new Date(ts);
-    return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}:${d.getSeconds().toString().padStart(2, "0")}`;
+    return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   };
 
   return (
@@ -52,14 +55,14 @@ export function MetricChart({ data, color, title, unit = "" }: MetricChartProps)
             axisLine={false}
             tickLine={false}
             width={35}
-            tickFormatter={(v) => `${v}${unit}`}
+            tickFormatter={(v) => `${Number(v).toLocaleString(locale)}${unit}`}
           />
           <Tooltip
             // recharts 3 widened both signatures: the label arrives as a
             // ReactNode and the value as `ValueType | undefined`. Reading
             // `.toFixed` off the absent case throws and takes the tooltip down.
             labelFormatter={(label) => formatTime(Number(label))}
-            formatter={(value) => [typeof value === "number" ? `${value.toFixed(1)}${unit}` : "—", title]}
+            formatter={(value) => [typeof value === "number" ? `${new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value)}${unit}` : "—", title]}
             // Shared with the admin charts so the next theme change reaches all of
             // them; only the type scale is this chart's own.
             contentStyle={{ ...chartTooltipStyle(mode), fontSize: 11 }}

@@ -4,7 +4,7 @@ import "../../helpers/mock-navigation";
 
 import React from "react";
 import { afterEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { cleanup, fireEvent} from "@testing-library/react";
 import { QueriesTab } from "@/components/monitoring/tabs/QueriesTab";
 import type { MonitoringData, ProviderLabels } from "@/lib/db/types";
 
@@ -311,3 +311,5 @@ describe("a refused slowQueries read", () => {
     expect(queryByText("pg_stat_statements required")).not.toBeNull();
   });
 });
+
+import { renderWithIntl as render } from "../../helpers/render-with-intl";

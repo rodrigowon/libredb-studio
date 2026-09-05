@@ -10,7 +10,7 @@ mock.module("@/components/admin/AdminDashboard", () => ({
 const { default: AdminLayout } = await import("@/app/admin/layout");
 
 import { afterEach, describe, expect, test } from "bun:test";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup} from "@testing-library/react";
 
 describe("AdminLayout", () => {
   afterEach(() => {
@@ -32,3 +32,5 @@ describe("AdminLayout", () => {
     expect(element.type).toBe(React.Suspense);
   });
 });
+
+import { renderWithIntl as render } from "../../helpers/render-with-intl";

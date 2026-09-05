@@ -1,5 +1,8 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
+import { useMonitoringLabel } from "@/i18n/use-monitoring-label";
+
 import React, { useState } from "react";
 import { Clock, TriangleAlert, Search, ArrowUpDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,11 +27,11 @@ interface QueriesTabProps {
 type SortField = "totalTime" | "avgTime" | "calls" | "rows";
 type SortDir = "asc" | "desc";
 
-const formatTime = (ms: number) => {
+const formatTime = (ms: number, locale: string) => {
   if (ms >= 1000) {
-    return `${(ms / 1000).toFixed(2)}s`;
+    return `${(ms / 1000).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}s`;
   }
-  return `${ms.toFixed(2)}ms`;
+  return `${ms.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}ms`;
 };
 
 /** The figures the stat cards print, as the loaded view computes them below. */
@@ -42,7 +45,7 @@ interface QueryStats {
 interface StatCard {
   title: string;
   icon: (stats: QueryStats) => React.ReactNode;
-  value: (stats: QueryStats) => string;
+  value: (stats: QueryStats, locale: string) => string;
 }
 
 /**
@@ -57,7 +60,7 @@ const STAT_CARDS: readonly StatCard[] = [
   {
     title: "Avg of listed queries",
     icon: () => <Clock strokeWidth={1.5} className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />,
-    value: ({ statsKnown, avgTime }) => (statsKnown ? formatTime(avgTime) : "N/A"),
+    value: ({ statsKnown, avgTime }, locale) => (statsKnown ? formatTime(avgTime, locale) : "N/A"),
   },
   {
     title: "Listed queries over 1s",
@@ -74,6 +77,9 @@ const STAT_CARDS: readonly StatCard[] = [
 const STAT_GRID_CLASS = "grid grid-cols-2 gap-2 sm:gap-4";
 
 export function QueriesTab({ data, loading, labels }: QueriesTabProps) {
+  const locale = useLocale();
+  const t = useTranslations("Monitoring");
+  const translateLabel = useMonitoringLabel();
   const [sortField, setSortField] = useState<SortField>("totalTime");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
@@ -109,12 +115,12 @@ export function QueriesTab({ data, loading, labels }: QueriesTabProps) {
 
   const formatNumber = (n: number) => {
     if (n >= 1000000) {
-      return `${(n / 1000000).toFixed(1)}M`;
+      return `${new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format((n / 1000000))}M`;
     }
     if (n >= 1000) {
-      return `${(n / 1000).toFixed(1)}K`;
+      return `${new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format((n / 1000))}K`;
     }
-    return n.toString();
+    return n.toLocaleString(locale);
   };
 
   // Calculate stats. Absence and zero are different inputs: `MonitoringData.slowQueries`
@@ -161,11 +167,11 @@ export function QueriesTab({ data, loading, labels }: QueriesTabProps) {
         {STAT_CARDS.map((card) => (
           <Card key={card.title} className="p-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 sm:p-4 pb-1 sm:pb-2">
-              <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">{card.title}</CardTitle>
+              <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">{card.title === "Avg of listed queries" ? t("status.avgListed") : t("status.overSecond")}</CardTitle>
               {card.icon(stats)}
             </CardHeader>
             <CardContent className="p-2 sm:p-4 pt-0">
-              <div className="text-lg sm:text-2xl font-medium">{card.value(stats)}</div>
+              <div className="text-lg sm:text-2xl font-medium">{card.value(stats, locale)}</div>
             </CardContent>
           </Card>
         ))}
@@ -176,8 +182,7 @@ export function QueriesTab({ data, loading, labels }: QueriesTabProps) {
         <CardHeader className="p-3 sm:p-4">
           <CardTitle className="text-xs sm:text-xs font-medium flex items-center gap-2">
             <Clock strokeWidth={1.5} className="h-3 w-3 sm:h-4 sm:w-4" />
-            Slowest Queries
-            {/* The badge and the sentence below were PostgreSQL's advice shown on every
+            {t("ui.SlowestQueries")}{/* The badge and the sentence below were PostgreSQL's advice shown on every
                 engine (#U12, the #427 defect in another panel) - measured
                 2026-08-19 in Chrome telling an OpenSearch cluster to install a
                 PostgreSQL extension. The engine's own answer comes off
@@ -188,8 +193,7 @@ export function QueriesTab({ data, loading, labels }: QueriesTabProps) {
                 answer. Absent label = today's wording, so `postgres` is unchanged. */}
             {slowQueries.length === 0 && !slowQueriesUnavailable && !labels?.slowQueriesEmptyState && (
               <Badge variant="secondary" className="ml-2 text-xs sm:text-xs">
-                pg_stat_statements required
-              </Badge>
+                {t("ui.pg_stat_statementsrequired")}</Badge>
             )}
           </CardTitle>
         </CardHeader>
@@ -199,9 +203,9 @@ export function QueriesTab({ data, loading, labels }: QueriesTabProps) {
           ) : slowQueries.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Search strokeWidth={1.5} className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-xs">No query statistics available.</p>
+              <p className="text-xs">{t("ui.Noquerystatisticsavailable")}</p>
               <p className="text-xs mt-1">
-                {labels?.slowQueriesEmptyState ?? "Enable pg_stat_statements extension to see query stats."}
+                {translateLabel(labels?.slowQueriesEmptyState ?? "Enable pg_stat_statements extension to see query stats.")}
               </p>
             </div>
           ) : (
@@ -209,7 +213,7 @@ export function QueriesTab({ data, loading, labels }: QueriesTabProps) {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs w-[40%]">Query</TableHead>
+                    <TableHead className="text-xs w-[40%]">{t("ui.Query")}</TableHead>
                     <TableHead className="text-xs hidden sm:table-cell">
                       <Button
                         variant="ghost"
@@ -217,8 +221,7 @@ export function QueriesTab({ data, loading, labels }: QueriesTabProps) {
                         className="gap-1 -ml-3 h-7 text-xs"
                         onClick={() => handleSort("calls")}
                       >
-                        Calls
-                        <ArrowUpDown strokeWidth={1.5} className="h-3 w-3" />
+                        {t("ui.Calls")}<ArrowUpDown strokeWidth={1.5} className="h-3 w-3" />
                       </Button>
                     </TableHead>
                     <TableHead className="text-xs hidden md:table-cell">
@@ -228,8 +231,7 @@ export function QueriesTab({ data, loading, labels }: QueriesTabProps) {
                         className="gap-1 -ml-3 h-7 text-xs"
                         onClick={() => handleSort("totalTime")}
                       >
-                        Total
-                        <ArrowUpDown strokeWidth={1.5} className="h-3 w-3" />
+                        {t("ui.Total")}<ArrowUpDown strokeWidth={1.5} className="h-3 w-3" />
                       </Button>
                     </TableHead>
                     <TableHead className="text-xs">
@@ -239,8 +241,7 @@ export function QueriesTab({ data, loading, labels }: QueriesTabProps) {
                         className="gap-1 -ml-3 h-7 text-xs"
                         onClick={() => handleSort("avgTime")}
                       >
-                        Avg
-                        <ArrowUpDown strokeWidth={1.5} className="h-3 w-3" />
+                        {t("ui.Avg")}<ArrowUpDown strokeWidth={1.5} className="h-3 w-3" />
                       </Button>
                     </TableHead>
                     <TableHead className="text-xs hidden lg:table-cell">
@@ -250,8 +251,7 @@ export function QueriesTab({ data, loading, labels }: QueriesTabProps) {
                         className="gap-1 -ml-3 h-7 text-xs"
                         onClick={() => handleSort("rows")}
                       >
-                        Rows
-                        <ArrowUpDown strokeWidth={1.5} className="h-3 w-3" />
+                        {t("ui.Rows")}<ArrowUpDown strokeWidth={1.5} className="h-3 w-3" />
                       </Button>
                     </TableHead>
                   </TableRow>
@@ -279,7 +279,7 @@ export function QueriesTab({ data, loading, labels }: QueriesTabProps) {
                           variant={query.totalTime > 60000 ? "destructive" : "secondary"}
                           className="text-xs sm:text-xs"
                         >
-                          {formatTime(query.totalTime)}
+                          {formatTime(query.totalTime, locale)}
                         </Badge>
                       </TableCell>
                       <TableCell className="py-2">
@@ -287,7 +287,7 @@ export function QueriesTab({ data, loading, labels }: QueriesTabProps) {
                           variant={query.avgTime > 1000 ? "destructive" : query.avgTime > 100 ? "outline" : "secondary"}
                           className="text-xs sm:text-xs"
                         >
-                          {formatTime(query.avgTime)}
+                          {formatTime(query.avgTime, locale)}
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-xs py-2">{formatNumber(query.rows)}</TableCell>

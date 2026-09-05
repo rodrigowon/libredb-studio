@@ -23,6 +23,10 @@ import ptBrDataTools from "../../../messages/pt-BR/data-tools.json";
 import ptBrDocs from "../../../messages/pt-BR/docs.json";
 import ptBrSchemaDiff from "../../../messages/pt-BR/schema-diff.json";
 import { loadMessages, mergeMessages } from "@/i18n/load-messages";
+import enAdmin from "../../../messages/en/admin.json";
+import ptBrAdmin from "../../../messages/pt-BR/admin.json";
+import enMonitoring from "../../../messages/en/monitoring.json";
+import ptBrMonitoring from "../../../messages/pt-BR/monitoring.json";
 
 type JsonObject = { [key: string]: string | JsonObject };
 
@@ -46,6 +50,24 @@ function messageKeys(catalog: JsonObject, prefix = ""): string[] {
 }
 
 describe("i18n message loading", () => {
+  test("Phase 4 catalogs have equivalent keys, types and non-empty translations", () => {
+    for (const [english, portuguese] of [[enAdmin, ptBrAdmin], [enMonitoring, ptBrMonitoring]]) {
+      expect(messageKeys(portuguese).sort()).toEqual(messageKeys(english).sort());
+      expectValidOverride(english, portuguese);
+    }
+    expect(loadMessages("en").Admin).toEqual(enAdmin);
+    expect(loadMessages("en").Monitoring).toEqual(enMonitoring);
+    expect(loadMessages("pt-BR").Admin).toEqual(ptBrAdmin);
+    expect(loadMessages("pt-BR").Monitoring).toEqual(ptBrMonitoring);
+  });
+
+  test("Phase 4 nested messages fall back to English without mutating the reference", () => {
+    const merged = mergeMessages(enAdmin, { operations: { tables: ptBrAdmin.operations.tables } });
+    expect(merged.operations.tables).toBe("Tabelas");
+    expect(merged.operations.confirmSession).toBe(enAdmin.operations.confirmSession);
+    expect(enAdmin.operations.tables).toBe("Tables");
+  });
+
   test("Phase 3 Portuguese counts use plural for zero and preserve singular for one", () => {
     const t = createTranslator({ locale: "pt-BR", messages: loadMessages("pt-BR") });
     expect(t("History.history.showing", { count: 0 })).toBe("Exibindo 0 execuções");

@@ -1,5 +1,8 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
+import { useMonitoringLabel } from "@/i18n/use-monitoring-label";
+
 import React, { useState } from "react";
 import {
   Table2,
@@ -24,7 +27,7 @@ import {
   type MonitoringData,
   type ProviderCapabilities,
 } from "@/lib/db/types";
-import { formatBytes } from "@/lib/db/utils/pool-manager";
+import { formatMonitoringBytes } from "@/i18n/format-monitoring-bytes";
 import { PanelUnavailable } from "../PanelUnavailable";
 
 /**
@@ -62,10 +65,10 @@ const MAINTENANCE_ACTIONS: { type: MaintenanceType; label: string; Icon: LucideI
  * subject is telling a reading from an absence. The shared one refuses a negative or a
  * non-finite with "N/A" and spells PB and EB.
  */
-function formatNumber(n: number): string {
-  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
-  return n.toString();
+function formatNumber(n: number, locale: string): string {
+  if (n >= 1000000) return `${(n / 1000000).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`;
+  if (n >= 1000) return `${(n / 1000).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}K`;
+  return n.toLocaleString(locale);
 }
 
 /**
@@ -75,9 +78,9 @@ function formatNumber(n: number): string {
  * operation that does not exist. Only an engine that declares vacuum gets the word - the
  * rest get the dash this table already uses for a cell it cannot fill (`indexSize`).
  */
-function formatVacuumDate(date: Date | undefined, vacuumSupported: boolean): string {
-  if (!date) return vacuumSupported ? "Never" : "-";
-  return new Date(date).toLocaleDateString();
+function formatVacuumDate(date: Date | undefined, vacuumSupported: boolean, locale: string, never: string): string {
+  if (!date) return vacuumSupported ? never : "-";
+  return new Date(date).toLocaleDateString(locale);
 }
 
 /**
@@ -102,11 +105,12 @@ function VacuumNote({
   needingVacuum: number;
   unsupported: boolean;
 }>) {
+  const t = useTranslations("Monitoring");
   if (stateKnown) {
-    return <p className="text-xs sm:text-xs text-muted-foreground mt-1">{needingVacuum > 0 ? "Need" : "OK"}</p>;
+    return <p className="text-xs sm:text-xs text-muted-foreground mt-1">{needingVacuum > 0 ? t("status.need") : "OK"}</p>;
   }
   if (unsupported) {
-    return <p className="text-xs sm:text-xs text-muted-foreground mt-1">Not supported</p>;
+    return <p className="text-xs sm:text-xs text-muted-foreground mt-1">{t("ui.Notsupported")}</p>;
   }
   return null;
 }
@@ -138,10 +142,10 @@ function VacuumNote({
  *    statistic - so that branch says only what was measured here: nothing could be read.
  */
 function MaintenanceUnattachableNote({ actions, refused }: Readonly<{ actions: string[]; refused: boolean }>) {
-  const cause = refused ? "no table statistics could be read" : "this database published no table statistics";
+  const t = useTranslations("Monitoring.status");
   return (
     <p className="text-xs text-muted-foreground text-center px-4 pb-6" data-testid="tables-maintenance-unattachable">
-      {`Per-table maintenance (${actions.join(", ")}) is run from a row of this list, and ${cause} - so there is no row to run it on.`}
+      {t(refused ? "maintenanceRefused" : "maintenanceEmpty", { actions: actions.join(", ") })}
     </p>
   );
 }
@@ -169,6 +173,9 @@ interface TablesTabProps {
 }
 
 export function TablesTab({ data, loading, onRunMaintenance, isAdmin = true, capabilities }: TablesTabProps) {
+  const locale = useLocale();
+  const translateLabel = useMonitoringLabel();
+  const t = useTranslations("Monitoring");
   const [searchQuery, setSearchQuery] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -258,7 +265,7 @@ export function TablesTab({ data, loading, onRunMaintenance, isAdmin = true, cap
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <Card className="p-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 sm:p-4 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">Tables</CardTitle>
+            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">{t("ui.Tables")}</CardTitle>
             <Table2 strokeWidth={1.5} className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="p-2 sm:p-4 pt-0">
@@ -266,27 +273,27 @@ export function TablesTab({ data, loading, onRunMaintenance, isAdmin = true, cap
               {statsAbsent ? "N/A" : tables.length}
             </div>
             {!statsAbsent && (
-              <p className="text-xs sm:text-xs text-muted-foreground mt-1">{formatNumber(totalRows)} rows</p>
+              <p className="text-xs sm:text-xs text-muted-foreground mt-1">{formatNumber(totalRows, locale)} {t("ui.rows")}</p>
             )}
           </CardContent>
         </Card>
 
         <Card className="p-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 sm:p-4 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">Size</CardTitle>
+            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">{t("ui.Size")}</CardTitle>
             <Search strokeWidth={1.5} className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="p-2 sm:p-4 pt-0">
             <div className="text-lg sm:text-2xl font-medium" data-testid="tables-stat-size">
-              {sizeAbsent ? "N/A" : formatBytes(totalSize)}
+              {sizeAbsent ? "N/A" : formatMonitoringBytes(totalSize, locale)}
             </div>
-            {!sizeAbsent && <p className="text-xs sm:text-xs text-muted-foreground mt-1">Total</p>}
+            {!sizeAbsent && <p className="text-xs sm:text-xs text-muted-foreground mt-1">{t("ui.Total")}</p>}
           </CardContent>
         </Card>
 
         <Card className="p-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 sm:p-4 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">Vacuum</CardTitle>
+            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">{t("ui.Vacuum")}</CardTitle>
             <TriangleAlert
               className={`h-3 w-3 sm:h-4 sm:w-4 ${vacuumIconClass(vacuumStateKnown, tablesNeedingVacuum)}`}
             />
@@ -308,10 +315,9 @@ export function TablesTab({ data, loading, onRunMaintenance, isAdmin = true, cap
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
             <CardTitle className="text-xs sm:text-xs font-medium flex items-center gap-2">
               <Table2 strokeWidth={1.5} className="h-3 w-3 sm:h-4 sm:w-4" />
-              Table Statistics
-            </CardTitle>
+              {t("ui.TableStatistics")}</CardTitle>
             <Input
-              placeholder="Search..."
+              placeholder={t("ui.Search")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full sm:w-[200px] h-8 text-xs"
@@ -324,20 +330,20 @@ export function TablesTab({ data, loading, onRunMaintenance, isAdmin = true, cap
           ) : filteredTables.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Table2 strokeWidth={1.5} className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-xs">{statsAbsent ? "No table statistics available." : "No tables found."}</p>
+              <p className="text-xs">{statsAbsent ? t("status.noTableStats") : t("status.noTables")}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs">Table</TableHead>
-                    <TableHead className="text-right text-xs">Rows</TableHead>
-                    <TableHead className="text-right text-xs">Size</TableHead>
-                    <TableHead className="text-right text-xs hidden md:table-cell">Index</TableHead>
-                    <TableHead className="text-right text-xs hidden sm:table-cell">Bloat</TableHead>
-                    <TableHead className="text-xs hidden lg:table-cell">Vacuum</TableHead>
-                    <TableHead className="text-right text-xs w-20">Act</TableHead>
+                    <TableHead className="text-xs">{t("ui.Table")}</TableHead>
+                    <TableHead className="text-right text-xs">{t("ui.Rows")}</TableHead>
+                    <TableHead className="text-right text-xs">{t("ui.Size")}</TableHead>
+                    <TableHead className="text-right text-xs hidden md:table-cell">{t("ui.Index")}</TableHead>
+                    <TableHead className="text-right text-xs hidden sm:table-cell">{t("ui.Bloat")}</TableHead>
+                    <TableHead className="text-xs hidden lg:table-cell">{t("ui.Vacuum")}</TableHead>
+                    <TableHead className="text-right text-xs w-20">{t("ui.Act")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -352,11 +358,10 @@ export function TablesTab({ data, loading, onRunMaintenance, isAdmin = true, cap
                         </div>
                       </TableCell>
                       <TableCell className="text-right font-mono text-xs py-2">
-                        {formatNumber(table.rowCount)}
+                        {formatNumber(table.rowCount, locale)}
                         {table.deadRowCount ? (
                           <span className="text-xs text-muted-foreground block">
-                            {formatNumber(table.deadRowCount)} dead
-                          </span>
+                            {formatNumber(table.deadRowCount, locale)} {t("ui.dead")}</span>
                         ) : null}
                       </TableCell>
                       <TableCell className="text-right text-xs py-2" data-testid="table-row-size">
@@ -372,12 +377,12 @@ export function TablesTab({ data, loading, onRunMaintenance, isAdmin = true, cap
                           <span className="text-xs text-muted-foreground">-</span>
                         ) : (
                           <Badge variant={bloatBadgeVariant(table.bloatRatio)} className="text-xs sm:text-xs">
-                            {table.bloatRatio.toFixed(1)}%
+                            {new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(table.bloatRatio)}%
                           </Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground hidden lg:table-cell py-2">
-                        {formatVacuumDate(table.lastVacuum, vacuumSupported)}
+                        {formatVacuumDate(table.lastVacuum, vacuumSupported, locale, t("status.never"))}
                       </TableCell>
                       <TableCell className="text-right py-2">
                         {isAdmin && availableActions.length > 0 ? (
@@ -390,7 +395,7 @@ export function TablesTab({ data, loading, onRunMaintenance, isAdmin = true, cap
                                 className={className}
                                 onClick={() => handleMaintenance(type, table.tableName)}
                                 disabled={!!actionLoading}
-                                title={label}
+                                title={translateLabel(label)}
                               >
                                 {actionLoading === `${type}-${table.tableName}` ? (
                                   <LoaderCircle strokeWidth={1.5} className="h-3 w-3 animate-spin" />
@@ -412,7 +417,7 @@ export function TablesTab({ data, loading, onRunMaintenance, isAdmin = true, cap
           )}
           {maintenanceUnattachable && (
             <MaintenanceUnattachableNote
-              actions={availableActions.map((a) => a.label)}
+              actions={availableActions.map((a) => translateLabel(a.label))}
               refused={tablesUnavailable !== undefined}
             />
           )}

@@ -1,5 +1,8 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
+
+import { LocaleSwitcher } from "@/components/locale-switcher";
 import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -36,6 +39,8 @@ interface MonitoringDashboardProps {
 }
 
 export function MonitoringDashboard({ isEmbedded = false }: MonitoringDashboardProps) {
+  const locale = useLocale();
+  const t = useTranslations("Monitoring");
   const router = useRouter();
   // The stored active connection is read once, at mount: it seeds the default
   // selection and nothing re-reads it afterwards. `readString` answers null
@@ -95,8 +100,8 @@ export function MonitoringDashboard({ isEmbedded = false }: MonitoringDashboardP
   };
 
   const formatLastUpdated = (date: Date | null) => {
-    if (!date) return "Never";
-    return date.toLocaleTimeString();
+    if (!date) return t("status.never");
+    return date.toLocaleTimeString(locale);
   };
 
   return (
@@ -114,13 +119,14 @@ export function MonitoringDashboard({ isEmbedded = false }: MonitoringDashboardP
                 className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3"
               >
                 <ArrowLeft className="h-4 w-4" />
-                <span className="hidden sm:inline ml-2">Back</span>
+                <span className="hidden sm:inline ml-2">{t("ui.Back")}</span>
               </Button>
             )}
             <div className="flex items-center gap-2">
               <Activity strokeWidth={1.5} className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
               <h1 className="text-xs sm:text-lg font-medium hidden xs:block">
-                <span className="hidden sm:inline">Database </span>Monitoring
+                <span className="hidden sm:inline">{t("ui.DatabaseMonitoring")}</span>
+                <span className="sm:hidden">{t("ui.Monitoring")}</span>
               </h1>
             </div>
           </div>
@@ -129,10 +135,11 @@ export function MonitoringDashboard({ isEmbedded = false }: MonitoringDashboardP
           <div className="flex items-center gap-1 sm:gap-2">
             <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground mr-2">
               <div className={`h-2 w-2 rounded-full ${autoRefresh ? "bg-green-500 animate-pulse" : "bg-muted"}`} />
-              <span className="hidden md:inline">{autoRefresh ? "Auto" : "Manual"}</span>
-              <span className="hidden lg:inline text-xs">Last: {formatLastUpdated(lastUpdated)}</span>
+              <span className="hidden md:inline">{autoRefresh ? t("status.auto") : t("status.manual")}</span>
+              <span className="hidden lg:inline text-xs">{t("ui.LastColon")}{" "}{formatLastUpdated(lastUpdated)}</span>
             </div>
 
+            {!isEmbedded && <LocaleSwitcher />}
             {/* Interval selector */}
             <Select value={String(refreshInterval)} onValueChange={(v) => setRefreshInterval(Number(v))}>
               <SelectTrigger className="h-8 w-[80px] text-xs">
@@ -152,7 +159,7 @@ export function MonitoringDashboard({ isEmbedded = false }: MonitoringDashboardP
               size="icon"
               className="h-8 w-8"
               onClick={() => setAutoRefresh(!autoRefresh)}
-              title={autoRefresh ? "Pause auto-refresh" : "Start auto-refresh"}
+              title={autoRefresh ? t("status.pause") : t("status.start")}
             >
               {autoRefresh ? <Pause className="h-4 w-4" /> : <Play strokeWidth={1.5} className="h-4 w-4" />}
             </Button>
@@ -163,7 +170,7 @@ export function MonitoringDashboard({ isEmbedded = false }: MonitoringDashboardP
               className="h-8 w-8"
               onClick={refresh}
               disabled={loading}
-              title="Refresh now"
+              title={t("ui.Refreshnow")}
             >
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             </Button>
@@ -174,7 +181,7 @@ export function MonitoringDashboard({ isEmbedded = false }: MonitoringDashboardP
         <div className="px-3 pb-2 sm:px-4 sm:pb-3">
           <Select value={selectedConnection?.id || ""} onValueChange={handleConnectionChange}>
             <SelectTrigger className="w-full sm:w-[280px]">
-              <SelectValue placeholder="Select connection">
+              <SelectValue placeholder={t("ui.Selectconnection")}>
                 {selectedConnection ? (
                   <div className="flex items-center gap-2">
                     <Database strokeWidth={1.5} className="h-4 w-4 flex-shrink-0" />
@@ -182,7 +189,7 @@ export function MonitoringDashboard({ isEmbedded = false }: MonitoringDashboardP
                     <span className="text-xs text-muted-foreground hidden sm:inline">({selectedConnection.type})</span>
                   </div>
                 ) : (
-                  "Select connection"
+                  t("ui.Selectconnection")
                 )}
               </SelectValue>
             </SelectTrigger>
@@ -197,7 +204,7 @@ export function MonitoringDashboard({ isEmbedded = false }: MonitoringDashboardP
                 </SelectItem>
               ))}
               {allConns.length === 0 && (
-                <div className="px-2 py-1 text-xs text-muted-foreground">No connections available</div>
+                <div className="px-2 py-1 text-xs text-muted-foreground">{t("ui.Noconnectionsavailable")}</div>
               )}
             </SelectContent>
           </Select>
@@ -208,20 +215,18 @@ export function MonitoringDashboard({ isEmbedded = false }: MonitoringDashboardP
       {!selectedConnection ? (
         <div className="flex flex-col items-center justify-center flex-1 gap-4 text-muted-foreground">
           <Database strokeWidth={1.5} className="h-12 w-12" />
-          <h2 className="text-lg font-medium">No Connection Selected</h2>
-          <p className="text-xs">Select a database connection to view monitoring data.</p>
+          <h2 className="text-lg font-medium">{t("ui.NoConnectionSelected")}</h2>
+          <p className="text-xs">{t("ui.Selectadatabaseconnectiontoviewmonitoringdata")}</p>
           <Button variant="outline" onClick={() => router.push("/")}>
-            Manage Connections
-          </Button>
+            {t("ui.ManageConnections")}</Button>
         </div>
       ) : error && !data ? (
         <div className="flex flex-col items-center justify-center flex-1 gap-4 text-destructive">
           <Activity strokeWidth={1.5} className="h-12 w-12" />
-          <h2 className="text-lg font-medium">Connection Error</h2>
+          <h2 className="text-lg font-medium">{t("ui.ConnectionError")}</h2>
           <p className="text-xs">{error}</p>
           <Button variant="outline" onClick={refresh}>
-            Try Again
-          </Button>
+            {t("ui.TryAgain")}</Button>
         </div>
       ) : (
         <div className="flex-1 overflow-hidden">
@@ -232,58 +237,58 @@ export function MonitoringDashboard({ isEmbedded = false }: MonitoringDashboardP
                 <TabsTrigger
                   value="overview"
                   className="flex-1 sm:flex-initial gap-2 px-2 sm:px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-xs sm:text-xs"
-                  title="Overview"
+                  title={t("ui.Overview")}
                 >
                   <LayoutDashboard strokeWidth={1.5} className="h-4 w-4 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">Overview</span>
+                  <span className="hidden sm:inline">{t("ui.Overview")}</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="performance"
                   className="flex-1 sm:flex-initial gap-2 px-2 sm:px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-xs sm:text-xs"
-                  title="Performance"
+                  title={t("ui.Performance")}
                 >
                   <Activity strokeWidth={1.5} className="h-4 w-4 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">Performance</span>
+                  <span className="hidden sm:inline">{t("ui.Performance")}</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="queries"
                   className="flex-1 sm:flex-initial gap-2 px-2 sm:px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-xs sm:text-xs"
-                  title="Queries"
+                  title={t("ui.Queries")}
                 >
                   <Clock strokeWidth={1.5} className="h-4 w-4 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">Queries</span>
+                  <span className="hidden sm:inline">{t("ui.Queries")}</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="sessions"
                   className="flex-1 sm:flex-initial gap-2 px-2 sm:px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-xs sm:text-xs"
-                  title="Sessions"
+                  title={t("ui.Sessions")}
                 >
                   <Users strokeWidth={1.5} className="h-4 w-4 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">Sessions</span>
+                  <span className="hidden sm:inline">{t("ui.Sessions")}</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="tables"
                   className="flex-1 sm:flex-initial gap-2 px-2 sm:px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-xs sm:text-xs"
-                  title="Tables"
+                  title={t("ui.Tables")}
                 >
                   <Table2 strokeWidth={1.5} className="h-4 w-4 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">Tables</span>
+                  <span className="hidden sm:inline">{t("ui.Tables")}</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="storage"
                   className="flex-1 sm:flex-initial gap-2 px-2 sm:px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-xs sm:text-xs"
-                  title="Storage"
+                  title={t("ui.Storage")}
                 >
                   <HardDrive strokeWidth={1.5} className="h-4 w-4 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">Storage</span>
+                  <span className="hidden sm:inline">{t("ui.Storage")}</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="pool"
                   className="flex-1 sm:flex-initial gap-2 px-2 sm:px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-xs sm:text-xs"
-                  title="Pool"
+                  title={t("ui.Pool")}
                 >
                   <Database strokeWidth={1.5} className="h-4 w-4 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">Pool</span>
+                  <span className="hidden sm:inline">{t("ui.Pool")}</span>
                 </TabsTrigger>
               </TabsList>
             </div>

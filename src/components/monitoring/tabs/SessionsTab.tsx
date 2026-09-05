@@ -1,5 +1,8 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+import { useMonitoringLabel } from "@/i18n/use-monitoring-label";
+
 import React, { useState } from "react";
 import { Users, Skull, Activity, Clock, LoaderCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +37,8 @@ interface SessionsTabProps {
 }
 
 export function SessionsTab({ data, loading, onKillSession, isAdmin = true, labels }: SessionsTabProps) {
+  const t = useTranslations("Monitoring");
+  const translateLabel = useMonitoringLabel();
   const [killingPid, setKillingPid] = useState<number | string | null>(null);
   const [confirmKill, setConfirmKill] = useState<ActiveSessionDetails | null>(null);
 
@@ -79,13 +84,13 @@ export function SessionsTab({ data, loading, onKillSession, isAdmin = true, labe
   const getStateBadge = (state: string) => {
     switch (state) {
       case "active":
-        return <Badge className="bg-green-500">Active</Badge>;
+        return <Badge className="bg-green-500">{t("ui.Active")}</Badge>;
       case "idle":
-        return <Badge variant="secondary">Idle</Badge>;
+        return <Badge variant="secondary">{t("ui.Idle")}</Badge>;
       case "idle in transaction":
-        return <Badge className="bg-yellow-500">Idle in TX</Badge>;
+        return <Badge className="bg-yellow-500">{t("ui.IdleinTX")}</Badge>;
       case "idle in transaction (aborted)":
-        return <Badge variant="destructive">Aborted TX</Badge>;
+        return <Badge variant="destructive">{t("ui.AbortedTX")}</Badge>;
       default:
         return <Badge variant="outline">{state}</Badge>;
     }
@@ -97,7 +102,7 @@ export function SessionsTab({ data, loading, onKillSession, isAdmin = true, labe
       <div className="grid grid-cols-4 gap-2 sm:gap-4">
         <Card className="p-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 sm:p-4 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">Active</CardTitle>
+            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">{t("ui.Active")}</CardTitle>
             <Activity strokeWidth={1.5} className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
           </CardHeader>
           <CardContent className="p-2 sm:p-4 pt-0">
@@ -109,7 +114,7 @@ export function SessionsTab({ data, loading, onKillSession, isAdmin = true, labe
 
         <Card className="p-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 sm:p-4 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">Idle</CardTitle>
+            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">{t("ui.Idle")}</CardTitle>
             <Clock strokeWidth={1.5} className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent className="p-2 sm:p-4 pt-0">
@@ -121,7 +126,7 @@ export function SessionsTab({ data, loading, onKillSession, isAdmin = true, labe
 
         <Card className="p-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 sm:p-4 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">In TX</CardTitle>
+            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">{t("ui.InTX")}</CardTitle>
             <Clock
               className={`h-3 w-3 sm:h-4 sm:w-4 ${idleInTxCount !== "0" && !sessionsUnavailable ? "text-yellow-500" : "text-muted-foreground"}`}
             />
@@ -135,7 +140,7 @@ export function SessionsTab({ data, loading, onKillSession, isAdmin = true, labe
 
         <Card className="p-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 sm:p-4 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">Wait</CardTitle>
+            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">{t("ui.Wait")}</CardTitle>
             <Users
               className={`h-3 w-3 sm:h-4 sm:w-4 ${waitingCount !== "0" && !sessionsUnavailable ? "text-orange-500" : "text-muted-foreground"}`}
             />
@@ -153,7 +158,7 @@ export function SessionsTab({ data, loading, onKillSession, isAdmin = true, labe
         <CardHeader className="p-3 sm:p-4">
           <CardTitle className="text-xs sm:text-xs font-medium flex items-center gap-2">
             <Users strokeWidth={1.5} className="h-3 w-3 sm:h-4 sm:w-4" />
-            {sessionsUnavailable ? "Sessions" : `Sessions (${sessions.length})`}
+            {sessionsUnavailable ? t("ui.Sessions") : t("status.sessionCount", { count: sessions.length })}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0 sm:p-4 sm:pt-0">
@@ -166,7 +171,7 @@ export function SessionsTab({ data, loading, onKillSession, isAdmin = true, labe
                   (#518). The default reads as "nothing is running right now", which is
                   false on a panel that can never show a row. Absent label = today's
                   wording, so `postgres` is unchanged. */}
-              <p className="text-xs">{labels?.sessionsEmptyState ?? "No active sessions found."}</p>
+              <p className="text-xs">{translateLabel(labels?.sessionsEmptyState ?? "No active sessions found.")}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -174,12 +179,12 @@ export function SessionsTab({ data, loading, onKillSession, isAdmin = true, labe
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-xs w-[60px]">PID</TableHead>
-                    <TableHead className="text-xs">User</TableHead>
-                    <TableHead className="text-xs">State</TableHead>
-                    <TableHead className="text-xs hidden md:table-cell">Query</TableHead>
-                    <TableHead className="text-xs">Time</TableHead>
-                    <TableHead className="text-xs hidden lg:table-cell">Wait</TableHead>
-                    <TableHead className="text-right text-xs w-12">Act</TableHead>
+                    <TableHead className="text-xs">{t("ui.User")}</TableHead>
+                    <TableHead className="text-xs">{t("ui.State")}</TableHead>
+                    <TableHead className="text-xs hidden md:table-cell">{t("ui.Query")}</TableHead>
+                    <TableHead className="text-xs">{t("ui.Time")}</TableHead>
+                    <TableHead className="text-xs hidden lg:table-cell">{t("ui.Wait")}</TableHead>
+                    <TableHead className="text-right text-xs w-12">{t("ui.Act")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -208,7 +213,7 @@ export function SessionsTab({ data, loading, onKillSession, isAdmin = true, labe
                               </div>
                             </TooltipTrigger>
                             <TooltipContent side="bottom" className="max-w-lg">
-                              <pre className="text-xs whitespace-pre-wrap">{session.query || "No query"}</pre>
+                              <pre className="text-xs whitespace-pre-wrap">{session.query || t("status.noQuery")}</pre>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -236,6 +241,7 @@ export function SessionsTab({ data, loading, onKillSession, isAdmin = true, labe
                             variant="ghost"
                             size="icon"
                             className="h-6 w-6 sm:h-8 sm:w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            aria-label={t("ui.Terminate")}
                             onClick={() => handleKillClick(session)}
                             disabled={killingPid === session.pid}
                           >
@@ -262,29 +268,25 @@ export function SessionsTab({ data, loading, onKillSession, isAdmin = true, labe
       <AlertDialog open={!!confirmKill} onOpenChange={() => setConfirmKill(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Terminate Session?</AlertDialogTitle>
+            <AlertDialogTitle>{t("ui.TerminateSession")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to terminate session{" "}
-              <span className="font-mono font-medium">{confirmKill?.pid}</span>?
+              {t.rich("status.confirmSession", { pid: confirmKill?.pid ?? "", session: (chunks) => <span className="font-mono font-medium">{chunks}</span> })}
               <br />
               <br />
-              User: <span className="font-medium">{confirmKill?.user}</span>
+              {t("ui.UserColon")}{" "}<span className="font-medium">{confirmKill?.user}</span>
               <br />
-              State: <span className="font-medium">{confirmKill?.state}</span>
+              {t("ui.StateColon")}{" "}<span className="font-medium">{confirmKill?.state}</span>
               <br />
               <br />
-              This action will forcefully end the connection and may cause data loss if the session has uncommitted
-              transactions.
-            </AlertDialogDescription>
+              {t("ui.Thisactionwillforcefullyendtheconnectionandmaycausedatalossifthesessionhasuncommittedtransactions")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("ui.Cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmKill}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Terminate
-            </AlertDialogAction>
+              {t("ui.Terminate")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

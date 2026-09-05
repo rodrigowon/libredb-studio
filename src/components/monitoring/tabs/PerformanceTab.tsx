@@ -1,5 +1,7 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
+
 import React from "react";
 import { Activity, Gauge, Zap, TriangleAlert } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,6 +72,7 @@ function MetricTrendCard({
   color: string;
   unit?: string;
 }>) {
+  const t = useTranslations("Monitoring");
   return (
     <Card className="p-0">
       <CardHeader className="p-2 sm:p-3 pb-0">
@@ -77,7 +80,7 @@ function MetricTrendCard({
       </CardHeader>
       <CardContent className="p-2 sm:p-3 pt-0">
         {data.length === 0 ? (
-          <p className="text-xs sm:text-xs text-muted-foreground">Not measured</p>
+          <p className="text-xs sm:text-xs text-muted-foreground">{t("ui.Notmeasured")}</p>
         ) : (
           <MetricChart data={data} color={color} title={title} unit={unit} />
         )}
@@ -93,6 +96,8 @@ interface PerformanceTabProps {
 }
 
 export function PerformanceTab({ data, loading, history = [] }: PerformanceTabProps) {
+  const locale = useLocale();
+  const t = useTranslations("Monitoring");
   if (loading && !data) {
     return <PerformanceSkeleton />;
   }
@@ -113,10 +118,10 @@ export function PerformanceTab({ data, loading, history = [] }: PerformanceTabPr
   }
 
   const getHealthStatus = (ratio: number) => {
-    if (ratio >= 95) return { label: "Excellent", color: "text-green-500", bg: "bg-green-500" };
-    if (ratio >= 90) return { label: "Good", color: "text-blue-500", bg: "bg-blue-500" };
-    if (ratio >= 80) return { label: "Fair", color: "text-yellow-500", bg: "bg-yellow-500" };
-    return { label: "Poor", color: "text-red-500", bg: "bg-red-500" };
+    if (ratio >= 95) return { label: t("status.excellent"), color: "text-green-500", bg: "bg-green-500" };
+    if (ratio >= 90) return { label: t("status.good"), color: "text-blue-500", bg: "bg-blue-500" };
+    if (ratio >= 80) return { label: t("status.fair"), color: "text-yellow-500", bg: "bg-yellow-500" };
+    return { label: t("status.poor"), color: "text-red-500", bg: "bg-red-500" };
   };
 
   // Optional on purpose: an engine that cannot measure its cache (Druid) reports
@@ -167,7 +172,7 @@ export function PerformanceTab({ data, loading, history = [] }: PerformanceTabPr
         {/* Cache Hit Ratio */}
         <Card className={`p-0 border-2 transition-colors ${getThresholdColor(cacheThreshold)}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 sm:p-4 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">Cache Hit</CardTitle>
+            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">{t("ui.CacheHit")}</CardTitle>
             <Activity
               strokeWidth={1.5}
               className={`h-3 w-3 sm:h-4 sm:w-4 ${cacheStatus?.color ?? "text-muted-foreground"}`}
@@ -181,12 +186,12 @@ export function PerformanceTab({ data, loading, history = [] }: PerformanceTabPr
                     {CACHE_HIT_RATIO_UNAVAILABLE}
                   </span>
                 </div>
-                <p className="text-xs sm:text-xs text-muted-foreground mt-1 sm:mt-3">Not measured</p>
+                <p className="text-xs sm:text-xs text-muted-foreground mt-1 sm:mt-3">{t("ui.Notmeasured")}</p>
               </>
             ) : (
               <>
                 <div className="flex items-end gap-1">
-                  <span className="text-lg sm:text-3xl font-medium">{cacheStatus.ratio.toFixed(1)}</span>
+                  <span className="text-lg sm:text-3xl font-medium">{new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(cacheStatus.ratio)}</span>
                   <span className="text-xs sm:text-xl text-muted-foreground">%</span>
                 </div>
                 <Progress value={cacheStatus.ratio} className="h-1 sm:h-2 mt-1 sm:mt-3" />
@@ -204,7 +209,7 @@ export function PerformanceTab({ data, loading, history = [] }: PerformanceTabPr
         {/* Buffer Pool Usage */}
         <Card className={`p-0 border-2 transition-colors ${getThresholdColor(bufferThreshold)}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 sm:p-4 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">Buffer</CardTitle>
+            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">{t("ui.Buffer")}</CardTitle>
             <Gauge className={`h-3 w-3 sm:h-4 sm:w-4 ${bufferStatus?.color ?? "text-muted-foreground"}`} />
           </CardHeader>
           <CardContent className="p-2 sm:p-4 pt-0">
@@ -213,12 +218,12 @@ export function PerformanceTab({ data, loading, history = [] }: PerformanceTabPr
                 <div className="flex items-end gap-1">
                   <span className="text-lg sm:text-3xl font-medium text-muted-foreground">{METRIC_UNAVAILABLE}</span>
                 </div>
-                <p className="text-xs sm:text-xs text-muted-foreground mt-1 sm:mt-3">Not measured</p>
+                <p className="text-xs sm:text-xs text-muted-foreground mt-1 sm:mt-3">{t("ui.Notmeasured")}</p>
               </>
             ) : (
               <>
                 <div className="flex items-end gap-1">
-                  <span className="text-lg sm:text-3xl font-medium">{bufferStatus.usage.toFixed(0)}</span>
+                  <span className="text-lg sm:text-3xl font-medium">{new Intl.NumberFormat(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(bufferStatus.usage)}</span>
                   <span className="text-xs sm:text-xl text-muted-foreground">%</span>
                 </div>
                 <Progress value={bufferStatus.usage} className="h-1 sm:h-2 mt-1 sm:mt-3" />
@@ -226,7 +231,7 @@ export function PerformanceTab({ data, loading, history = [] }: PerformanceTabPr
                   <Badge variant="outline" className={`${bufferStatus.color} text-xs sm:text-xs`}>
                     {bufferStatus.label}
                   </Badge>
-                  <span className="text-xs sm:text-xs text-muted-foreground hidden sm:inline">Cache</span>
+                  <span className="text-xs sm:text-xs text-muted-foreground hidden sm:inline">{t("ui.Cache")}</span>
                 </div>
               </>
             )}
@@ -236,7 +241,7 @@ export function PerformanceTab({ data, loading, history = [] }: PerformanceTabPr
         {/* Deadlocks */}
         <Card className={`p-0 border-2 transition-colors ${getThresholdColor(deadlockThreshold)}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-2 sm:p-4 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">Deadlocks</CardTitle>
+            <CardTitle className="text-xs sm:text-xs font-medium text-muted-foreground">{t("ui.Deadlocks")}</CardTitle>
             <TriangleAlert className={`h-3 w-3 sm:h-4 sm:w-4 ${deadlockIconClass(deadlocks)}`} />
           </CardHeader>
           <CardContent className="p-2 sm:p-4 pt-0">
@@ -245,7 +250,7 @@ export function PerformanceTab({ data, loading, history = [] }: PerformanceTabPr
                 <div className="flex items-end gap-1">
                   <span className="text-lg sm:text-3xl font-medium text-muted-foreground">{METRIC_UNAVAILABLE}</span>
                 </div>
-                <p className="text-xs sm:text-xs text-muted-foreground mt-1 sm:mt-3">Not measured</p>
+                <p className="text-xs sm:text-xs text-muted-foreground mt-1 sm:mt-3">{t("ui.Notmeasured")}</p>
               </>
             ) : (
               <>
@@ -253,10 +258,10 @@ export function PerformanceTab({ data, loading, history = [] }: PerformanceTabPr
                   <span className="text-lg sm:text-3xl font-medium">{deadlocks}</span>
                 </div>
                 <p className="text-xs sm:text-xs text-muted-foreground mt-1 sm:mt-3 hidden sm:block">
-                  {deadlocks ? "Review queries" : "None detected"}
+                  {deadlocks ? t("status.review") : t("status.none")}
                 </p>
                 <Badge variant={deadlocks ? "destructive" : "secondary"} className="mt-1 sm:mt-2 text-xs sm:text-xs">
-                  {deadlocks ? "Attention" : "Healthy"}
+                  {deadlocks ? t("status.attention") : t("status.healthy")}
                 </Badge>
               </>
             )}
@@ -267,15 +272,15 @@ export function PerformanceTab({ data, loading, history = [] }: PerformanceTabPr
       {/* Trend Charts */}
       {history.length >= 2 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
-          <MetricTrendCard heading="Cache Hit Trend" title="Cache Hit" data={cacheHistory} color="#22c55e" unit="%" />
+          <MetricTrendCard heading={t("ui.CacheHitTrend")} title={t("ui.CacheHit")} data={cacheHistory} color="#22c55e" unit="%" />
           <MetricTrendCard
-            heading="Buffer Pool Trend"
-            title="Buffer Pool"
+            heading={t("ui.BufferPoolTrend")}
+            title={t("ui.BufferPool")}
             data={bufferHistory}
             color="#3b82f6"
             unit="%"
           />
-          <MetricTrendCard heading="Deadlock Trend" title="Deadlocks" data={deadlockHistory} color="#ef4444" />
+          <MetricTrendCard heading={t("ui.DeadlockTrend")} title={t("ui.Deadlocks")} data={deadlockHistory} color="#ef4444" />
         </div>
       )}
 
@@ -286,17 +291,15 @@ export function PerformanceTab({ data, loading, history = [] }: PerformanceTabPr
           <CardHeader className="p-3 sm:p-4 pb-2">
             <CardTitle className="text-xs sm:text-xs font-medium flex items-center gap-2">
               <Zap strokeWidth={1.5} className="h-3 w-3 sm:h-4 sm:w-4" />
-              Checkpoint Stats
-            </CardTitle>
+              {t("ui.CheckpointStats")}</CardTitle>
           </CardHeader>
           <CardContent className="p-3 sm:p-4 pt-0 space-y-2 sm:space-y-4">
             <div className="p-2 sm:p-4 bg-muted/30 rounded-lg">
-              <p className="text-xs sm:text-xs text-muted-foreground">Write & Sync</p>
+              <p className="text-xs sm:text-xs text-muted-foreground">{t("ui.WriteSync")}</p>
               <p className="text-xs sm:text-lg font-mono mt-1 truncate">{performance?.checkpointWriteTime || "N/A"}</p>
             </div>
             <p className="text-xs sm:text-xs text-muted-foreground hidden sm:block">
-              Checkpoint write time affects database performance during heavy writes.
-            </p>
+              {t("ui.Checkpointwritetimeaffectsdatabaseperformanceduringheavywrites")}</p>
           </CardContent>
         </Card>
 
@@ -305,8 +308,7 @@ export function PerformanceTab({ data, loading, history = [] }: PerformanceTabPr
           <CardHeader className="p-3 sm:p-4 pb-2">
             <CardTitle className="text-xs sm:text-xs font-medium flex items-center gap-2">
               <Activity strokeWidth={1.5} className="h-3 w-3 sm:h-4 sm:w-4" />
-              Tips
-            </CardTitle>
+              {t("ui.Tips")}</CardTitle>
           </CardHeader>
           <CardContent className="p-3 sm:p-4 pt-0 space-y-2 sm:space-y-3">
             {/* Guarded on the ratio existing, not on a stand-in value: there is
@@ -318,8 +320,8 @@ export function PerformanceTab({ data, loading, history = [] }: PerformanceTabPr
                   className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-500 mt-0.5 flex-shrink-0"
                 />
                 <div>
-                  <p className="text-xs sm:text-xs font-medium">Low Cache Hit</p>
-                  <p className="text-xs sm:text-xs text-muted-foreground hidden sm:block">Increase shared_buffers</p>
+                  <p className="text-xs sm:text-xs font-medium">{t("ui.LowCacheHit")}</p>
+                  <p className="text-xs sm:text-xs text-muted-foreground hidden sm:block">{t("ui.Increaseshared_buffers")}</p>
                 </div>
               </div>
             )}
@@ -327,15 +329,15 @@ export function PerformanceTab({ data, loading, history = [] }: PerformanceTabPr
               <div className="flex items-start gap-2 p-2 bg-red-500/10 rounded-md">
                 <TriangleAlert strokeWidth={1.5} className="h-3 w-3 sm:h-4 sm:w-4 text-red-500 mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-xs sm:text-xs font-medium">Deadlocks</p>
-                  <p className="text-xs sm:text-xs text-muted-foreground hidden sm:block">Review lock ordering</p>
+                  <p className="text-xs sm:text-xs font-medium">{t("ui.Deadlocks")}</p>
+                  <p className="text-xs sm:text-xs text-muted-foreground hidden sm:block">{t("ui.Reviewlockordering")}</p>
                 </div>
               </div>
             )}
             {cacheHitRatio !== undefined && cacheHitRatio >= 90 && !performance?.deadlocks && (
               <div className="flex items-center gap-2 p-2 bg-green-500/10 rounded-md">
                 <Activity strokeWidth={1.5} className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 flex-shrink-0" />
-                <p className="text-xs sm:text-xs">Performing well!</p>
+                <p className="text-xs sm:text-xs">{t("ui.Performingwell")}</p>
               </div>
             )}
           </CardContent>

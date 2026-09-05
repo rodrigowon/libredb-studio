@@ -41,7 +41,7 @@ mock.module("recharts", () => ({
 const { MetricChart } = await import("@/components/monitoring/tabs/MetricChart");
 
 import { afterEach, describe, expect, test } from "bun:test";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup} from "@testing-library/react";
 
 describe("MetricChart", () => {
   afterEach(() => {
@@ -104,7 +104,7 @@ describe("MetricChart", () => {
     ];
     const { getByTestId } = render(<MetricChart data={data} color="#3b82f6" title="Latency" unit="ms" />);
 
-    expect(getByTestId("tooltip-label").textContent).toBe("09:05:07");
+    expect(getByTestId("tooltip-label").textContent).toBe(new Date(SAMPLE_TS).toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
     expect(getByTestId("tooltip-value").textContent).toBe("42.6ms");
     // recharts 3 types the value as `ValueType | undefined`. Reading `.toFixed`
     // off that throws, taking the whole tooltip down with it.
@@ -134,12 +134,23 @@ describe("MetricChart", () => {
     expect(container).not.toBeNull();
   });
 
-  test("formats axis tick timestamps as HH:MM:SS", () => {
+  test("formats axis tick timestamps using the active locale", () => {
     const data = [
       { timestamp: SAMPLE_TS, value: 10 },
       { timestamp: SAMPLE_TS + 1000, value: 20 },
     ];
     const { getByTestId } = render(<MetricChart data={data} color="#3b82f6" title="Latency" />);
-    expect(getByTestId("x-axis").textContent).toBe("09:05:07");
+    expect(getByTestId("x-axis").textContent).toBe(new Date(SAMPLE_TS).toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
   });
+  test("uses Brazilian date and number presentation without changing units", () => {
+    const data = [{ timestamp: SAMPLE_TS, value: 10 }, { timestamp: SAMPLE_TS + 1000, value: 20 }];
+    const view = render(<MetricChart data={data} color="#3b82f6" title="CPU" unit="ms" />, "pt-BR");
+    expect(view.getByTestId("tooltip-label").textContent).toBe(
+      new Date(SAMPLE_TS).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+    );
+    expect(view.getByTestId("tooltip-value").textContent).toContain(",");
+  });
+
 });
+
+import { renderWithIntl as render } from "../../helpers/render-with-intl";

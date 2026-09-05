@@ -4,7 +4,7 @@ import "../../helpers/mock-navigation";
 
 import React from "react";
 import { afterEach, describe, expect, mock, test } from "bun:test";
-import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, waitFor } from "@testing-library/react";
 import { PoolTab } from "@/components/monitoring/tabs/PoolTab";
 
 const mockFetch = mock(() =>
@@ -183,3 +183,5 @@ describe("PoolTab", () => {
     expect(body.connection).toBeUndefined();
   });
 });
+
+import { renderWithIntl as render } from "../../helpers/render-with-intl";

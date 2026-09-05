@@ -4,7 +4,7 @@ import "../../helpers/mock-navigation";
 
 import React from "react";
 import { describe, test, expect, mock, afterEach } from "bun:test";
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, waitFor } from "@testing-library/react";
 import { TablesTab } from "@/components/monitoring/tabs/TablesTab";
 import type { MonitoringData, ProviderCapabilities } from "@/lib/db/types";
 
@@ -777,3 +777,5 @@ describe("a per-table operation with no row to run it on (U22)", () => {
     expect(queryByTestId("tables-maintenance-unattachable")).toBeNull();
   });
 });
+
+import { renderWithIntl as render } from "../../helpers/render-with-intl";

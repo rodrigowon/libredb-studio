@@ -4,7 +4,7 @@ import "../../helpers/mock-navigation";
 
 import React from "react";
 import { describe, test, expect, afterEach } from "bun:test";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup} from "@testing-library/react";
 import { StorageTab } from "@/components/monitoring/tabs/StorageTab";
 import type { MonitoringData } from "@/lib/db/types";
 
@@ -686,3 +686,5 @@ describe("a refused overview read", () => {
     expect(queryByText("No storage size information available.")).not.toBeNull();
   });
 });
+
+import { renderWithIntl as render } from "../../helpers/render-with-intl";

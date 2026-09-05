@@ -4,6 +4,10 @@ import enMetadata from "../../messages/en/metadata.json";
 import enStudio from "../../messages/en/studio.json";
 import enConnections from "../../messages/en/connections.json";
 import enEditor from "../../messages/en/editor.json";
+import enAdmin from "../../messages/en/admin.json";
+import enMonitoring from "../../messages/en/monitoring.json";
+import ptBrAdmin from "../../messages/pt-BR/admin.json";
+import ptBrMonitoring from "../../messages/pt-BR/monitoring.json";
 import enResults from "../../messages/en/results.json";
 import enHistory from "../../messages/en/history.json";
 import enDataTools from "../../messages/en/data-tools.json";
@@ -34,6 +38,8 @@ const englishMessages = {
   Studio: enStudio,
   Connections: enConnections,
   Editor: enEditor,
+  Admin: enAdmin,
+  Monitoring: enMonitoring,
   Results: enResults,
   History: enHistory,
   DataTools: enDataTools,
@@ -48,6 +54,8 @@ const portugueseMessages = {
   Studio: ptBrStudio,
   Connections: ptBrConnections,
   Editor: ptBrEditor,
+  Admin: ptBrAdmin,
+  Monitoring: ptBrMonitoring,
   Results: ptBrResults,
   History: ptBrHistory,
   DataTools: ptBrDataTools,
