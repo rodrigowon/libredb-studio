@@ -162,7 +162,8 @@ mock.module("@zumer/snapdom", () => ({
 }));
 
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { render, fireEvent, within, cleanup, act } from "@testing-library/react";
+import { fireEvent, within, cleanup, act } from "@testing-library/react";
+import { IntlTestProvider, renderWithIntl as render } from "../helpers/render-with-intl";
 import React from "react";
 
 import { renderToStaticMarkup } from "react-dom/server";
@@ -182,6 +183,61 @@ import type { TableSchema } from "@/lib/types";
 // =============================================================================
 // Test Data
 // =============================================================================
+
+describe("ERD localization", () => {
+  afterEach(cleanup);
+
+  test("Portuguese loading state", () => {
+    const view = render(<SchemaDiagram schema={[]} onClose={() => {}} />, "pt-BR");
+    expect(view.getByText("Gerando diagrama ERD...")).toBeTruthy();
+  });
+
+  test("runtime locale changes preserve graph identity and coordinates", async () => {
+    const schema: TableSchema[] = [{
+      name: "customers", columns: [{ name: "customer_id", type: "integer", isPrimary: true, nullable: false }],
+      indexes: [], foreignKeys: [], rowCount: 1,
+    }];
+    const onClose = () => {};
+    const view = render(<IntlTestProvider locale="en"><SchemaDiagram schema={schema} onClose={onClose} /></IntlTestProvider>);
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 30)); });
+    const nodes = lastReactFlowProps.nodes;
+    const edges = lastReactFlowProps.edges;
+    const serialized = JSON.stringify({ nodes, edges });
+    view.rerender(<IntlTestProvider locale="pt-BR"><SchemaDiagram schema={schema} onClose={onClose} /></IntlTestProvider>);
+    expect(view.getByText("Visualizador ERD")).toBeTruthy();
+    expect(lastReactFlowProps.nodes).toBe(nodes);
+    expect(lastReactFlowProps.edges).toBe(edges);
+    expect(JSON.stringify({ nodes: lastReactFlowProps.nodes, edges: lastReactFlowProps.edges })).toBe(serialized);
+    view.rerender(<IntlTestProvider locale="en"><SchemaDiagram schema={schema} onClose={onClose} /></IntlTestProvider>);
+    expect(view.getByText("ERD Visualizer")).toBeTruthy();
+    expect(lastReactFlowProps.nodes).toBe(nodes);
+  });
+
+  test("Portuguese toolbar and accessibility preserve schema data and graph values", () => {
+    const schema: TableSchema[] = [{
+      name: "customers",
+      columns: [{ name: "customer_id", type: "integer", isPrimary: true, nullable: false, defaultValue: "1" }],
+      indexes: [], foreignKeys: [], rowCount: 1,
+    }];
+    const original = JSON.stringify(schema);
+    const view = render(<SchemaDiagram schema={schema} onClose={() => {}} />, "pt-BR");
+    expect(view.getByText("Visualizador ERD")).toBeTruthy();
+    expect(view.getByRole("button", { name: "Exportar PNG" })).toBeTruthy();
+    expect(view.getByRole("button", { name: "Exportar SVG" })).toBeTruthy();
+    expect(view.getByRole("button", { name: "Fechar" })).toBeTruthy();
+    expect(view.getByText("customers")).toBeTruthy();
+    expect(view.getByText("customer_id")).toBeTruthy();
+    expect(view.getByTitle(/PRIMARY KEY/).title).toContain("NOT NULL");
+    expect(view.getByTitle(/PRIMARY KEY/).title).toContain("Valor padrão: 1");
+    const labels = lastReactFlowProps.ariaLabelConfig as Record<string, unknown>;
+    expect(labels["controls.zoomIn.ariaLabel"]).toBe("Aumentar zoom");
+    expect(labels["controls.fitView.ariaLabel"]).toBe("Ajustar à visualização");
+    expect((lastReactFlowProps.nodes as { id: string }[])[0].id).toBe("customers");
+    fireEvent.change(view.getByRole("textbox", { name: "Filtrar tabelas..." }), { target: { value: "missing" } });
+    expect(view.getByText("0 tabelas")).toBeTruthy();
+    expect(JSON.stringify(schema)).toBe(original);
+  });
+});
 
 // Schema with NO foreign keys at all (triggers heuristic fallback)
 const schemaNoFK: TableSchema[] = [
@@ -426,7 +482,7 @@ describe("SchemaDiagram", () => {
     const view = within(container);
 
     // mockSchema has orders → users FK, so 1 relationship
-    expect(view.queryByText("1 relationships")).not.toBeNull();
+    expect(view.queryByText("1 relationship")).not.toBeNull();
   });
 
   test("shows 0 relationships for schema without FKs", () => {
@@ -443,7 +499,7 @@ describe("SchemaDiagram", () => {
     const view = within(container);
 
     // comments.user_id → users heuristic edge
-    expect(view.queryByText("1 relationships")).not.toBeNull();
+    expect(view.queryByText("1 relationship")).not.toBeNull();
   });
 
   test("shows single table count", () => {
@@ -451,7 +507,7 @@ describe("SchemaDiagram", () => {
     const { container } = render(<SchemaDiagram {...props} />);
     const view = within(container);
 
-    expect(view.queryByText("1 tables")).not.toBeNull();
+    expect(view.queryByText("1 table")).not.toBeNull();
   });
 
   // ── Export buttons ──────────────────────────────────────────────────────
@@ -515,7 +571,7 @@ describe("SchemaDiagram", () => {
     fireEvent.change(searchInput, { target: { value: "users" } });
 
     // After filtering, only 1 table matches
-    expect(view.queryByText("1 tables")).not.toBeNull();
+    expect(view.queryByText("1 table")).not.toBeNull();
     expect(view.queryByText("3 tables")).toBeNull();
   });
 
@@ -527,7 +583,7 @@ describe("SchemaDiagram", () => {
     const searchInput = view.getByPlaceholderText("Filter tables...");
     fireEvent.change(searchInput, { target: { value: "ORDERS" } });
 
-    expect(view.queryByText("1 tables")).not.toBeNull();
+    expect(view.queryByText("1 table")).not.toBeNull();
   });
 
   test("search with no matches shows 0 tables", () => {
@@ -550,7 +606,7 @@ describe("SchemaDiagram", () => {
 
     // Type to filter
     fireEvent.change(searchInput, { target: { value: "users" } });
-    expect(view.queryByText("1 tables")).not.toBeNull();
+    expect(view.queryByText("1 table")).not.toBeNull();
 
     // Clear the search
     fireEvent.change(searchInput, { target: { value: "" } });
@@ -723,7 +779,7 @@ describe("SchemaDiagram", () => {
     fireEvent.change(searchInput, { target: { value: "orders" } });
 
     // Only orders table visible, users is filtered out → FK edge excluded (target not in set)
-    expect(view.queryByText("1 tables")).not.toBeNull();
+    expect(view.queryByText("1 table")).not.toBeNull();
     expect(view.queryByText("0 relationships")).not.toBeNull();
   });
 
@@ -735,7 +791,7 @@ describe("SchemaDiagram", () => {
     const view = within(container);
 
     // comments has user_id → should heuristically link to users
-    expect(view.queryByText("1 relationships")).not.toBeNull();
+    expect(view.queryByText("1 relationship")).not.toBeNull();
   });
 
   test("heuristic edges not created when real FK data exists", () => {
@@ -746,7 +802,7 @@ describe("SchemaDiagram", () => {
     const view = within(container);
 
     // Only 1 real FK edge, no extra heuristic
-    expect(view.queryByText("1 relationships")).not.toBeNull();
+    expect(view.queryByText("1 relationship")).not.toBeNull();
   });
 
   // ── Multiple re-renders don't crash ─────────────────────────────────────
@@ -758,7 +814,7 @@ describe("SchemaDiagram", () => {
     expect(view.queryByText("3 tables")).not.toBeNull();
 
     rerender(<SchemaDiagram schema={singleTableSchema} onClose={onClose} />);
-    expect(view.queryByText("1 tables")).not.toBeNull();
+    expect(view.queryByText("1 table")).not.toBeNull();
   });
 
   // ── Panel buttons ─────────────────────────────────────────────────────
@@ -812,7 +868,7 @@ describe("SchemaDiagram", () => {
     const searchInput = view.getByPlaceholderText("Filter tables...");
     fireEvent.change(searchInput, { target: { value: "ord" } });
     // 'orders' matches 'ord'
-    expect(view.queryByText("1 tables")).not.toBeNull();
+    expect(view.queryByText("1 table")).not.toBeNull();
   });
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -1327,6 +1383,19 @@ describe("SchemaDiagram", () => {
       expect(mockToastError).toHaveBeenCalled();
     });
 
+    test.each([
+      ["PNG encoding produced no data", "A codificação PNG não produziu dados"],
+      ["capture exploded", "capture exploded"],
+    ])("Portuguese export error preserves the boundary for %s", async (raw, display) => {
+      mockSnapdom.mockImplementation(() => Promise.reject(new Error(raw)));
+      const view = render(<SchemaDiagram {...createDefaultProps()} />, "pt-BR");
+      await act(async () => {
+        fireEvent.click(view.getByRole("button", { name: "Exportar PNG" }));
+        await new Promise((resolve) => setTimeout(resolve, 40));
+      });
+      expect(mockToastError).toHaveBeenCalledWith("Falha ao exportar PNG", { description: display });
+    });
+
     test("export with every table filtered out toasts and never captures", async () => {
       const props = createDefaultProps();
       const { container } = render(<SchemaDiagram {...props} />);
@@ -1817,7 +1886,7 @@ describe("SchemaDiagram", () => {
       const view = within(container);
 
       // books.author_id → author (singular match, not authors)
-      expect(view.queryByText("1 relationships")).not.toBeNull();
+      expect(view.queryByText("1 relationship")).not.toBeNull();
     });
 
     test("schema with undefined foreignKeys does not crash", () => {
@@ -1825,7 +1894,7 @@ describe("SchemaDiagram", () => {
       const { container } = render(<SchemaDiagram {...props} />);
       const view = within(container);
 
-      expect(view.queryByText("1 tables")).not.toBeNull();
+      expect(view.queryByText("1 table")).not.toBeNull();
       expect(view.queryByText("0 relationships")).not.toBeNull();
     });
 

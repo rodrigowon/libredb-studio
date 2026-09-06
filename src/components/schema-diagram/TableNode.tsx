@@ -7,6 +7,7 @@ import type { ColumnSchema } from "@/lib/types";
 import { TABLE_SOURCE_HANDLE, TABLE_TARGET_HANDLE, type TableFlowNode } from "./graph";
 import { useDiagramActions } from "./diagram-context";
 import { useTableHighlighted } from "./highlight-store";
+import { useTranslations } from "next-intl";
 
 interface ColumnRowProps {
   column: ColumnSchema;
@@ -16,12 +17,13 @@ interface ColumnRowProps {
 }
 
 const ColumnRow = memo(function ColumnRow({ column, isFk, hasSourceHandle, hasTargetHandle }: ColumnRowProps) {
+  const t = useTranslations("ERD");
   const tooltip = [
     `${column.name}: ${column.type}`,
     column.isPrimary ? "PRIMARY KEY" : null,
     isFk ? "FOREIGN KEY" : null,
     column.nullable === false ? "NOT NULL" : null,
-    column.defaultValue ? `Default: ${column.defaultValue}` : null,
+    column.defaultValue ? t("defaultValue", { value: column.defaultValue }) : null,
   ]
     .filter(Boolean)
     .join("\n");
@@ -77,6 +79,7 @@ const ColumnRow = memo(function ColumnRow({ column, isFk, hasSourceHandle, hasTa
 });
 
 export const TableNode = memo(function TableNode({ id, data }: NodeProps<TableFlowNode>) {
+  const t = useTranslations("ERD");
   const highlighted = useTableHighlighted(id);
   const { toggleExpand } = useDiagramActions();
   const updateNodeInternals = useUpdateNodeInternals();
@@ -123,7 +126,7 @@ export const TableNode = memo(function TableNode({ id, data }: NodeProps<TableFl
         />
         <Database strokeWidth={1.5} className="w-3.5 h-3.5 text-blue-400" />
         <span className="text-xs font-medium text-fg">{table.name}</span>
-        <span className="text-[0.625rem] text-fg-subtle ml-auto">{table.columns?.length || 0} cols</span>
+        <span className="text-[0.625rem] text-fg-subtle ml-auto">{t("columns", { count: table.columns?.length || 0 })}</span>
       </div>
       {!compact && (
         <div className="p-1">
@@ -142,7 +145,7 @@ export const TableNode = memo(function TableNode({ id, data }: NodeProps<TableFl
               className="w-full text-left px-2 py-1 text-[0.625rem] text-fg-muted hover:text-fg-secondary transition-colors"
               onClick={() => toggleExpand(table.name)}
             >
-              +{hiddenCount} more
+              {t("more", { count: hiddenCount })}
             </button>
           )}
         </div>

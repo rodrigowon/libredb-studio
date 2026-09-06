@@ -25,6 +25,10 @@ import ptBrDataTools from "../../messages/pt-BR/data-tools.json";
 import ptBrDocs from "../../messages/pt-BR/docs.json";
 import ptBrSchemaDiff from "../../messages/pt-BR/schema-diff.json";
 import { FALLBACK_LOCALE, type Locale } from "@/i18n/config";
+import enErd from "../../messages/en/erd.json";
+import ptBrErd from "../../messages/pt-BR/erd.json";
+import enExplain from "../../messages/en/explain.json";
+import ptBrExplain from "../../messages/pt-BR/explain.json";
 
 type MessageObject = { [key: string]: string | MessageObject };
 type DeepPartial<T> = {
@@ -32,6 +36,8 @@ type DeepPartial<T> = {
 };
 
 const englishMessages = {
+  ERD: enErd,
+  Explain: enExplain,
   Common: enCommon,
   Metadata: enMetadata,
   Login: enLogin,
@@ -48,6 +54,8 @@ const englishMessages = {
 };
 
 const portugueseMessages = {
+  ERD: ptBrErd,
+  Explain: ptBrExplain,
   Common: ptBrCommon,
   Metadata: ptBrMetadata,
   Login: ptBrLogin,

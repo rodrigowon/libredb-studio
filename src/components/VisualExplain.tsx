@@ -24,6 +24,7 @@ import {
   ListTree,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLocale, useTranslations } from "next-intl";
 import type { ExplainPlanNode, ExplainPlanResult, ExplainPlanInput, ExplainTreeNode } from "@/lib/explain/types";
 
 export type { ExplainPlanResult } from "@/lib/explain/types";
@@ -40,16 +41,22 @@ interface VisualExplainProps {
 // Helper Functions
 // ============================================================================
 
-function formatNumber(num: number): string {
-  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-  return num.toFixed(0);
+function formatDecimal(num: number, digits: number, locale: string): string {
+  return Number(num.toFixed(digits)).toLocaleString(locale, {
+    minimumFractionDigits: digits, maximumFractionDigits: digits, useGrouping: false,
+  });
 }
 
-function formatTime(ms: number): string {
-  if (ms >= 1000) return `${(ms / 1000).toFixed(2)}s`;
-  if (ms >= 1) return `${ms.toFixed(2)}ms`;
-  return `${(ms * 1000).toFixed(0)}μs`;
+function formatNumber(num: number, locale: string): string {
+  if (num >= 1000000) return `${formatDecimal(num / 1000000, 1, locale)}M`;
+  if (num >= 1000) return `${formatDecimal(num / 1000, 1, locale)}K`;
+  return formatDecimal(num, 0, locale);
+}
+
+function formatTime(ms: number, locale: string): string {
+  if (ms >= 1000) return `${formatDecimal(ms / 1000, 2, locale)}s`;
+  if (ms >= 1) return `${formatDecimal(ms, 2, locale)}ms`;
+  return `${formatDecimal(ms * 1000, 0, locale)}μs`;
 }
 
 // ============================================================================
@@ -82,7 +89,7 @@ interface Insight {
   status: "good" | "warning" | "critical";
 }
 
-function analyzePlan(plan: ExplainPlanResult[]): PlanAnalysis {
+function analyzePlan(plan: ExplainPlanResult[], t: ReturnType<typeof useTranslations<"Explain">>, locale: string): PlanAnalysis {
   const warnings: Warning[] = [];
   const insights: Insight[] = [];
   let totalRows = 0;
@@ -113,8 +120,8 @@ function analyzePlan(plan: ExplainPlanResult[]): PlanAnalysis {
     if (nodeType.includes("Seq Scan") && actualRows > 10000) {
       warnings.push({
         type: "warning",
-        title: "Sequential Scan",
-        description: `Full table scan on "${node["Relation Name"] || "table"}" (${formatNumber(actualRows)} rows). Consider adding an index.`,
+        title: t("warnings.scanTitle"),
+        description: t("warnings.scan", { table: node["Relation Name"] || t("warnings.table"), rows: formatNumber(actualRows, locale) }),
         node: nodeType,
       });
     }
@@ -125,8 +132,8 @@ function analyzePlan(plan: ExplainPlanResult[]): PlanAnalysis {
       if (ratio > 10 || ratio < 0.1) {
         warnings.push({
           type: "info",
-          title: "Estimate Mismatch",
-          description: `Expected ${formatNumber(planRows)} rows, got ${formatNumber(actualRows)}. Statistics may be outdated.`,
+          title: t("warnings.estimateTitle"),
+          description: t("warnings.estimate", { expected: formatNumber(planRows, locale), actual: formatNumber(actualRows, locale) }),
           node: nodeType,
         });
       }
@@ -136,8 +143,8 @@ function analyzePlan(plan: ExplainPlanResult[]): PlanAnalysis {
     if (nodeType.includes("Sort") && actualTime > 100) {
       warnings.push({
         type: "warning",
-        title: "Expensive Sort",
-        description: `Sort operation took ${formatTime(actualTime)}. Consider adding an index for ordered access.`,
+        title: t("warnings.sortTitle"),
+        description: t("warnings.sort", { time: formatTime(actualTime, locale) }),
         node: nodeType,
       });
     }
@@ -147,8 +154,8 @@ function analyzePlan(plan: ExplainPlanResult[]): PlanAnalysis {
     if (nodeType.includes("Nested Loop") && actualLoops > 1000) {
       warnings.push({
         type: "critical",
-        title: "High Loop Count",
-        description: `Nested loop executed ${formatNumber(actualLoops)} times. This could indicate an N+1 problem.`,
+        title: t("warnings.loopsTitle"),
+        description: t("warnings.loops", { loops: formatNumber(actualLoops, locale) }),
         node: nodeType,
       });
     }
@@ -163,20 +170,20 @@ function analyzePlan(plan: ExplainPlanResult[]): PlanAnalysis {
 
   // Build insights
   insights.push({
-    label: "Cache Hit Rate",
-    value: bufferHits + bufferReads > 0 ? `${((bufferHits / (bufferHits + bufferReads)) * 100).toFixed(1)}%` : "N/A",
+    label: t("metrics.cache"),
+    value: bufferHits + bufferReads > 0 ? `${formatDecimal((bufferHits / (bufferHits + bufferReads)) * 100, 1, locale)}%` : "N/A",
     status: bufferHits / (bufferHits + bufferReads || 1) > 0.95 ? "good" : "warning",
   });
 
   insights.push({
-    label: "Operations",
-    value: nodeCount.toString(),
+    label: t("metrics.operations"),
+    value: nodeCount.toLocaleString(locale),
     status: nodeCount > 20 ? "warning" : "good",
   });
 
   insights.push({
-    label: "Execution",
-    value: formatTime(executionTime),
+    label: t("metrics.execution"),
+    value: formatTime(executionTime, locale),
     status: executionTime > 1000 ? "critical" : executionTime > 100 ? "warning" : "good",
   });
 
@@ -225,8 +232,10 @@ const StatusBadge = ({ status }: { status: "good" | "warning" | "critical" }) =>
 
 // Compact Plan Node
 const PlanNode = ({ node, depth = 0, maxTime }: { node: ExplainPlanNode; depth?: number; maxTime: number }) => {
+  const t = useTranslations("Explain");
+  const locale = useLocale();
   const [expanded, setExpanded] = useState(depth < 2);
-  const nodeType = node["Node Type"] || "Unknown";
+  const nodeType = node["Node Type"] || t("unknown");
   const actualTime = node["Actual Total Time"] || 0;
   const actualRows = node["Actual Rows"] || 0;
   const children = node["Plans"] || [];
@@ -276,14 +285,14 @@ const PlanNode = ({ node, depth = 0, maxTime }: { node: ExplainPlanNode; depth?:
 
         {/* Stats */}
         <div className="flex items-center gap-4 text-xs font-mono">
-          <span className="text-fg-muted w-16 text-right">{formatNumber(actualRows)} rows</span>
+          <span className="text-fg-muted w-16 text-right">{formatNumber(actualRows, locale)} {t("rows")}</span>
           <span
             className={cn(
               "w-16 text-right",
               timePercent > 50 ? "text-red-400" : timePercent > 20 ? "text-amber-400" : "text-fg-tertiary",
             )}
           >
-            {formatTime(actualTime)}
+            {formatTime(actualTime, locale)}
           </span>
           {/* Time bar */}
           <div className="w-20 h-1.5 bg-fill rounded-full overflow-hidden">
@@ -304,22 +313,22 @@ const PlanNode = ({ node, depth = 0, maxTime }: { node: ExplainPlanNode; depth?:
           {/* Filter info */}
           {node["Filter"] && (
             <div className="flex items-start gap-2 py-1 text-xs">
-              <span className="text-amber-500/70 font-medium shrink-0">Filter:</span>
+              <span className="text-amber-500/70 font-medium shrink-0">{t("filter")}</span>
               <span className="text-fg-muted font-mono break-all">{node["Filter"]}</span>
             </div>
           )}
           {/* Index info */}
           {node["Index Name"] && (
             <div className="flex items-center gap-2 py-1 text-xs">
-              <span className="text-emerald-500/70 font-medium">Index:</span>
+              <span className="text-emerald-500/70 font-medium">{t("index")}</span>
               <span className="text-emerald-400 font-mono">{node["Index Name"]}</span>
             </div>
           )}
           {/* Buffer stats */}
           {((node["Shared Hit Blocks"] ?? 0) > 0 || (node["Shared Read Blocks"] ?? 0) > 0) && (
             <div className="flex items-center gap-4 py-1 text-xs text-fg-subtle">
-              {(node["Shared Hit Blocks"] ?? 0) > 0 && <span>Cache hits: {node["Shared Hit Blocks"]}</span>}
-              {(node["Shared Read Blocks"] ?? 0) > 0 && <span>Disk reads: {node["Shared Read Blocks"]}</span>}
+              {(node["Shared Hit Blocks"] ?? 0) > 0 && <span>{t("cacheHits", { count: node["Shared Hit Blocks"]! })}</span>}
+              {(node["Shared Read Blocks"] ?? 0) > 0 && <span>{t("diskReads", { count: node["Shared Read Blocks"]! })}</span>}
             </div>
           )}
 
@@ -342,6 +351,8 @@ function countTreeNodes(node: ExplainTreeNode): number {
 // conventions but only shows metric badges when the node actually carries them
 // — never fabricates "0 rows" / "0μs" for metric-less plans.
 const TreeNodeView = ({ node, depth = 0 }: { node: ExplainTreeNode; depth?: number }) => {
+  const t = useTranslations("Explain");
+  const locale = useLocale();
   const [expanded, setExpanded] = useState(depth < 2);
   const children = node.children;
   const hasChildren = children.length > 0;
@@ -378,16 +389,16 @@ const TreeNodeView = ({ node, depth = 0 }: { node: ExplainTreeNode; depth?: numb
       {hasMetrics && (
         <div className="flex items-center gap-4 text-xs font-mono">
           {metrics!.actualRows !== undefined && (
-            <span className="text-fg-muted w-16 text-right">{formatNumber(metrics!.actualRows)} rows</span>
+            <span className="text-fg-muted w-16 text-right">{formatNumber(metrics!.actualRows, locale)} {t("rows")}</span>
           )}
           {metrics!.estRows !== undefined && (
-            <span className="text-fg-muted w-16 text-right">~{formatNumber(metrics!.estRows)} rows</span>
+            <span className="text-fg-muted w-16 text-right">~{formatNumber(metrics!.estRows, locale)} {t("rows")}</span>
           )}
           {metrics!.actualTimeMs !== undefined && (
-            <span className="text-fg-tertiary w-16 text-right">{formatTime(metrics!.actualTimeMs)}</span>
+            <span className="text-fg-tertiary w-16 text-right">{formatTime(metrics!.actualTimeMs, locale)}</span>
           )}
           {metrics!.estCost !== undefined && (
-            <span className="text-fg-tertiary w-16 text-right">cost {formatNumber(metrics!.estCost)}</span>
+            <span className="text-fg-tertiary w-16 text-right">{t("cost")} {formatNumber(metrics!.estCost, locale)}</span>
           )}
         </div>
       )}
@@ -726,6 +737,8 @@ const TREE_TABS = ["tree", "raw", "ai"] as const;
 const POSTGRES_TABS = ["insights", "ai", "tree", "raw"] as const;
 
 export function VisualExplain({ plan, query, schemaContext, databaseType, onLoadQuery }: VisualExplainProps) {
+  const t = useTranslations("Explain");
+  const locale = useLocale();
   // Normalize once: array (legacy) / tagged input / null|undefined -> ExplainPlanInput | null.
   // Non-empty legacy arrays are wrapped as postgres-json so the rest of the component only
   // ever deals with the tagged model; this reproduces the old empty-state guards exactly.
@@ -745,8 +758,8 @@ export function VisualExplain({ plan, query, schemaContext, databaseType, onLoad
 
   const analysis = useMemo(() => {
     if (!postgresPlan) return null;
-    return analyzePlan(postgresPlan);
-  }, [postgresPlan]);
+    return analyzePlan(postgresPlan, t, locale);
+  }, [postgresPlan, t, locale]);
 
   // The exact value handed to AIExplainTab. Hoisted so the remount trigger below and
   // the prop at the call site can never key on different objects.
@@ -788,9 +801,9 @@ export function VisualExplain({ plan, query, schemaContext, databaseType, onLoad
         <div className="w-12 h-12 rounded-xl bg-fill flex items-center justify-center mb-4">
           <Activity strokeWidth={1.5} className="w-6 h-6 text-fg-subtle" />
         </div>
-        <h3 className="text-xs font-medium text-fg-secondary mb-1">No execution plan</h3>
+        <h3 className="text-xs font-medium text-fg-secondary mb-1">{t("emptyTitle")}</h3>
         <p className="text-xs text-fg-subtle max-w-[240px]">
-          Run a SELECT query to see its execution plan and performance insights.
+          {t("emptyDescription")}
         </p>
       </div>
     );
@@ -808,25 +821,25 @@ export function VisualExplain({ plan, query, schemaContext, databaseType, onLoad
           {input.kind === "tree" ? (
             <div className="flex items-center gap-2">
               <Layers strokeWidth={1.5} className="w-3 h-3 text-fg-muted" />
-              <span className="text-xs font-medium text-fg">{countTreeNodes(input.root)}</span>
-              <span className="text-xs text-fg-subtle">nodes</span>
+              <span className="text-xs font-medium text-fg">{countTreeNodes(input.root).toLocaleString(locale)}</span>
+              <span className="text-xs text-fg-subtle">{t("nodes")}</span>
             </div>
           ) : (
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">
                 <Clock strokeWidth={1.5} className="w-3 h-3 text-blue-400" />
-                <span className="text-xs font-medium text-fg">{formatTime(analysis?.executionTime || 0)}</span>
-                <span className="text-xs text-fg-subtle">execution</span>
+                <span className="text-xs font-medium text-fg">{formatTime(analysis?.executionTime || 0, locale)}</span>
+                <span className="text-xs text-fg-subtle">{t("execution")}</span>
               </div>
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-3 h-3 text-fg-muted" />
-                <span className="text-xs font-medium text-fg-tertiary">{formatNumber(analysis?.totalRows || 0)}</span>
-                <span className="text-xs text-fg-subtle">rows</span>
+                <span className="text-xs font-medium text-fg-tertiary">{formatNumber(analysis?.totalRows || 0, locale)}</span>
+                <span className="text-xs text-fg-subtle">{t("rows")}</span>
               </div>
               <div className="flex items-center gap-2">
                 <HardDrive strokeWidth={1.5} className="w-3 h-3 text-fg-muted" />
-                <span className="text-xs font-medium text-fg-tertiary">{formatNumber(analysis?.totalCost || 0)}</span>
-                <span className="text-xs text-fg-subtle">cost</span>
+                <span className="text-xs font-medium text-fg-tertiary">{formatNumber(analysis?.totalCost || 0, locale)}</span>
+                <span className="text-xs text-fg-subtle">{t("cost")}</span>
               </div>
             </div>
           )}
@@ -850,7 +863,7 @@ export function VisualExplain({ plan, query, schemaContext, databaseType, onLoad
                 {tab === "ai" && <Sparkles strokeWidth={1.5} className="w-3 h-3 inline mr-1" />}
                 {tab === "tree" && <Layers strokeWidth={1.5} className="w-3 h-3 inline mr-1" />}
                 {tab === "raw" && <FileBraces strokeWidth={1.5} className="w-3 h-3 inline mr-1" />}
-                {tab === "ai" ? "AI Explain" : tab}
+                {t(`tabs.${tab}`)}
               </button>
             ))}
           </div>
@@ -875,7 +888,7 @@ export function VisualExplain({ plan, query, schemaContext, databaseType, onLoad
             {/* Warnings */}
             {analysis && analysis.warnings.length > 0 && (
               <div className="space-y-2">
-                <h3 className="text-xs font-medium text-fg-muted mb-2">Performance Issues</h3>
+                <h3 className="text-xs font-medium text-fg-muted mb-2">{t("issues")}</h3>
                 {analysis.warnings.map((warning, idx) => (
                   <div
                     key={idx}
@@ -933,8 +946,8 @@ export function VisualExplain({ plan, query, schemaContext, databaseType, onLoad
                   <CircleCheck strokeWidth={1.5} className="w-3 h-3 text-emerald-400" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-medium text-emerald-300">Query looks good</h4>
-                  <p className="text-xs text-fg-muted">No obvious performance issues detected.</p>
+                  <h4 className="text-xs font-medium text-emerald-300">{t("goodTitle")}</h4>
+                  <p className="text-xs text-fg-muted">{t("goodDescription")}</p>
                 </div>
               </div>
             )}
@@ -954,7 +967,7 @@ export function VisualExplain({ plan, query, schemaContext, databaseType, onLoad
 
             {/* Plan tree preview */}
             <div>
-              <h3 className="text-xs font-medium text-fg-muted mb-2">Execution Plan</h3>
+              <h3 className="text-xs font-medium text-fg-muted mb-2">{t("plan")}</h3>
               <div className="rounded-lg border border-hairline bg-fill-subtle p-2">
                 {rootPlan && analysis && <PlanNode node={rootPlan} maxTime={analysis.executionTime || 1} />}
               </div>

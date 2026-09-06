@@ -4,11 +4,61 @@ import "../helpers/mock-navigation";
 
 import React from "react";
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, waitFor } from "@testing-library/react";
+import { IntlTestProvider, renderWithIntl as render } from "../helpers/render-with-intl";
 import userEvent from "@testing-library/user-event";
 import { VisualExplain, type ExplainPlanResult } from "@/components/VisualExplain";
 
 let originalFetch: typeof globalThis.fetch;
+
+describe("Visual EXPLAIN localization", () => {
+  afterEach(cleanup);
+
+  test("Portuguese empty state", () => {
+    const view = render(<VisualExplain plan={null} />, "pt-BR");
+    expect(view.getByText("Nenhum plano de execução")).toBeTruthy();
+    expect(view.getByText(/consulta SELECT/)).toBeTruthy();
+  });
+
+  test("runtime locale changes preserve the active raw tab and plan", () => {
+    const plan: ExplainPlanResult[] = [{ Plan: { "Node Type": "Seq Scan", Filter: "customer_id = 1" } }];
+    const view = render(<IntlTestProvider locale="en"><VisualExplain plan={plan} /></IntlTestProvider>);
+    fireEvent.click(view.getByRole("button", { name: "raw" }));
+    const raw = view.container.querySelector("pre")?.textContent;
+    view.rerender(<IntlTestProvider locale="pt-BR"><VisualExplain plan={plan} /></IntlTestProvider>);
+    expect(view.getByRole("button", { name: "dados brutos" })).toBeTruthy();
+    expect(view.container.querySelector("pre")?.textContent).toBe(raw);
+    view.rerender(<IntlTestProvider locale="en"><VisualExplain plan={plan} /></IntlTestProvider>);
+    expect(view.getByRole("button", { name: "raw" })).toBeTruthy();
+    expect(view.container.querySelector("pre")?.textContent).toBe(raw);
+  });
+
+  test("Portuguese chrome preserves technical nodes, SQL, identifiers and raw JSON", () => {
+    const plan: ExplainPlanResult[] = [{
+      Plan: {
+        "Node Type": "Seq Scan", "Relation Name": "customers",
+        "Actual Rows": 15000, "Plan Rows": 100, "Actual Total Time": 42.5,
+        Filter: "customer_id = 1",
+        Plans: [{ "Node Type": "Index Scan", "Relation Name": "orders", "Index Name": "idx_customer_id",
+          "Actual Rows": 1, "Actual Total Time": 1.2 }],
+      },
+      "Execution Time": 42.5,
+    }];
+    const original = JSON.stringify(plan);
+    const view = render(<VisualExplain plan={plan} query="SELECT * FROM customers WHERE customer_id = 1" />, "pt-BR");
+    expect(view.getByText("Problemas de desempenho")).toBeTruthy();
+    expect(view.getByText("Taxa de acertos de cache")).toBeTruthy();
+    expect(view.getAllByText("42,50ms").length).toBeGreaterThan(0);
+    expect(view.getByText("Seq Scan")).toBeTruthy();
+    expect(view.getByText("Index Scan")).toBeTruthy();
+    expect(view.getByText("customers")).toBeTruthy();
+    expect(view.getByText("customer_id = 1")).toBeTruthy();
+    expect(view.getByText("idx_customer_id")).toBeTruthy();
+    fireEvent.click(view.getByRole("button", { name: "dados brutos" }));
+    expect(view.container.querySelector("pre")?.textContent).toBe(JSON.stringify(plan, null, 2));
+    expect(JSON.stringify(plan)).toBe(original);
+  });
+});
 
 function mockFetchStream(body: string, ok = true, errorBody?: { error: string }) {
   const encoder = new TextEncoder();
@@ -292,14 +342,14 @@ describe("VisualExplain", () => {
 
   test("switches to AI tab and shows initial state", () => {
     const { queryByText } = render(<VisualExplain plan={samplePlan} query="SELECT * FROM users" />);
-    fireEvent.click(queryByText("AI Explain")!);
+    fireEvent.click(queryByText("AI EXPLAIN")!);
     expect(queryByText("AI Query Analysis")).not.toBeNull();
     expect(queryByText("Analyze with AI")).not.toBeNull();
   });
 
   test("AI tab shows disabled state when no query", () => {
     const { queryByText } = render(<VisualExplain plan={samplePlan} />);
-    fireEvent.click(queryByText("AI Explain")!);
+    fireEvent.click(queryByText("AI EXPLAIN")!);
     expect(queryByText(/Run a query first/)).not.toBeNull();
   });
 
@@ -310,7 +360,7 @@ describe("VisualExplain", () => {
     const { queryByText } = render(
       <VisualExplain plan={samplePlan} query="SELECT * FROM users" databaseType="postgres" />,
     );
-    fireEvent.click(queryByText("AI Explain")!);
+    fireEvent.click(queryByText("AI EXPLAIN")!);
     await user.click(queryByText("Analyze with AI")!);
 
     await waitFor(() => {
@@ -332,7 +382,7 @@ describe("VisualExplain", () => {
     globalThis.fetch = mockFetchStream("## Performance\nThe query uses a sequential scan.") as unknown as typeof fetch;
 
     const { queryByText } = render(<VisualExplain plan={samplePlan} query="SELECT * FROM users" />);
-    fireEvent.click(queryByText("AI Explain")!);
+    fireEvent.click(queryByText("AI EXPLAIN")!);
     await user.click(queryByText("Analyze with AI")!);
 
     await waitFor(() => {
@@ -346,7 +396,7 @@ describe("VisualExplain", () => {
     globalThis.fetch = mockFetchStream("", false, { error: "Model unavailable" }) as unknown as typeof fetch;
 
     const { queryByText } = render(<VisualExplain plan={samplePlan} query="SELECT 1" />);
-    fireEvent.click(queryByText("AI Explain")!);
+    fireEvent.click(queryByText("AI EXPLAIN")!);
     await user.click(queryByText("Analyze with AI")!);
 
     await waitFor(() => {
@@ -359,7 +409,7 @@ describe("VisualExplain", () => {
     globalThis.fetch = mockFetchStream("Analysis result") as unknown as typeof fetch;
 
     const { queryByText } = render(<VisualExplain plan={samplePlan} query="SELECT 1" />);
-    fireEvent.click(queryByText("AI Explain")!);
+    fireEvent.click(queryByText("AI EXPLAIN")!);
     await user.click(queryByText("Analyze with AI")!);
 
     await waitFor(() => {
@@ -377,7 +427,7 @@ describe("VisualExplain", () => {
     const { queryByText, container } = render(
       <VisualExplain plan={samplePlan} query="SELECT * FROM users" onLoadQuery={onLoadQuery} />,
     );
-    fireEvent.click(queryByText("AI Explain")!);
+    fireEvent.click(queryByText("AI EXPLAIN")!);
     await user.click(queryByText("Analyze with AI")!);
 
     await waitFor(() => {
@@ -420,7 +470,7 @@ describe("VisualExplain", () => {
 
     try {
       const { queryByText } = render(<VisualExplain plan={samplePlan} query="SELECT 1" />);
-      fireEvent.click(queryByText("AI Explain")!);
+      fireEvent.click(queryByText("AI EXPLAIN")!);
       await user.click(queryByText("Analyze with AI")!);
 
       await waitFor(() => {
@@ -468,7 +518,7 @@ describe("VisualExplain", () => {
     globalThis.fetch = mockFetchStream(markdown) as unknown as typeof fetch;
 
     const { queryByText, container } = render(<VisualExplain plan={samplePlan} query="SELECT * FROM users" />);
-    fireEvent.click(queryByText("AI Explain")!);
+    fireEvent.click(queryByText("AI EXPLAIN")!);
     await user.click(queryByText("Analyze with AI")!);
 
     await waitFor(() => {
@@ -507,7 +557,7 @@ describe("VisualExplain", () => {
   test("all 4 tabs are rendered: insights, AI Explain, tree, raw", () => {
     const { queryByText } = render(<VisualExplain plan={samplePlan} />);
     expect(queryByText("insights")).not.toBeNull();
-    expect(queryByText("AI Explain")).not.toBeNull();
+    expect(queryByText("AI EXPLAIN")).not.toBeNull();
     expect(queryByText("tree")).not.toBeNull();
     expect(queryByText("raw")).not.toBeNull();
   });
@@ -803,7 +853,7 @@ describe("VisualExplain", () => {
     const { queryByText } = render(
       <VisualExplain plan={samplePlan} query="SELECT * FROM users" onLoadQuery={onLoadQuery} />,
     );
-    fireEvent.click(queryByText("AI Explain")!);
+    fireEvent.click(queryByText("AI EXPLAIN")!);
     await user.click(queryByText("Analyze with AI")!);
 
     await waitFor(() => {
@@ -1024,7 +1074,7 @@ describe("tree render model (sqlite-queryplan)", () => {
       const { queryByText, rerender } = render(
         <VisualExplain plan={samplePlan} query="SELECT * FROM users" databaseType="postgres" />,
       );
-      fireEvent.click(queryByText("AI Explain")!);
+      fireEvent.click(queryByText("AI EXPLAIN")!);
       await user.click(queryByText("Analyze with AI")!);
       await waitFor(() => {
         expect(queryByText("Old Analysis")).not.toBeNull();
@@ -1056,7 +1106,7 @@ describe("tree render model (sqlite-queryplan)", () => {
     const { queryByText, rerender } = render(
       <VisualExplain plan={samplePlan} query="SELECT * FROM users" databaseType="postgres" />,
     );
-    fireEvent.click(queryByText("AI Explain")!);
+    fireEvent.click(queryByText("AI EXPLAIN")!);
     await user.click(queryByText("Analyze with AI")!);
     await waitFor(() => {
       expect(queryByText("Old Analysis")).not.toBeNull();

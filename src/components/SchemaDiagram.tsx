@@ -32,6 +32,8 @@ import { createHighlightStore, HighlightStoreProvider } from "./schema-diagram/h
 import { buildElkGraph, applyLayout } from "./schema-diagram/layout";
 import { createLayoutEngine, type LayoutEngine } from "./schema-diagram/layout-engine";
 import { useEffectiveTheme } from "@/hooks/use-effective-theme";
+import { useTranslations } from "next-intl";
+import erdReference from "../../messages/en/erd.json";
 
 // Module-scope identity: a fresh nodeTypes/edgeTypes object per render would
 // remount every node (React Flow warns about exactly this).
@@ -42,6 +44,11 @@ const edgeTypes: EdgeTypes = { fk: FkEdge };
 // the minimap becomes noise (and rendering cost) past a few hundred tables.
 const CULLING_THRESHOLD = 100;
 const MINIMAP_THRESHOLD = 300;
+
+// Translate only application-owned export errors; library errors stay intact.
+const exportErrorKeys = new Map(
+  Object.entries(erdReference.errors).map(([key, message]) => [message, key as keyof typeof erdReference.errors]),
+);
 
 /** Lets the exporting/layouting spinner paint before heavy synchronous work. */
 function yieldToPaint(): Promise<void> {
@@ -85,6 +92,7 @@ const DIAGRAM_THEME = {
 } as const;
 
 function SchemaDiagramInner({ schema, onClose }: SchemaDiagramProps) {
+  const t = useTranslations("ERD");
   const mode = useEffectiveTheme();
   const diagram = DIAGRAM_THEME[mode];
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
@@ -305,7 +313,7 @@ function SchemaDiagramInner({ schema, onClose }: SchemaDiagramProps) {
       if (exporting) return;
       const viewport = containerRef.current?.querySelector<HTMLElement>(".react-flow__viewport");
       if (!viewport || nodesRef.current.length === 0) {
-        toast({ title: "Export failed", description: "There is no diagram to export.", variant: "destructive" });
+        toast({ title: t("exportFailed"), description: t("noDiagram"), variant: "destructive" });
         return;
       }
 
@@ -329,16 +337,18 @@ function SchemaDiagramInner({ schema, onClose }: SchemaDiagramProps) {
           format,
           error: error instanceof Error ? error.message : String(error),
         });
+        const message = error instanceof Error ? error.message : String(error);
+        const messageKey = exportErrorKeys.get(message);
         toast({
-          title: `${format.toUpperCase()} export failed`,
-          description: error instanceof Error ? error.message : String(error),
+          title: t("formatExportFailed", { format: format.toUpperCase() }),
+          description: messageKey ? t(`errors.${messageKey}`) : message,
           variant: "destructive",
         });
       } finally {
         setExporting(null);
       }
     },
-    [exporting, mode, toast],
+    [exporting, mode, toast, t],
   );
 
   // Warn when the DISPLAYED graph runs on guesses: either the schema carries
@@ -347,14 +357,14 @@ function SchemaDiagramInner({ schema, onClose }: SchemaDiagramProps) {
   const schemaHasFkData = schema.some((t) => (t.foreignKeys || []).length > 0);
   const showHeuristicWarning = graph.usedHeuristic || !schemaHasFkData;
   const heuristicWarningText = graph.usedHeuristic
-    ? `${schemaHasFkData ? "No usable FK relationships in this view." : "No FK data available."} Showing heuristic relationships (dashed).`
-    : "No FK data available.";
+    ? t("heuristic", { reason: schemaHasFkData ? t("noUsableFk") : t("noFk") })
+    : t("noFk");
 
   if (schema.length === 0) {
     return (
       <div className="absolute inset-0 z-50 bg-canvas flex flex-col items-center justify-center">
         <LoaderCircle strokeWidth={1.5} className="w-8 h-8 text-blue-500 animate-spin mb-4" />
-        <p className="text-fg-muted text-xs">Generating ERD Diagram...</p>
+        <p className="text-fg-muted text-xs">{t("generating")}</p>
       </div>
     );
   }
@@ -369,6 +379,20 @@ function SchemaDiagramInner({ schema, onClose }: SchemaDiagramProps) {
       <HighlightStoreProvider value={highlightStore}>
         <DiagramActionsContext.Provider value={diagramActions}>
           <ReactFlow
+            ariaLabelConfig={{
+              "node.a11yDescription.default": t("a11y.node"),
+              "node.a11yDescription.keyboardDisabled": t("a11y.nodeKeyboard"),
+              "node.a11yDescription.ariaLiveMessage": ({ direction, x, y }) =>
+                t("a11y.nodeMoved", { direction: t(`a11y.${direction}`), x, y }),
+              "edge.a11yDescription.default": t("a11y.edge"),
+              "controls.ariaLabel": t("a11y.controls"),
+              "controls.zoomIn.ariaLabel": t("a11y.zoomIn"),
+              "controls.zoomOut.ariaLabel": t("a11y.zoomOut"),
+              "controls.fitView.ariaLabel": t("a11y.fit"),
+              "controls.interactive.ariaLabel": t("a11y.interactive"),
+              "minimap.ariaLabel": t("a11y.minimap"),
+              "handle.ariaLabel": t("a11y.handle"),
+            }}
             nodes={nodes}
             edges={edges}
             nodeTypes={nodeTypes}
@@ -410,6 +434,8 @@ function SchemaDiagramInner({ schema, onClose }: SchemaDiagramProps) {
                   className="bg-raised border-hairline-strong hover:bg-fill text-xs gap-1"
                   disabled={exporting !== null}
                   onClick={() => exportDiagram("png")}
+                  aria-label={t("exportLabel", { format: "PNG" })}
+                  title={t("exportLabel", { format: "PNG" })}
                 >
                   {exporting === "png" ? (
                     <LoaderCircle strokeWidth={1.5} className="w-3 h-3 animate-spin" />
@@ -424,6 +450,8 @@ function SchemaDiagramInner({ schema, onClose }: SchemaDiagramProps) {
                   className="bg-raised border-hairline-strong hover:bg-fill text-xs gap-1"
                   disabled={exporting !== null}
                   onClick={() => exportDiagram("svg")}
+                  aria-label={t("exportLabel", { format: "SVG" })}
+                  title={t("exportLabel", { format: "SVG" })}
                 >
                   {exporting === "svg" ? (
                     <LoaderCircle strokeWidth={1.5} className="w-3 h-3 animate-spin" />
@@ -438,13 +466,15 @@ function SchemaDiagramInner({ schema, onClose }: SchemaDiagramProps) {
                   className={`bg-raised border-hairline-strong hover:bg-fill text-xs ${compactMode ? "text-blue-400" : ""}`}
                   onClick={() => setCompactMode(!compactMode)}
                 >
-                  {compactMode ? "Detail" : "Compact"}
+                  {compactMode ? t("detail") : t("compact")}
                 </Button>
                 <Button
                   variant="outline"
                   size="icon"
                   className="rounded-full bg-raised border-hairline-strong hover:bg-fill"
                   onClick={onClose}
+                  aria-label={t("close")}
+                  title={t("close")}
                 >
                   <X strokeWidth={1.5} className="w-3.5 h-3.5" />
                 </Button>
@@ -456,15 +486,15 @@ function SchemaDiagramInner({ schema, onClose }: SchemaDiagramProps) {
               <div className="bg-raised/80 backdrop-blur-md border border-hairline-strong p-3 rounded-xl shadow-2xl space-y-2">
                 <h3 className="text-xs font-medium text-fg mb-1 flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                  ERD Visualizer
+                  {t("title")}
                 </h3>
                 <div className="flex items-center gap-3 text-xs text-fg-muted">
-                  <span>{filteredSchema.length} tables</span>
-                  <span>{graph.edgeCount} relationships</span>
+                  <span>{t("tables", { count: filteredSchema.length })}</span>
+                  <span>{t("relationships", { count: graph.edgeCount })}</span>
                   {isLayouting && (
                     <span className="flex items-center gap-1 text-fg-subtle">
                       <LoaderCircle strokeWidth={1.5} className="w-3 h-3 animate-spin" />
-                      layout
+                      {t("layout")}
                     </span>
                   )}
                 </div>
@@ -477,7 +507,8 @@ function SchemaDiagramInner({ schema, onClose }: SchemaDiagramProps) {
                   />
                   <input
                     type="text"
-                    placeholder="Filter tables..."
+                    placeholder={t("filter")}
+                    aria-label={t("filter")}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full pl-7 pr-2 py-1.5 bg-fill border border-hairline-strong rounded text-xs text-fg-secondary placeholder:text-fg-subtle focus:outline-none focus:border-blue-500/50"
@@ -495,9 +526,9 @@ function SchemaDiagramInner({ schema, onClose }: SchemaDiagramProps) {
                 {/* Selected node info */}
                 {selectedNode && (
                   <div className="text-xs text-blue-400 border-t border-hairline pt-2">
-                    Selected: <span className="font-mono font-medium">{selectedNode}</span>
+                    {t("selected")} <span className="font-mono font-medium">{selectedNode}</span>
                     <button onClick={() => selectTable(null)} className="ml-2 text-fg-subtle hover:text-fg-tertiary">
-                      clear
+                      {t("clear")}
                     </button>
                   </div>
                 )}
@@ -510,7 +541,7 @@ function SchemaDiagramInner({ schema, onClose }: SchemaDiagramProps) {
           {exporting && (
             <div className="absolute inset-0 z-50 bg-canvas/85 flex flex-col items-center justify-center gap-2">
               <LoaderCircle strokeWidth={1.5} className="w-6 h-6 text-blue-500 animate-spin" />
-              <p className="text-fg-muted text-xs">Exporting {exporting.toUpperCase()}...</p>
+              <p className="text-fg-muted text-xs">{t("exporting", { format: exporting.toUpperCase() })}</p>
             </div>
           )}
         </DiagramActionsContext.Provider>

@@ -1,0 +1,39 @@
+{
+  "emptyTitle": "Nenhum plano de execução",
+  "emptyDescription": "Execute uma consulta SELECT para ver o plano de execução e a análise de desempenho.",
+  "unknown": "Desconhecido",
+  "rows": "linhas",
+  "nodes": "nós",
+  "execution": "execução",
+  "cost": "custo",
+  "filter": "Filtro:",
+  "index": "Índice:",
+  "cacheHits": "Acertos de cache: {count, number}",
+  "diskReads": "Leituras em disco: {count, number}",
+  "tabs": {
+    "insights": "análise",
+    "tree": "árvore",
+    "raw": "dados brutos",
+    "ai": "EXPLAIN com IA"
+  },
+  "issues": "Problemas de desempenho",
+  "goodTitle": "A consulta parece adequada",
+  "goodDescription": "Nenhum problema evidente de desempenho detectado.",
+  "plan": "Plano de execução",
+  "warnings": {
+    "scanTitle": "Varredura sequencial",
+    "scan": "Varredura completa da tabela \"{table}\" ({rows} linhas). Considere adicionar um índice.",
+    "table": "tabela",
+    "estimateTitle": "Divergência na estimativa",
+    "estimate": "Estimativa de {expected} linhas, mas foram obtidas {actual}. As estatísticas podem estar desatualizadas.",
+    "sortTitle": "Ordenação custosa",
+    "sort": "A ordenação levou {time}. Considere adicionar um índice para acesso ordenado.",
+    "loopsTitle": "Número elevado de loops",
+    "loops": "Nested Loop executado {loops} vezes. Isso pode indicar um problema N+1."
+  },
+  "metrics": {
+    "cache": "Taxa de acertos de cache",
+    "operations": "Operações",
+    "execution": "Execução"
+  }
+}

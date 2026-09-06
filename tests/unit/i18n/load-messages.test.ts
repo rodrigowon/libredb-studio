@@ -27,6 +27,10 @@ import enAdmin from "../../../messages/en/admin.json";
 import ptBrAdmin from "../../../messages/pt-BR/admin.json";
 import enMonitoring from "../../../messages/en/monitoring.json";
 import ptBrMonitoring from "../../../messages/pt-BR/monitoring.json";
+import enErd from "../../../messages/en/erd.json";
+import ptBrErd from "../../../messages/pt-BR/erd.json";
+import enExplain from "../../../messages/en/explain.json";
+import ptBrExplain from "../../../messages/pt-BR/explain.json";
 
 type JsonObject = { [key: string]: string | JsonObject };
 
@@ -50,6 +54,22 @@ function messageKeys(catalog: JsonObject, prefix = ""): string[] {
 }
 
 describe("i18n message loading", () => {
+  test("Phase 5A catalogs have equivalent keys and types with nested English fallback", () => {
+    const en = loadMessages("en");
+    const pt = loadMessages("pt-BR");
+    for (const [english, portuguese] of [[enErd, ptBrErd], [enExplain, ptBrExplain]]) {
+      expect(messageKeys(portuguese).sort()).toEqual(messageKeys(english).sort());
+      expectValidOverride(english, portuguese);
+    }
+    expect(en.ERD).toEqual(enErd);
+    expect(pt.ERD).toEqual(ptBrErd);
+    expect(en.Explain).toEqual(enExplain);
+    expect(pt.Explain).toEqual(ptBrExplain);
+    const merged = mergeMessages(en.Explain, { tabs: { tree: pt.Explain.tabs.tree } });
+    expect(merged.tabs.tree).toBe("árvore");
+    expect(merged.tabs.raw).toBe(en.Explain.tabs.raw);
+    expect(en.Explain.tabs.tree).toBe("tree");
+  });
   test("Phase 4 catalogs have equivalent keys, types and non-empty translations", () => {
     for (const [english, portuguese] of [[enAdmin, ptBrAdmin], [enMonitoring, ptBrMonitoring]]) {
       expect(messageKeys(portuguese).sort()).toEqual(messageKeys(english).sort());

@@ -1,0 +1,39 @@
+{
+  "emptyTitle": "No execution plan",
+  "emptyDescription": "Run a SELECT query to see its execution plan and performance insights.",
+  "unknown": "Unknown",
+  "rows": "rows",
+  "nodes": "nodes",
+  "execution": "execution",
+  "cost": "cost",
+  "filter": "Filter:",
+  "index": "Index:",
+  "cacheHits": "Cache hits: {count, number}",
+  "diskReads": "Disk reads: {count, number}",
+  "tabs": {
+    "insights": "insights",
+    "tree": "tree",
+    "raw": "raw",
+    "ai": "AI EXPLAIN"
+  },
+  "issues": "Performance Issues",
+  "goodTitle": "Query looks good",
+  "goodDescription": "No obvious performance issues detected.",
+  "plan": "Execution Plan",
+  "warnings": {
+    "scanTitle": "Sequential Scan",
+    "scan": "Full table scan on \"{table}\" ({rows} rows). Consider adding an index.",
+    "table": "table",
+    "estimateTitle": "Estimate Mismatch",
+    "estimate": "Expected {expected} rows, got {actual}. Statistics may be outdated.",
+    "sortTitle": "Expensive Sort",
+    "sort": "Sort operation took {time}. Consider adding an index for ordered access.",
+    "loopsTitle": "High Loop Count",
+    "loops": "Nested loop executed {loops} times. This could indicate an N+1 problem."
+  },
+  "metrics": {
+    "cache": "Cache Hit Rate",
+    "operations": "Operations",
+    "execution": "Execution"
+  }
+}
