@@ -10,6 +10,7 @@ import { hasUnterminatedSpan } from "@/lib/sql/spans";
 import { splitStatements } from "@/lib/sql/statement-splitter";
 import { findCodeWord } from "@/lib/sql/words";
 import type { DatabaseType } from "@/lib/types";
+import { useTranslations } from "next-intl";
 
 interface SafetyAnalysis {
   riskLevel: "safe" | "low" | "medium" | "high" | "critical";
@@ -55,37 +56,37 @@ const RISK_CONFIG = {
     bg: "bg-emerald-500/10",
     border: "border-emerald-500/20",
     icon: ShieldCheck,
-    label: "Safe",
+    label: "risk.safe",
   },
   low: {
     color: "text-blue-400",
     bg: "bg-blue-500/10",
     border: "border-blue-500/20",
     icon: ShieldCheck,
-    label: "Low Risk",
+    label: "risk.low",
   },
   medium: {
     color: "text-amber-400",
     bg: "bg-amber-500/10",
     border: "border-amber-500/20",
     icon: TriangleAlert,
-    label: "Medium Risk",
+    label: "risk.medium",
   },
   high: {
     color: "text-orange-400",
     bg: "bg-orange-500/10",
     border: "border-orange-500/20",
     icon: ShieldAlert,
-    label: "High Risk",
+    label: "risk.high",
   },
   critical: {
     color: "text-red-400",
     bg: "bg-red-500/10",
     border: "border-red-500/20",
     icon: ShieldAlert,
-    label: "Critical Risk",
+    label: "risk.critical",
   },
-};
+} as const;
 
 export function QuerySafetyDialog({
   isOpen,
@@ -96,10 +97,14 @@ export function QuerySafetyDialog({
   onProceed,
   onAnalyzeSafety,
 }: QuerySafetyDialogProps) {
+  const t = useTranslations("QuerySafety");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<SafetyAnalysis | null>(null);
   const [rawResponse, setRawResponse] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{
+    message: string;
+    translationKey?: "errors.analysisFailed" | "errors.noReader" | "errors.unknown";
+  } | null>(null);
 
   /**
    * Whether the client-side reading that opened this dialog could not resolve part
@@ -138,6 +143,8 @@ export function QuerySafetyDialog({
   const analyzeQuery = async () => {
     setIsAnalyzing(true);
     setError(null);
+    // Only locally authored fallbacks get keys; provider/API text stays verbatim.
+    let translationKey: "errors.analysisFailed" | "errors.noReader" | undefined;
 
     try {
       let filteredSchema = "";
@@ -174,11 +181,15 @@ export function QuerySafetyDialog({
 
         if (!response.ok) {
           const errData = await response.json();
+          if (!errData.error) translationKey = "errors.analysisFailed";
           throw new Error(errData.error || "Analysis failed");
         }
 
         const reader = response.body?.getReader();
-        if (!reader) throw new Error("No reader");
+        if (!reader) {
+          translationKey = "errors.noReader";
+          throw new Error("No reader");
+        }
 
         let fullResponse = "";
         while (true) {
@@ -194,7 +205,10 @@ export function QuerySafetyDialog({
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      setError({
+        message: err instanceof Error ? err.message : "Unknown error",
+        translationKey: err instanceof Error ? translationKey : "errors.unknown",
+      });
     } finally {
       setIsAnalyzing(false);
     }
@@ -211,9 +225,9 @@ export function QuerySafetyDialog({
         <div className="flex items-center justify-between px-5 py-3 border-b border-hairline">
           <div className="flex items-center gap-2">
             <ShieldAlert strokeWidth={1.5} className="w-3.5 h-3.5 text-amber-400" />
-            <span className="text-xs font-medium text-fg">Query Safety Check</span>
+            <span className="text-xs font-medium text-fg">{t("title")}</span>
           </div>
-          <button onClick={onClose} className="p-1 rounded hover:bg-fill text-fg-muted">
+          <button onClick={onClose} aria-label={t("close")} className="p-1 rounded hover:bg-fill text-fg-muted">
             <X strokeWidth={1.5} className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -234,12 +248,8 @@ export function QuerySafetyDialog({
             <div className="mb-3 flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
               <TriangleAlert strokeWidth={1.5} className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-400" />
               <div>
-                <span className="text-xs font-medium text-amber-400">Part of this statement could not be read</span>
-                <p className="text-xs text-fg-tertiary mt-0.5">
-                  A quoted, commented or bracketed run in it never closes (or its closing quote sits behind a backslash,
-                  which dialects read differently), so nothing written after that point could be checked. It may hide a
-                  write, which is why you are being asked.
-                </p>
+                <span className="text-xs font-medium text-amber-400">{t("unreadableTitle")}</span>
+                <p className="text-xs text-fg-tertiary mt-0.5">{t("unreadableDescription")}</p>
               </div>
             </div>
           )}
@@ -247,12 +257,14 @@ export function QuerySafetyDialog({
           {isAnalyzing && (
             <div className="flex items-center justify-center gap-2 py-8 text-fg-muted">
               <LoaderCircle strokeWidth={1.5} className="w-5 h-5 animate-spin" />
-              <span className="text-xs">Analyzing query safety...</span>
+              <span className="text-xs">{t("analyzing")}</span>
             </div>
           )}
 
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-xs text-red-400">{error}</div>
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-xs text-red-400">
+              {error.translationKey ? t(error.translationKey) : error.message}
+            </div>
           )}
 
           {analysis && risk && (
@@ -260,7 +272,7 @@ export function QuerySafetyDialog({
               <div className={cn("flex items-center gap-2 px-3 py-2 rounded-lg", risk.bg, "border", risk.border)}>
                 <RiskIcon className={cn("w-5 h-5", risk.color)} />
                 <div>
-                  <span className={cn("text-xs font-medium", risk.color)}>{risk.label}</span>
+                  <span className={cn("text-xs font-medium", risk.color)}>{t(risk.label)}</span>
                   <p className="text-xs text-fg-tertiary mt-0.5">{analysis.summary}</p>
                 </div>
               </div>
@@ -288,21 +300,21 @@ export function QuerySafetyDialog({
 
               {analysis.affectedRows && analysis.affectedRows !== "none" && (
                 <div className="text-xs">
-                  <span className="text-fg-muted">Affected rows: </span>
+                  <span className="text-fg-muted">{t("affectedRows")}</span>
                   <span className="text-fg-secondary font-mono">{analysis.affectedRows}</span>
                 </div>
               )}
 
               {analysis.cascadeEffects && analysis.cascadeEffects !== "none" && (
                 <div className="text-xs">
-                  <span className="text-fg-muted">Cascade effects: </span>
+                  <span className="text-fg-muted">{t("cascadeEffects")}</span>
                   <span className="text-fg-secondary">{analysis.cascadeEffects}</span>
                 </div>
               )}
 
               {analysis.recommendation && (
                 <div className="bg-surface rounded-lg p-3 border border-hairline">
-                  <p className="text-xs font-medium text-fg-muted mb-1">Recommendation</p>
+                  <p className="text-xs font-medium text-fg-muted mb-1">{t("recommendation")}</p>
                   <p className="text-xs text-fg-secondary">{analysis.recommendation}</p>
                 </div>
               )}
@@ -319,7 +331,7 @@ export function QuerySafetyDialog({
             onClick={onClose}
             className="px-4 py-2 rounded-lg bg-fill text-fg-tertiary text-xs font-medium hover:bg-fill-strong transition-colors"
           >
-            <span>Cancel</span>
+            <span>{t("cancel")}</span>
           </button>
           <button
             onClick={onProceed}
@@ -334,10 +346,10 @@ export function QuerySafetyDialog({
           >
             <Play strokeWidth={1.5} className="w-3 h-3 fill-current" />
             {analysis?.riskLevel === "critical"
-              ? "Execute Anyway"
+              ? t("executeAnyway")
               : analysis?.riskLevel === "high"
-                ? "Proceed with Caution"
-                : "Execute Query"}
+                ? t("proceedCautiously")
+                : t("executeQuery")}
           </button>
         </div>
       </div>

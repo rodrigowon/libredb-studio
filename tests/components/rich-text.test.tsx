@@ -2,7 +2,8 @@ import "../setup-dom";
 
 import React from "react";
 import { afterEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { cleanup, fireEvent } from "@testing-library/react";
+import { renderWithIntl as render } from "../helpers/render-with-intl";
 import { renderProse } from "@/components/rich-text";
 import type { DatabaseType } from "@/lib/types";
 

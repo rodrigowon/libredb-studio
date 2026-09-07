@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations, useFormatter } from "next-intl";
+import { agentInventoryLabel, type AgentTranslator } from "@/i18n/agent";
 import type { ReactNode } from "react";
 import { LoaderCircle, PencilLine, RotateCcw, Square, TriangleAlert } from "lucide-react";
 import { CopyButton } from "@/components/copy-button";
@@ -83,11 +85,11 @@ type AnswerState = "failed" | "plan" | "report" | "refused" | "running";
  * overstatement this rail spends its comments avoiding.
  */
 const EYEBROWS: Readonly<Record<AnswerState, string>> = Object.freeze({
-  plan: "Answer",
-  report: "Answer",
-  running: "Working",
-  refused: "Outcome",
-  failed: "Outcome",
+  plan: "answer",
+  report: "answer",
+  running: "working",
+  refused: "outcome",
+  failed: "outcome",
 });
 
 /**
@@ -154,10 +156,10 @@ function statementLanguage(
  */
 const GUARD_CHIPS: Readonly<Record<GuardReading, { readonly label: string; readonly className: string }>> =
   Object.freeze({
-    checked: { label: "Read-only", className: "text-emerald-300" },
+    checked: { label: "readOnly", className: "text-emerald-300" },
     // The timeline's own headline for this state, in its own words.
-    objected: { label: "not classified as a read", className: "text-amber-300" },
-    unexamined: { label: "not checked", className: "text-amber-300" },
+    objected: { label: "guardNotRead", className: "text-amber-300" },
+    unexamined: { label: "notChecked", className: "text-amber-300" },
   });
 
 /*
@@ -188,55 +190,52 @@ interface GuardNote {
 /** Said where the guard reads SQL and the engine's statements are not. */
 const GUARD_UNREAD_NOTE: GuardNote = Object.freeze({
   testId: "agent-plan-statement-guard-unread",
-  text: "The statement guard reads SQL, and this engine's statements are not SQL — so nothing examined this draft. It is drafted, not run — nothing has happened to your data — but nothing here has established anything about it, for or against.",
+  text: "guardUnreadNote",
 });
 
 /** The same fact about the NAME check, which is a second SQL reader. */
 const NAMES_UNREAD_NOTE: GuardNote = Object.freeze({
   testId: "agent-plan-statement-unread",
-  text: "The names in this statement were not checked: the check that would do it reads SQL, and this engine's statements are not SQL.",
+  text: "namesUnreadNote",
 });
 
 /** A run that captured nothing to check against, which is not the same state. */
 const NO_INVENTORY_NOTE: GuardNote = Object.freeze({
   testId: "agent-plan-statement-unchecked",
-  text: "No schema inventory was read for this run, so the names in this statement were not checked against anything.",
+  text: "noInventoryNote",
 });
 
 /** Names the inventory does not hold. The names themselves are chips, not part of this sentence. */
 const UNKNOWN_NAMES_NOTE: GuardNote = Object.freeze({
   testId: "agent-plan-statement-unknown",
-  text: "These names are not in the inventory this run read, so the statement may not run as written:",
+  text: "unknownNamesNote",
 });
 
 /** What a checked statement is still not: permission to run. */
 const EXECUTION_CAVEAT: GuardNote = Object.freeze({
   testId: "agent-plan-statement-caveat",
-  text: "The run executed nothing. What was checked is what this run read of the schema, which records what exists rather than what your role is permitted to read.",
+  text: "executionCaveat",
 });
 
 /**
  * The guard's own objection, with the reason it recorded — the shared first sentence,
  * continued with what the objection does and does not establish.
  */
-const guardObjectionNote = (violation: string | undefined): string =>
-  `${guardObjectionLine(violation)} It is drafted, not run — nothing has happened to your data — but nothing here establishes that running it would only read.`;
+const guardObjectionNote = (violation: string | undefined, t: AgentTranslator): string =>
+  t("guardObjectionNote", { objection: guardObjectionLine(violation, t) });
 
 /** The rail's sentence for the ending a plan run reaches when it drafts nothing. */
-const REFUSAL_NOTE =
-  "This run drafted no statement. What it says is missing, and what it needs from you, are in its own words below.";
+const REFUSAL_NOTE = "refusalNote";
 
 /**
  * The floor claim, in the words the meter's caveat paragraph already makes it in
  * (`agent-budget-caveats`). The paragraph itself stays where the ceilings are; what a
  * live figure needs beside it is the half that says the figure is not the spend.
  */
-const SPEND_FLOOR_NOTE =
-  "What is counted comes from the run's ledger, which records less than the server charges, so a spend shown here is a floor, never a ceiling.";
+const SPEND_FLOOR_NOTE = "spendFloorNote";
 
 /** A failure the server carried without classifying. There is a cause; this is not it. */
-const UNCLASSIFIED_FAILURE_NOTE =
-  "This run ended as failed and its own record names no reason for it. The server log is where the cause is.";
+const UNCLASSIFIED_FAILURE_NOTE = "unclassifiedFailure";
 
 /** What the names the check could not find, or could not read, add to the popover. */
 function identifierNote(draft: AgentPlanStatementView): GuardNote | null {
@@ -245,7 +244,8 @@ function identifierNote(draft: AgentPlanStatementView): GuardNote | null {
   return draft.identifiers.unknownTables.length > 0 ? UNKNOWN_NAMES_NOTE : null;
 }
 
-const seconds = (ms: number): string => (ms / 1000).toFixed(1);
+const seconds = (ms: number, format: ReturnType<typeof useFormatter>): string =>
+  format.number(ms / 1000, { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: false });
 
 /**
  * One gauge, read in the unit it is bounded in and named by its own label.
@@ -254,10 +254,10 @@ const seconds = (ms: number): string => (ms / 1000).toFixed(1);
  * this file, so nothing here can import that one, and a two-line number formatter is a
  * cheaper duplicate than moving the meter out of the rail that owns it.
  */
-const readGauge = (gauge: AgentBudgetGauge): string =>
+const readGauge = (gauge: AgentBudgetGauge, format: ReturnType<typeof useFormatter>): string =>
   gauge.unit === "ms"
-    ? `${seconds(gauge.used)} / ${seconds(gauge.limit)} s ${gauge.label.toLowerCase()}`
-    : `${gauge.used} / ${gauge.limit} ${gauge.label.toLowerCase()}`;
+    ? `${seconds(gauge.used, format)} / ${seconds(gauge.limit, format)} s ${gauge.label.toLowerCase()}`
+    : `${format.number(gauge.used)} / ${format.number(gauge.limit)} ${gauge.label.toLowerCase()}`;
 
 /**
  * How far through its budget the run is, as the FULLEST of its bounds.
@@ -322,6 +322,7 @@ function StatementBlock({ sql, language }: { readonly sql: string; readonly lang
 
 /** What the guard did, said in one line with the full claim behind the ⓘ. */
 function GuardLine({ draft }: { readonly draft: AgentPlanStatementView }) {
+  const t = useTranslations("Agent");
   const reading = guardReading(draft);
   const identifier = identifierNote(draft);
   const notes: GuardNote[] = [];
@@ -346,15 +347,15 @@ function GuardLine({ draft }: { readonly draft: AgentPlanStatementView }) {
           is a node inside it, and a reader asserting this line must not be handed the
           line plus everything folded behind it. */}
       <span data-testid="agent-answer-guard">
-        {reading === "objected" ? guardObjectionNote(draft.guardViolation) : guardSummaryLine(draft)}
+        {reading === "objected" ? guardObjectionNote(draft.guardViolation, t) : guardSummaryLine(draft, t)}
       </span>
       <InfoNote
-        title={reading === "unexamined" ? "Why nothing examined this draft" : "What the statement guard checked"}
+        title={reading === "unexamined" ? t("whyGuardUnread") : t("whatGuardChecked")}
         testId="agent-answer-guard-note"
       >
         {notes.map((note) => (
           <span key={note.testId} data-testid={note.testId} className="block">
-            {note.text}
+            {t(note.text)}
           </span>
         ))}
       </InfoNote>
@@ -380,13 +381,14 @@ function PlanChips({
   readonly draft: AgentPlanStatementView;
   readonly capture: AgentCaptureView | null;
 }) {
+  const t = useTranslations("Agent");
   const reading = guardReading(draft);
   const unknown = draft.identifiers.kind === "checked" ? draft.identifiers.unknownTables : [];
 
   return (
     <div className="mt-1 flex flex-wrap items-center gap-1">
       <Chip testId="agent-answer-chip-guard" className={GUARD_CHIPS[reading].className}>
-        {GUARD_CHIPS[reading].label}
+        {t(GUARD_CHIPS[reading].label)}
       </Chip>
       {unknown.length > 0 && (
         /* Model and engine text, listed as the content it is rather than spliced into a
@@ -394,7 +396,7 @@ function PlanChips({
            the guard line, because a bare name says nothing on its own. */
         <ul
           data-testid="agent-answer-chip-names"
-          aria-label={UNKNOWN_NAMES_NOTE.text}
+          aria-label={t(UNKNOWN_NAMES_NOTE.text)}
           className="flex flex-wrap items-center gap-1"
         >
           {unknown.map((name) => (
@@ -409,7 +411,10 @@ function PlanChips({
       {capture !== null && (
         <>
           <Chip testId="agent-answer-chip-inventory">
-            {capture.tableCount} {capture.tableCount === 1 ? capture.noun.singular : capture.noun.plural} read
+            {t("inventoryRead", {
+              count: capture.tableCount,
+              noun: agentInventoryLabel(capture.tableCount === 1 ? capture.noun.singular : capture.noun.plural, t),
+            })}
           </Chip>
           {/* Eight characters, the length every other surface prints a fingerprint at. */}
           <Chip testId="agent-answer-chip-fingerprint" className="font-mono">
@@ -470,6 +475,7 @@ export function AnswerCard({
   onStop,
   onRetry,
 }: AnswerCardProps) {
+  const t = useTranslations("Agent");
   const drafted = timeline.items.find((item) => item.planStatement !== undefined)?.planStatement;
   const refusalProse = timeline.items.find((item) => item.planRefusal === true)?.prose;
   const state = answerCardState(timeline);
@@ -479,12 +485,12 @@ export function AnswerCard({
   return (
     <section data-testid="agent-answer" className="border-b border-hairline p-2.5">
       <div className="flex items-center gap-2">
-        <span className="text-[0.625rem] font-medium tracking-wide text-fg-subtle uppercase">{EYEBROWS[state]}</span>
+        <span className="text-[0.625rem] font-medium tracking-wide text-fg-subtle uppercase">{t(EYEBROWS[state])}</span>
         <span
           data-testid="agent-answer-status"
           className={cn("rounded px-1.5 py-0.5 text-[0.625rem]", STATUS_TONES[timeline.status])}
         >
-          {timeline.status}
+          {t(`status_${timeline.status}`)}
         </span>
       </div>
 
@@ -527,15 +533,18 @@ function FailureNote({
   readonly timeline: AgentRunTimeline;
   readonly onRetry: (() => void) | undefined;
 }) {
+  const t = useTranslations("Agent");
   return (
     <div data-testid="agent-answer-failed" className="mt-1.5 rounded border border-rose-500/40 bg-rose-500/5 p-2">
       <p className="flex items-center gap-1 text-xs text-rose-300">
         <TriangleAlert strokeWidth={1.5} className="w-3 h-3 shrink-0" aria-hidden="true" />
-        Run failed
+        {t("runFailed")}
       </p>
       {/* The same map the timeline entry reads, so the two cannot disagree. */}
       <p data-testid="agent-answer-failure" className="mt-1 text-[0.625rem] text-fg-tertiary">
-        {timeline.failureReason === null ? UNCLASSIFIED_FAILURE_NOTE : describeFailureReason(timeline.failureReason)}
+        {timeline.failureReason === null
+          ? t(UNCLASSIFIED_FAILURE_NOTE)
+          : describeFailureReason(timeline.failureReason, t)}
       </p>
       {onRetry !== undefined && (
         <button
@@ -545,7 +554,7 @@ function FailureNote({
           className="mt-1 flex items-center gap-1 rounded px-1.5 py-0.5 text-[0.625rem] text-blue-300 hover:bg-fill transition-colors"
         >
           <RotateCcw strokeWidth={1.5} className="w-3 h-3" />
-          Retry
+          {t("retry")}
         </button>
       )}
     </div>
@@ -566,6 +575,7 @@ function PlanAnswer({
   readonly capture: AgentCaptureView | null;
   readonly onApplyStatement: ((sql: string) => void) | undefined;
 }) {
+  const t = useTranslations("Agent");
   return (
     <div
       data-testid="agent-answer-plan"
@@ -589,7 +599,7 @@ function PlanAnswer({
               the card is that the marks stay behind. `applyStatementName` lives in
               `rail-parts.tsx` precisely so both surfaces name the act the same way.
             */
-            aria-label={applyStatementName(draft)}
+            aria-label={applyStatementName(draft, t)}
             onClick={() => onApplyStatement(draft.sql)}
             className={cn(
               "flex items-center gap-1 rounded px-1.5 py-0.5 text-[0.625rem] transition-colors hover:bg-fill",
@@ -597,7 +607,7 @@ function PlanAnswer({
             )}
           >
             <PencilLine strokeWidth={1.5} className="w-3 h-3" />
-            Apply to editor
+            {t("applyEditor")}
           </button>
         </div>
       )}
@@ -605,7 +615,7 @@ function PlanAnswer({
       {rationale !== undefined && (
         <details data-testid="agent-answer-why" className="mt-1.5 group">
           <summary className="cursor-pointer text-[0.625rem] text-fg-muted hover:text-fg-secondary">
-            Why this statement
+            {t("whyStatement")}
           </summary>
           {/*
             The model's prose, in the structure it wrote it in, with the per-block
@@ -628,7 +638,7 @@ function PlanAnswer({
             className="mt-1 space-y-1 border-l border-hairline-strong pl-2 text-[0.625rem] text-fg-tertiary"
           >
             {renderProse(rationale, { cardedStatement: draft.sql })}
-            <CopyButton text={rationale} testId="agent-answer-why-copy" label="Copy all" />
+            <CopyButton text={rationale} testId="agent-answer-why-copy" label={t("copyAll")} />
           </div>
         </details>
       )}
@@ -649,6 +659,7 @@ function ReportAnswer({
   readonly onApplyStatement: ((sql: string) => void) | undefined;
   readonly onShowArtifact: ((correlationId: string, chartSpec: AgentChartSpec | undefined) => void) | undefined;
 }) {
+  const t = useTranslations("Agent");
   const citations = report.claims.flatMap((claim) => claim.citations);
 
   return (
@@ -659,7 +670,7 @@ function ReportAnswer({
           <QuotedBlock text={claim.quoted} testId="agent-answer-claim-copy" tone="loud" />
           <ul
             data-testid="agent-answer-citation-chips"
-            aria-label="What this claim cites"
+            aria-label={t("claimCitations")}
             className="mt-1 flex flex-wrap items-center gap-1"
           >
             {claim.citations.map((citation) => (
@@ -734,13 +745,13 @@ function ReportAnswer({
           engine enforced and answered from the rows, so no guard reading about it exists
           to carry — and one invented here would be a claim no code in this product made.
         */
-        applyName={applyStatementName(null)}
+        applyName={applyStatementName(null, t)}
         onApply={onApplyStatement}
         onShow={onShowArtifact}
       />
       <details data-testid="agent-answer-evidence" className="mt-1.5">
         <summary className="cursor-pointer text-[0.625rem] text-fg-muted hover:text-fg-secondary">
-          Evidence · {citations.length} {citations.length === 1 ? "citation" : "citations"}
+          {t("evidenceCount", { count: citations.length })}
         </summary>
         <div className="mt-1 space-y-1.5">
           {citations.map((citation) => (
@@ -768,14 +779,15 @@ function ReportAnswer({
  * points at what the run actually said.
  */
 function RefusedAnswer({ prose }: { readonly prose: string }) {
+  const t = useTranslations("Agent");
   return (
     <div data-testid="agent-answer-refused" className="mt-1.5 rounded border border-amber-400/40 bg-amber-500/5 p-2">
       <p className="flex items-center gap-1 text-xs text-amber-300">
         <TriangleAlert strokeWidth={1.5} className="w-3 h-3 shrink-0" aria-hidden="true" />
-        No statement drafted
+        {t("noStatement")}
       </p>
       <p data-testid="agent-answer-refusal-note" className="mt-1 text-[0.625rem] text-amber-300/90">
-        {REFUSAL_NOTE}
+        {t(REFUSAL_NOTE)}
       </p>
       {/* The marker it was read by is already stripped: it is a protocol token the model
           was told to emit, not something it wrote for a reader. */}
@@ -784,7 +796,7 @@ function RefusedAnswer({ prose }: { readonly prose: string }) {
         className="mt-1 space-y-1 border-l border-hairline-strong pl-2 text-[0.625rem] text-fg-tertiary"
       >
         {renderProse(prose)}
-        <CopyButton text={prose} testId="agent-answer-refusal-copy" label="Copy all" />
+        <CopyButton text={prose} testId="agent-answer-refusal-copy" label={t("copyAll")} />
       </div>
     </div>
   );
@@ -798,7 +810,9 @@ function RunningAnswer({
   readonly timeline: AgentRunTimeline;
   readonly onStop: (() => void) | undefined;
 }) {
+  const t = useTranslations("Agent");
   const items = timeline.items;
+  const format = useFormatter();
   const current = items[items.length - 1];
   /*
     The span the LEDGER covers, not a clock. A ticking elapsed time would run past what
@@ -816,7 +830,7 @@ function RunningAnswer({
       </p>
       {current?.detail !== undefined && <p className="mt-0.5 pl-4.5 text-[0.625rem] text-fg-muted">{current.detail}</p>}
       <p data-testid="agent-answer-elapsed" className="mt-1 text-[0.625rem] text-fg-subtle">
-        {seconds(span)} s since this run&apos;s first recorded entry
+        {t("recordedElapsed", { seconds: seconds(span, format) })}
       </p>
       <div className="mt-1 h-0.5 rounded-full bg-fill">
         <div
@@ -830,9 +844,9 @@ function RunningAnswer({
           data-testid="agent-answer-spend"
           className="flex items-start gap-1 font-mono text-[0.625rem] text-fg-tertiary"
         >
-          {timeline.budget.map(readGauge).join(" · ")}
-          <InfoNote title="Figures are a floor, not the spend" testId="agent-answer-spend-note">
-            {SPEND_FLOOR_NOTE}
+          {timeline.budget.map((gauge) => readGauge(gauge, format)).join(" · ")}
+          <InfoNote title={t("spendFloorTitle")} testId="agent-answer-spend-note">
+            {t(SPEND_FLOOR_NOTE)}
           </InfoNote>
         </span>
         {onStop !== undefined && (
@@ -843,7 +857,7 @@ function RunningAnswer({
             className="flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[0.625rem] text-amber-300 hover:bg-amber-500/25 transition-colors"
           >
             <Square strokeWidth={1.5} className="w-3 h-3" />
-            Stop
+            {t("stop")}
           </button>
         )}
       </div>

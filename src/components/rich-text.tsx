@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { PencilLine } from "lucide-react";
 import { CopyButton } from "@/components/copy-button";
 import { isQueryFenceTag } from "@/lib/sql/fence-tags";
@@ -119,6 +120,7 @@ function CodeBlock({
   readonly tag: string | undefined;
   readonly onApplySql: ((sql: string) => void) | undefined;
 }) {
+  const t = useTranslations("Agent");
   return (
     <div className="mt-1">
       {/*
@@ -138,7 +140,7 @@ function CodeBlock({
             className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[0.625rem] text-fg-tertiary hover:bg-fill hover:text-fg transition-colors"
           >
             <PencilLine strokeWidth={1.5} className="w-3 h-3" />
-            Apply to editor
+            {t("applyEditor")}
           </button>
         )}
         <CopyButton text={code} testId="prose-code-copy" />

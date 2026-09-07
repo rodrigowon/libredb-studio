@@ -1,0 +1,26 @@
+{
+  "title": "Query Safety Check",
+  "close": "Close",
+  "unreadableTitle": "Part of this statement could not be read",
+  "unreadableDescription": "A quoted, commented or bracketed run in it never closes (or its closing quote sits behind a backslash, which dialects read differently), so nothing written after that point could be checked. It may hide a write, which is why you are being asked.",
+  "analyzing": "Analyzing query safety...",
+  "affectedRows": "Affected rows: ",
+  "cascadeEffects": "Cascade effects: ",
+  "recommendation": "Recommendation",
+  "cancel": "Cancel",
+  "executeAnyway": "Execute Anyway",
+  "proceedCautiously": "Proceed with Caution",
+  "executeQuery": "Execute Query",
+  "risk": {
+    "safe": "Safe",
+    "low": "Low Risk",
+    "medium": "Medium Risk",
+    "high": "High Risk",
+    "critical": "Critical Risk"
+  },
+  "errors": {
+    "analysisFailed": "Analysis failed",
+    "noReader": "No reader",
+    "unknown": "Unknown error"
+  }
+}

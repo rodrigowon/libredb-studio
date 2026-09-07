@@ -1,0 +1,26 @@
+{
+  "title": "Verificação de segurança da consulta",
+  "close": "Fechar",
+  "unreadableTitle": "Não foi possível interpretar parte desta instrução",
+  "unreadableDescription": "Um trecho entre aspas, comentado ou delimitado por colchetes não foi fechado (ou a aspa de fechamento vem após uma barra invertida, que os dialetos interpretam de formas diferentes). Por isso, não foi possível verificar o que vem depois desse ponto. Esse trecho pode ocultar uma operação de escrita; por isso, sua confirmação está sendo solicitada.",
+  "analyzing": "Verificando a segurança da consulta...",
+  "affectedRows": "Linhas afetadas: ",
+  "cascadeEffects": "Efeitos em cascata: ",
+  "recommendation": "Recomendação",
+  "cancel": "Cancelar",
+  "executeAnyway": "Executar mesmo assim",
+  "proceedCautiously": "Prosseguir com cautela",
+  "executeQuery": "Executar consulta",
+  "risk": {
+    "safe": "Segura",
+    "low": "Risco baixo",
+    "medium": "Risco médio",
+    "high": "Risco alto",
+    "critical": "Risco crítico"
+  },
+  "errors": {
+    "analysisFailed": "Falha na análise",
+    "noReader": "Leitor da resposta indisponível",
+    "unknown": "Erro desconhecido"
+  }
+}

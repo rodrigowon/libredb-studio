@@ -1,5 +1,8 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+import { agentInventoryLabel, englishAgentTranslator, type AgentTranslator } from "@/i18n/agent";
+
 import { useId, useState, type ReactNode } from "react";
 import { Info, PencilLine, TableProperties } from "lucide-react";
 import { CopyButton } from "@/components/copy-button";
@@ -109,9 +112,9 @@ export const guardReading = (draft: AgentPlanStatementView): GuardReading =>
  * all. So the inventory clause appears only where an inventory was actually read.
  */
 const GUARD_LINES: Readonly<Record<"checked" | "checkedNoInventory" | "unexamined", string>> = Object.freeze({
-  checked: "Checked as a bounded read against the captured inventory. Nothing was executed.",
-  checkedNoInventory: "Checked as a bounded read. Nothing was executed.",
-  unexamined: "Not examined: the statement guard reads SQL, and this engine's statements are not SQL.",
+  checked: "guardChecked",
+  checkedNoInventory: "guardCheckedNoInventory",
+  unexamined: "guardUnexamined",
 });
 
 /**
@@ -121,22 +124,27 @@ const GUARD_LINES: Readonly<Record<"checked" | "checkedNoInventory" | "unexamine
  * the transcript's summary stops here. Same first sentence, one author, so the reason
  * code and the wording around it cannot come to differ between the two.
  */
-export const guardObjectionLine = (violation: string | undefined): string =>
-  `The statement guard did not read this as a bounded read (${violation ?? "no reason recorded"}).`;
+export const guardObjectionLine = (
+  violation: string | undefined,
+  t: AgentTranslator = englishAgentTranslator,
+): string => t("guardObjection", { reason: violation ?? t("noReason") });
 
 /**
  * All three readings in one line, which is what a de-duplicated entry keeps — and what
  * the answer card states above the claim behind it, so neither surface can say more
  * about the inventory than the run read of one.
  */
-export const guardSummaryLine = (draft: AgentPlanStatementView): string => {
+export const guardSummaryLine = (
+  draft: AgentPlanStatementView,
+  t: AgentTranslator = englishAgentTranslator,
+): string => {
   const reading = guardReading(draft);
-  if (reading === "objected") return guardObjectionLine(draft.guardViolation);
-  if (reading === "unexamined") return GUARD_LINES.unexamined;
+  if (reading === "objected") return guardObjectionLine(draft.guardViolation, t);
+  if (reading === "unexamined") return t(GUARD_LINES.unexamined);
   // `"checked"` is the guard's verdict about the STATEMENT; whether the names in it were
   // looked for in anything is the identifier reading's answer, and only that one can
   // support the inventory clause.
-  return draft.identifiers.kind === "checked" ? GUARD_LINES.checked : GUARD_LINES.checkedNoInventory;
+  return t(draft.identifiers.kind === "checked" ? GUARD_LINES.checked : GUARD_LINES.checkedNoInventory);
 };
 
 /**
@@ -233,6 +241,7 @@ export function HydrationControls({
   readonly onApply: ((sql: string) => void) | undefined;
   readonly onShow: ((correlationId: string, chartSpec: AgentChartSpec | undefined) => void) | undefined;
 }) {
+  const t = useTranslations("Agent");
   const canApply = sql !== undefined && onApply !== undefined;
   const canShow = artifactId !== undefined && onShow !== undefined;
   if (!canApply && !canShow) return null;
@@ -248,7 +257,7 @@ export function HydrationControls({
           className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[0.625rem] text-fg-tertiary hover:bg-fill hover:text-fg transition-colors"
         >
           <PencilLine strokeWidth={1.5} className="w-3 h-3" />
-          Apply to editor
+          {t("applyEditor")}
         </button>
       )}
       {artifactId !== undefined && onShow !== undefined && (
@@ -259,7 +268,7 @@ export function HydrationControls({
           className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[0.625rem] text-fg-tertiary hover:bg-fill hover:text-fg transition-colors"
         >
           <TableProperties strokeWidth={1.5} className="w-3 h-3" />
-          Show result
+          {t("showResult")}
         </button>
       )}
     </div>
@@ -296,8 +305,11 @@ export function HydrationControls({
  * the answer card offers is named by this function" is the property that keeps a control
  * from shipping unnamed the way all three of them had (L6).
  */
-export function applyStatementName(draft: AgentPlanStatementView | null): string {
-  if (draft === null) return "Apply to editor.";
+export function applyStatementName(
+  draft: AgentPlanStatementView | null,
+  t: AgentTranslator = englishAgentTranslator,
+): string {
+  if (draft === null) return t("applyEditorName");
   const marks: string[] = [];
   // The guard's reach comes FIRST, and it replaces the objection rather than joining
   // it (#414). On an engine whose statements are not SQL the guard read nothing, so
@@ -305,24 +317,20 @@ export function applyStatementName(draft: AgentPlanStatementView | null): string
   // below it, spoken to a screen-reader user who cannot see the card, would otherwise
   // assert that nothing establishes this correct MongoDB aggregation only reads, as
   // though something had looked and been unconvinced.
-  if (!draft.guardApplicable)
-    marks.push(
-      "The statement guard reads SQL and this engine's statements are not SQL, so nothing examined this draft.",
-    );
-  else if (!draft.readOnly)
-    marks.push(
-      `The statement guard did not read this as a bounded read (${draft.guardViolation ?? "no reason recorded"}), so nothing here establishes that running it would only read.`,
-    );
-  if (draft.identifiers.kind === "not-applicable")
-    marks.push("The name check reads SQL too, so the names it uses were not looked for in anything.");
-  else if (draft.identifiers.kind === "no-inventory") marks.push("Nothing checked the names it uses.");
+  if (!draft.guardApplicable) marks.push(t("applyGuardUnread"));
+  else if (!draft.readOnly) marks.push(t("applyGuardObjection", { reason: draft.guardViolation ?? t("noReason") }));
+  if (draft.identifiers.kind === "not-applicable") marks.push(t("applyNamesUnread"));
+  else if (draft.identifiers.kind === "no-inventory") marks.push(t("applyNamesUnchecked"));
   else if (draft.identifiers.unknownTables.length > 0) {
     // Named in the engine's own word (#414). This sentence is spoken to a user who
     // cannot see the card, so it is the last place a Druid run should be told about
     // "table(s)" while every visible surface beside it says datasources.
     marks.push(
-      `It names ${draft.identifiers.unknownTables.length} ${draft.noun.singular}(s) the inventory this run read does not hold, so it may not run as written.`,
+      t("applyUnknownNames", {
+        count: draft.identifiers.unknownTables.length,
+        noun: agentInventoryLabel(draft.noun.singular, t),
+      }),
     );
   }
-  return ["Apply to editor.", ...marks].join(" ");
+  return [t("applyEditorName"), ...marks].join(" ");
 }

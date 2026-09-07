@@ -2,7 +2,8 @@ import "../../setup-dom";
 
 import React, { type RefObject } from "react";
 import { afterEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { cleanup, fireEvent } from "@testing-library/react";
+import { renderWithIntl as render } from "../../helpers/render-with-intl";
 import { ConsentCard } from "@/components/agent/ConsentCard";
 import { AGENT_HANDOVER_BUDGET } from "@/lib/agent/execution-policy";
 import { autoExecuteTerms } from "@/lib/agent/posture";

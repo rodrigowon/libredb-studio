@@ -4,7 +4,8 @@ import "../helpers/mock-navigation";
 
 import React from "react";
 import { describe, test, expect, beforeEach, afterEach, mock } from "bun:test";
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, waitFor } from "@testing-library/react";
+import { renderWithIntl as render } from "../helpers/render-with-intl";
 import { QuerySafetyDialog, isDangerousQuery } from "@/components/QuerySafetyDialog";
 
 function createStreamResponse({

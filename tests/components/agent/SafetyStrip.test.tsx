@@ -2,7 +2,8 @@ import "../../setup-dom";
 
 import React from "react";
 import { afterEach, describe, expect, test } from "bun:test";
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { cleanup, fireEvent } from "@testing-library/react";
+import { renderWithIntl as render } from "../../helpers/render-with-intl";
 import { SafetyStrip } from "@/components/agent/SafetyStrip";
 import { AGENT_EXECUTION_ENGINES } from "@/lib/agent/engine-support";
 import { type AgentPosture, type AgentPostureTone, agentPosture } from "@/lib/agent/posture";

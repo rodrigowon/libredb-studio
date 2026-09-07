@@ -4,7 +4,9 @@ import "../../helpers/mock-navigation";
 
 import React from "react";
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, render, renderHook, fireEvent, waitFor, act, type RenderResult } from "@testing-library/react";
+import { cleanup, renderHook, fireEvent, waitFor, act } from "@testing-library/react";
+import { IntlTestProvider, renderWithIntl as render } from "../../helpers/render-with-intl";
+type RenderResult = ReturnType<typeof render>;
 import { AgentRail } from "@/components/agent/AgentRail";
 import { useConnectionManager } from "@/hooks/use-connection-manager";
 import {
@@ -6626,9 +6628,12 @@ describe("a seed configuration the server could not read (B37)", () => {
       "/api/db/health": { json: { status: "healthy" } },
       "/api/agent/config": { json: { enabled: true } },
     });
-    const hook = renderHook(() => useConnectionManager(true));
+    const hook = renderHook(() => useConnectionManager(true), { wrapper: IntlTestProvider });
     await waitFor(() => {
-      expect(hook.result.current.servedSeeds).toBeDefined();
+      // The initial state is already defined; wait for this fixture's response.
+      expect(hook.result.current.servedSeeds).toEqual(
+        managed.status === 500 ? { loaded: false } : { loaded: true, seeds: [] },
+      );
     });
     const seeds = hook.result.current.servedSeeds;
     hook.unmount();

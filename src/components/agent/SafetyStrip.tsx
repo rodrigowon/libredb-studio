@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import React, { useId, useRef, useState } from "react";
 import { Info } from "lucide-react";
 import { type AgentPostureTone, agentPosture } from "@/lib/agent/posture";
@@ -75,7 +77,8 @@ const TONE_PILL: Readonly<Record<AgentPostureTone, string>> = Object.freeze({
 } satisfies Record<AgentPostureTone, string>);
 
 export function SafetyStrip({ mode, engine, engineLabel, handover }: SafetyStripProps) {
-  const posture = agentPosture({ mode, engine, engineLabel, handover });
+  const t = useTranslations("Agent");
+  const posture = agentPosture({ mode, engine, engineLabel, handover }, t);
   const [open, setOpen] = useState(false);
   /*
     The description's id, and the ⓘ's `aria-controls` target. From `useId` rather than a
@@ -140,7 +143,7 @@ export function SafetyStrip({ mode, engine, engineLabel, handover }: SafetyStrip
           the pill gets the level from the button's name alone, which is what makes this an
           affordance rather than an unlabelled glyph.
         */
-        aria-label={`What this mode executes: ${posture.headline}`}
+        aria-label={t("postureInfo", { headline: posture.headline })}
         aria-expanded={open}
         aria-controls={claimId}
         onClick={() => setOpen((was) => !was)}

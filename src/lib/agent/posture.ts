@@ -29,7 +29,8 @@
  *    carries the full claim rather than the missing half.
  */
 
-import { AGENT_EXECUTION_ENGINES, namedList } from "@/lib/agent/engine-support";
+import { englishAgentTranslator, type AgentTranslator } from "@/i18n/agent";
+import { AGENT_EXECUTION_ENGINES } from "@/lib/agent/engine-support";
 import { AGENT_HANDOVER_BUDGET, AGENT_WORKFLOW_BUDGETS } from "@/lib/agent/execution-policy";
 import type { AgentRunMode, AgentRunWorkflowType } from "@/lib/agent/types";
 import { getDBConfig } from "@/lib/db-ui-config";
@@ -82,11 +83,14 @@ const STATEMENT_BOUNDS = AGENT_WORKFLOW_BUDGETS.investigation.policy.budgets;
 /**
  * The engines agent mode can execute on, named as the product names them.
  *
- * The join is `namedList` and not `join(" and ")`: with three execution engines the local
- * join printed "PostgreSQL and SQLite and DuckDB" here and on the login hero, which had a
- * copy of the same line. One helper serves both.
+ * Keep the original English list punctuation; only the conjunction is localized.
+ * Provider names are derived and passed as values, never translated.
  */
-const engineNames = (types: readonly DatabaseType[]): string => namedList(types.map((type) => getDBConfig(type).label));
+const engineNames = (types: readonly DatabaseType[], t: AgentTranslator): string => {
+  const names = types.map((type) => getDBConfig(type).label);
+  if (names.length < 2) return names.join("");
+  return t("engineList", { initial: names.slice(0, -1).join(", "), last: names[names.length - 1] });
+};
 
 /**
  * The terms of the auto-execute consent, as ONE sentence-run rather than as JSX prose: the
@@ -102,23 +106,33 @@ const engineNames = (types: readonly DatabaseType[]): string => namedList(types.
  * It lives here, beside the posture that quotes it, so the strip's widened body and the
  * checkbox's accessible description are one string with one author.
  */
-export function autoExecuteTerms(workflowType: AgentRunWorkflowType): string {
-  return handoverTerms(AGENT_WORKFLOW_BUDGETS[workflowType].policy.budgets);
+export function autoExecuteTerms(
+  workflowType: AgentRunWorkflowType,
+  t: AgentTranslator = englishAgentTranslator,
+): string {
+  return handoverTerms(AGENT_WORKFLOW_BUDGETS[workflowType].policy.budgets, t);
 }
 
 /** The consent sentence itself, over whichever row named it. */
-function handoverTerms(budgets: { readonly maxResultRows: number; readonly statementTimeoutMs: number }): string {
-  return `The run always produces its answer on its own read-only path, bounded to ${budgets.maxResultRows} rows and ${budgets.statementTimeoutMs / 1000} seconds. Tick this and it will also put that statement in your editor and run it there — on the connection the run was opened on, at the editor's ${AGENT_HANDOVER_BUDGET.maxResultRows}-row limit and with no time limit. It is the same database-enforced read-only session either way, so writes and DDL are refused by the engine rather than by reading the statement. Statements whose plan reads as expensive, or which the run measured as slow, are put in the editor without being run.`;
+function handoverTerms(
+  budgets: { readonly maxResultRows: number; readonly statementTimeoutMs: number },
+  t: AgentTranslator,
+): string {
+  return t("handoverTerms", {
+    rows: budgets.maxResultRows,
+    seconds: budgets.statementTimeoutMs / 1000,
+    editorRows: AGENT_HANDOVER_BUDGET.maxResultRows,
+  });
 }
 
 /** Plan mode, on every engine, with or without the hand-over ticked. */
-function planPosture(): AgentPosture {
+function planPosture(t: AgentTranslator): AgentPosture {
   return {
     tone: "safe",
-    headline: "Executes nothing it drafts",
-    qualifier: "one schema read grounds it, nothing else reaches the database",
-    title: "Plan mode drafts, and never runs what it drafted",
-    body: `Plan mode never executes the statement it wrote, on any engine — production included. Its one reach is the schema capture that grounds it: metadata only, no data rows, and it is where the inventory in Run details came from. On ${engineNames(CATALOG_CAPTURE_ENGINES)} that capture is itself a catalog read; on every other engine it asks the provider to describe its own schema.`,
+    headline: t("posturePlanHeadline"),
+    qualifier: t("posturePlanQualifier"),
+    title: t("posturePlanTitle"),
+    body: t("posturePlanBody", { engines: engineNames(CATALOG_CAPTURE_ENGINES, t) }),
   };
 }
 
@@ -135,13 +149,13 @@ function planPosture(): AgentPosture {
  * `engine-unsupported` before its first statement, which was true while the refusal was
  * the provider factory's alone - and would now describe a run this build does not open.
  */
-function unsupportedPosture(engineLabel: string): AgentPosture {
+function unsupportedPosture(engineLabel: string, t: AgentTranslator): AgentPosture {
   return {
     tone: "blocked",
-    headline: `Cannot execute on ${engineLabel}`,
-    qualifier: "plan mode drafts here, and the operations workflow still runs",
-    title: `Agent mode has no read-only statement path on ${engineLabel}`,
-    body: `Agent mode executes only where the provider implements a database-native read-only statement path — ${engineNames(AGENT_EXECUTION_ENGINES)}. On ${engineLabel} a run whose workflow sends a statement is refused when it is started, before a run is opened. The operations workflow still runs here, because it sends no statement at all: it calls the curated reporting methods every provider implements. Plan mode drafts on every engine.`,
+    headline: t("postureUnsupportedHeadline", { engine: engineLabel }),
+    qualifier: t("postureUnsupportedQualifier"),
+    title: t("postureUnsupportedTitle", { engine: engineLabel }),
+    body: t("postureUnsupportedBody", { engines: engineNames(AGENT_EXECUTION_ENGINES, t), engine: engineLabel }),
   };
 }
 
@@ -155,37 +169,37 @@ function unsupportedPosture(engineLabel: string): AgentPosture {
  * is that it does not know which engine you are on. The caller's `engineLabel` is ignored on
  * purpose: with `engine` null it is a label for nothing.
  */
-function unresolvedPosture(): AgentPosture {
+function unresolvedPosture(t: AgentTranslator): AgentPosture {
   return {
     tone: "blocked",
-    headline: "Cannot execute yet",
-    qualifier: "no connection is resolved, so no engine has been established",
-    title: "Agent mode has no connection to execute on",
-    body: `Agent mode executes only where the provider implements a database-native read-only statement path — ${engineNames(AGENT_EXECUTION_ENGINES)}. No connection is resolved here, so this panel cannot say which engine you are on, or whether it is one of those: until one is resolved, agent mode executes nothing. The operations workflow sends no statement at all, so it runs wherever a connection does, and plan mode drafts on every engine.`,
+    headline: t("postureUnresolvedHeadline"),
+    qualifier: t("postureUnresolvedQualifier"),
+    title: t("postureUnresolvedTitle"),
+    body: t("postureUnresolvedBody", { engines: engineNames(AGENT_EXECUTION_ENGINES, t) }),
   };
 }
 
 /** Agent mode with the editor hand-over consented: still read-only, and one statement wider. */
-function widenedPosture(): AgentPosture {
+function widenedPosture(t: AgentTranslator): AgentPosture {
   return {
     tone: "widened",
-    headline: "Reads only, and one statement in your editor",
-    qualifier: `${AGENT_HANDOVER_BUDGET.maxResultRows} rows, no time limit, same read-only session`,
-    title: "Reads only, and one statement lands in your editor",
-    body: handoverTerms(STATEMENT_BOUNDS),
+    headline: t("postureWidenedHeadline"),
+    qualifier: t("postureWidenedQualifier", { rows: AGENT_HANDOVER_BUDGET.maxResultRows }),
+    title: t("postureWidenedTitle"),
+    body: handoverTerms(STATEMENT_BOUNDS, t),
   };
 }
 
 /** Agent mode, executing on its own path and nowhere else. */
-function readsPosture(): AgentPosture {
+function readsPosture(t: AgentTranslator): AgentPosture {
   const rows = STATEMENT_BOUNDS.maxResultRows;
   const seconds = STATEMENT_BOUNDS.statementTimeoutMs / 1000;
   return {
     tone: "reads",
-    headline: "Reads only",
-    qualifier: `${rows} rows and ${seconds} s per statement, enforced by the engine`,
-    title: "Agent mode reads, under a boundary the engine enforces",
-    body: `Agent mode runs statements it wrote itself, in a read-only session the database enforces, bounded to ${rows} rows and ${seconds} seconds each. Writes and DDL are refused by the engine rather than by reading the statement. Nothing reaches your editor unless you tick the hand-over when the run opens.`,
+    headline: t("postureReadsHeadline"),
+    qualifier: t("postureReadsQualifier", { rows, seconds }),
+    title: t("postureReadsTitle"),
+    body: t("postureReadsBody", { rows, seconds }),
   };
 }
 
@@ -201,14 +215,17 @@ function readsPosture(): AgentPosture {
  * `AGENT_EXECUTION_ENGINES` is read on every call, not folded into a constant at module
  * load, so the copy follows the list in the process that is running.
  */
-export function agentPosture(input: {
-  readonly mode: AgentRunMode;
-  readonly engine: DatabaseType | null;
-  readonly engineLabel: string;
-  readonly handover: boolean;
-}): AgentPosture {
-  if (input.mode === "planning") return planPosture();
-  if (input.engine === null) return unresolvedPosture();
-  if (!AGENT_EXECUTION_ENGINES.includes(input.engine)) return unsupportedPosture(input.engineLabel);
-  return input.handover ? widenedPosture() : readsPosture();
+export function agentPosture(
+  input: {
+    readonly mode: AgentRunMode;
+    readonly engine: DatabaseType | null;
+    readonly engineLabel: string;
+    readonly handover: boolean;
+  },
+  t: AgentTranslator = englishAgentTranslator,
+): AgentPosture {
+  if (input.mode === "planning") return planPosture(t);
+  if (input.engine === null) return unresolvedPosture(t);
+  if (!AGENT_EXECUTION_ENGINES.includes(input.engine)) return unsupportedPosture(input.engineLabel, t);
+  return input.handover ? widenedPosture(t) : readsPosture(t);
 }

@@ -5,6 +5,7 @@ import "../helpers/mock-navigation";
 import { describe, test, expect, beforeEach, afterEach, mock, spyOn } from "bun:test";
 import { renderHook, act } from "@testing-library/react";
 import { mockGlobalFetch, restoreGlobalFetch } from "../helpers/mock-fetch";
+import { IntlTestProvider } from "../helpers/render-with-intl";
 import { storage } from "@/lib/storage";
 
 import { useQueryExecution } from "@/hooks/use-query-execution";
@@ -88,7 +89,7 @@ describe("useQueryExecution: the real safety gate", () => {
    */
   test("opens the dialog for a write hidden behind an unresolvable literal", async () => {
     const fetchMock = mockGlobalFetch({});
-    const { result } = renderHook(() => useQueryExecution(params()));
+    const { result } = renderHook(() => useQueryExecution(params()), { wrapper: IntlTestProvider });
 
     const hidden = "SELECT '\\';\nUPDATE t SET x = 1";
     await act(async () => {
@@ -108,7 +109,7 @@ describe("useQueryExecution: the real safety gate", () => {
     const fetchMock = mockGlobalFetch({
       "/api/db/query": { ok: true, json: { rows: [{ id: 1 }], fields: ["id"], rowCount: 1, executionTime: 3 } },
     });
-    const { result } = renderHook(() => useQueryExecution(params()));
+    const { result } = renderHook(() => useQueryExecution(params()), { wrapper: IntlTestProvider });
 
     await act(async () => {
       await result.current.executeQuery("SELECT 'a\\nb' FROM t");
@@ -132,7 +133,7 @@ describe("useQueryExecution: the real safety gate", () => {
     ["a nested comment that never closes", "/* outer /* inner */ DROP TABLE users"],
   ])("opens the dialog for a destructive statement behind %s", async (_label, hidden) => {
     const fetchMock = mockGlobalFetch({});
-    const { result } = renderHook(() => useQueryExecution(params()));
+    const { result } = renderHook(() => useQueryExecution(params()), { wrapper: IntlTestProvider });
 
     await act(async () => {
       await result.current.executeQuery(hidden);
@@ -149,7 +150,7 @@ describe("useQueryExecution: the real safety gate", () => {
    */
   test("opens the dialog for a destructive statement behind a comment", async () => {
     const fetchMock = mockGlobalFetch({});
-    const { result } = renderHook(() => useQueryExecution(params()));
+    const { result } = renderHook(() => useQueryExecution(params()), { wrapper: IntlTestProvider });
 
     const annotated = "-- cleanup\nDROP TABLE users";
     await act(async () => {

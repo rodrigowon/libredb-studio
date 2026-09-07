@@ -1,5 +1,8 @@
 "use client";
 
+import { useTranslations, useFormatter } from "next-intl";
+import type { AgentTranslator } from "@/i18n/agent";
+
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Bot, ChevronDown, ChevronRight, LoaderCircle, PencilLine, Play, Square, TriangleAlert, X } from "lucide-react";
 import { CopyButton } from "@/components/copy-button";
@@ -7,7 +10,6 @@ import { renderProse } from "@/components/rich-text";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { AgentRunConnection } from "@/hooks/use-connection-payload";
 import { isMobileViewport, useIsMobile } from "@/hooks/use-mobile";
-import { describeAgentCapability } from "@/lib/agent/capability-labels";
 /*
   The list the SERVER gates a profiled acquisition on, read here for one presentation:
   an engine outside it cannot execute an agent run's statement, and saying so before
@@ -170,8 +172,8 @@ const TONE_CLASSES: Readonly<Record<AgentTimelineTone, string>> = {
 };
 
 const MODE_LABELS: Readonly<Record<AgentRunMode, string>> = {
-  planning: "Plan",
-  agent: "Agent",
+  planning: "modeLabelPlanning",
+  agent: "modeLabelAgent",
 };
 
 /**
@@ -184,11 +186,11 @@ const MODE_LABELS: Readonly<Record<AgentRunMode, string>> = {
  * in either mode.
  */
 const WORKFLOW_LABELS: Readonly<Record<AgentRunWorkflowType, string>> = {
-  investigation: "Investigate",
-  "query-optimization": "Optimize",
-  "database-assessment": "Assess",
-  operations: "Operate",
-  "data-analysis": "Analyze",
+  investigation: "workflowLabel_investigation",
+  "query-optimization": "workflowLabel_query-optimization",
+  "database-assessment": "workflowLabel_database-assessment",
+  operations: "workflowLabel_operations",
+  "data-analysis": "workflowLabel_data-analysis",
 };
 
 /**
@@ -259,13 +261,11 @@ interface AgentDecidedStart {
  * read back to the user as "read from your objective". A record that does not say is
  * said as one that does not say.
  */
-const OPENED_AS_SENTENCES: Readonly<Record<AgentRunWorkflowReading, (label: string) => string>> = Object.freeze({
-  classified: (label) => `Opened as ${label}, read from your objective.`,
-  unclassified: (label) =>
-    `Opened as ${label}: your objective could not be classified, so the run investigates rather than being told what it is for.`,
-  unrecorded: (label) =>
-    `Opened as ${label}. Nobody here chose it, and this run's record does not say whether your objective was read into it or fallen back from.`,
-} satisfies Record<AgentRunWorkflowReading, (label: string) => string>);
+const OPENED_AS_SENTENCES: Readonly<Record<AgentRunWorkflowReading, string>> = Object.freeze({
+  classified: "openedClassified",
+  unclassified: "openedUnclassified",
+  unrecorded: "openedUnrecorded",
+});
 
 /**
  * How long this browser waits for `POST /api/agent/classify` before opening the run
@@ -299,12 +299,13 @@ const isWorkflowType = (value: unknown): value is AgentRunWorkflowType =>
  */
 const TIMELINE_BOTTOM_SLACK_PX = 24;
 
-const seconds = (ms: number): string => (ms / 1000).toFixed(1);
+const seconds = (ms: number, format: ReturnType<typeof useFormatter>): string =>
+  format.number(ms / 1000, { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: false });
 
 /** The meter's own reading of one gauge, in the unit that gauge is bounded in. */
-function readGauge(gauge: AgentBudgetGauge): string {
-  if (gauge.unit === "ms") return `${seconds(gauge.used)} / ${seconds(gauge.limit)} s`;
-  return `${gauge.used} / ${gauge.limit}`;
+function readGauge(gauge: AgentBudgetGauge, format: ReturnType<typeof useFormatter>): string {
+  if (gauge.unit === "ms") return `${seconds(gauge.used, format)} / ${seconds(gauge.limit, format)} s`;
+  return `${format.number(gauge.used)} / ${format.number(gauge.limit)}`;
 }
 
 /**
@@ -333,18 +334,18 @@ const gaugeFraction = (gauge: AgentBudgetGauge): number => Math.min(100, (gauge.
  *    planning could produce. Pointing that user at the mode they are in says nothing, so
  *    the line is what remains true.
  */
-function refusalActionText(planModeOffered: boolean, streamingDisproved: boolean): string {
+function refusalActionText(planModeOffered: boolean, streamingDisproved: boolean, t: AgentTranslator): string {
   if (planModeOffered) {
     // "without reading the database" until 2026-08-15, when plan mode began grounding
     // itself: the SERVER reads the catalog and the engine's estimated statistics before
     // the first turn. What is still true is the sentence the mode is actually sold on,
     // and it is the one the user is given here.
-    return "Plan mode needs no tools, so it may still work with this model: it reasons about your question and drafts a statement for you to run yourself. It runs no statement of yours and writes nothing. Try it, or configure a different model — one that passes the probe — for a run that investigates the database itself.";
+    return t("refusalTryPlan");
   }
   if (streamingDisproved) {
-    return "This endpoint answered without streaming, and plan mode reads the same stream, so it would produce nothing here either. A different model, or an endpoint that streams, is what gets an answer.";
+    return t("refusalNoStream");
   }
-  return "A different model, one that passes the probe, is what gets a run that reads the database.";
+  return t("refusalDifferentModel");
 }
 
 /** The card's own paragraph, pointed at by the error line's `aria-describedby`. */
@@ -376,7 +377,7 @@ const ENGINE_UNSUPPORTED_CODE: AgentStartRefusalCode = "engine-unsupported";
  * points at. That is the trade: "the notice above" is meaningless without a pointer, and
  * a pointer at a paragraph is what makes the short line honest.
  */
-const ENGINE_REFUSAL_CONSEQUENCE = "No run was opened. The notice above says why, and what still runs on this engine.";
+const ENGINE_REFUSAL_CONSEQUENCE = "engineRefusalConsequence";
 
 /** Every reason the conversation strip has a sentence for, the rail's own included. */
 type ThreadDeclineReason = NonNullable<AgentThreadContext["declined"]> | "connection-dropped";
@@ -410,17 +411,20 @@ type ThreadDeclineReason = NonNullable<AgentThreadContext["declined"]> | "connec
  * moved is deliberate and correct, while the server's `unavailable` collapses five
  * causes it may not tell apart.
  */
-function threadDeclineNotice(input: {
-  readonly connectionDropped: boolean;
-  readonly declined: AgentThreadContext["declined"];
-}): string | null {
+function threadDeclineNotice(
+  input: {
+    readonly connectionDropped: boolean;
+    readonly declined: AgentThreadContext["declined"];
+  },
+  t: AgentTranslator,
+): string | null {
   const reason: ThreadDeclineReason | undefined = input.connectionDropped ? "connection-dropped" : input.declined;
   if (reason === undefined) return null;
   switch (reason) {
     case "connection-dropped":
-      return "Connection changed, so this question started a new conversation.";
+      return t("threadConnectionChanged");
     case "disabled":
-      return "Conversation context is switched off on this server, so every question starts on its own.";
+      return t("threadDisabled");
     /*
       Says what the server measured and no more. What it compared is the connection's
       fingerprint - server, database, role, tunnel - so the copy says "re-pointed" rather
@@ -437,10 +441,10 @@ function threadDeclineNotice(input: {
       opened is the one being followed (#512).
     */
     case "repointed":
-      return "This connection was re-pointed after the earlier step ran, so this question started a new conversation. Follow-ups from here continue on the connection as it points now.";
+      return t("threadRepointed");
     case "unavailable":
     case "error":
-      return "The earlier step could not be carried into this question, so it started on its own.";
+      return t("threadUnavailable");
   }
 }
 
@@ -485,6 +489,7 @@ function ProseBlock({
   readonly cardedStatement: string | undefined;
   readonly className: string;
 }) {
+  const t = useTranslations("Agent");
   const apply = cardedStatement === undefined ? onApplySql : undefined;
   return (
     <div
@@ -497,7 +502,7 @@ function ProseBlock({
         rendering above: what a user pastes into a ticket is the text, and the text is
         what was recorded.
       */}
-      <CopyButton text={text} testId="agent-prose-copy" label="Copy all" />
+      <CopyButton text={text} testId="agent-prose-copy" label={t("copyAll")} />
     </div>
   );
 }
@@ -534,6 +539,7 @@ function ProseBlock({
  * reads as neither `"true"` nor an objection.
  */
 function PlanStatementCard({ draft }: { readonly draft: AgentPlanStatementView }) {
+  const t = useTranslations("Agent");
   return (
     <section
       data-testid="agent-plan-statement"
@@ -552,8 +558,7 @@ function PlanStatementCard({ draft }: { readonly draft: AgentPlanStatementView }
         data-testid="agent-plan-statement-summary"
         className={cn("text-[0.625rem]", guardReading(draft) === "checked" ? "text-fg-muted" : "text-amber-300")}
       >
-        {guardSummaryLine(draft)} The statement, what the name check found and what applying it would and would not
-        establish are in the answer at the top of this rail.
+        {guardSummaryLine(draft, t)} {t("planSummaryLocation")}
       </p>
     </section>
   );
@@ -606,6 +611,7 @@ function TimelineEntryBody({
    */
   readonly planCarded: boolean;
 }) {
+  const t = useTranslations("Agent");
   /*
     The guard's reading, said once (L3). Measured on the MongoDB plan run: the card's
     guard line, then THIS paragraph — four lines of it — then the amber summary box
@@ -678,10 +684,7 @@ function TimelineEntryBody({
               because there was no inventory at all. The earlier wording named "the schema it read",
               which on the second path is a reading that never happened.
             */}
-            <p className="text-[0.625rem] text-amber-300">
-              This run drafted no statement. What it says is missing, and what it needs from you, are in its own words
-              below.
-            </p>
+            <p className="text-[0.625rem] text-amber-300">{t("refusalNote")}</p>
             <ProseBlock
               text={item.prose}
               onApplySql={onApplyStatement}
@@ -721,10 +724,7 @@ function TimelineEntryBody({
             data-testid="agent-handover-declined"
             className="mt-0.5 pl-3.5 text-xs text-amber-400/80"
           >
-            It was not run: this run was opened on {declined.openedOn ?? "another connection"} and your editor has moved
-            to a different one since. The answer would have arrived in a tab that is connected somewhere else, so
-            nothing was executed. The statement is below — take it yourself if you want it on the connection you are on
-            now.
+            {t("handoverDeclined", { connection: declined.openedOn ?? t("anotherConnection") })}
           </p>
         ))}
       {/*
@@ -786,15 +786,16 @@ function ChangeWorkflowButton({
   readonly candidate: AgentRunWorkflowType;
   readonly onSelect: (next: AgentRunWorkflowType) => void;
 }) {
+  const t = useTranslations("Agent");
   return (
     <button
       type="button"
       data-testid={`agent-change-workflow-${candidate}`}
-      aria-label={`Stop this run and open a new ${WORKFLOW_LABELS[candidate]} run`}
+      aria-label={t("changeWorkflowName", { workflow: t(WORKFLOW_LABELS[candidate]) })}
       onClick={() => onSelect(candidate)}
       className="px-2 py-0.5 rounded text-xs font-normal text-fg-muted hover:bg-fill transition-colors"
     >
-      {WORKFLOW_LABELS[candidate]}
+      {t(WORKFLOW_LABELS[candidate])}
     </button>
   );
 }
@@ -810,6 +811,8 @@ export function AgentRail({
   onShowArtifact,
   prefill = null,
 }: AgentRailProps) {
+  const t = useTranslations("Agent");
+  const format = useFormatter();
   // Everything below asks only "is there an id"; the reason is read once, where the
   // caveat is written.
   const connectionId = connection?.id ?? null;
@@ -886,7 +889,7 @@ export function AgentRail({
   const [connectionDropped, setConnectionDropped] = useState(false);
   /** An ask that arrived while the user was typing, waiting for them to take it. */
   const [offeredObjective, setOfferedObjective] = useState<string | null>(null);
-  const run = useAgentRun();
+  const run = useAgentRun(t);
 
   /*
     Which ceilings the meter states: the ones the server is enforcing on the run the
@@ -1132,7 +1135,7 @@ export function AgentRail({
     decision as much as a readability one: under the guard, `threadDeclineNotice`'s
     `return null` line would be unreachable and would sit uncovered forever (#513).
   */
-  const declineNotice = threadDeclineNotice({ connectionDropped, declined: threadDeclined });
+  const declineNotice = threadDeclineNotice({ connectionDropped, declined: threadDeclined }, t);
 
   /**
    * The objective the OPEN run was opened with.
@@ -1815,7 +1818,7 @@ export function AgentRail({
 
     The two coincide whenever no run is open, which is most of the panel's life.
   */
-  const engineLabel = connectionType === null ? "this connection" : getDBConfig(connectionType).label;
+  const engineLabel = connectionType === null ? t("thisConnection") : getDBConfig(connectionType).label;
   /*
     Both axes of the open run's posture ask `runOpen` FIRST, and read the run before they
     read any control. That order is the rule, and it is why these two lines look alike.
@@ -1832,14 +1835,17 @@ export function AgentRail({
   */
   const handoverConsented = runOpen ? openedWithHandover : pendingStart !== null && autoExecute;
   const describedMode = runOpen ? run.timeline.mode : mode;
-  const selectionPosture = agentPosture({
-    mode,
-    engine: connectionType,
-    engineLabel,
-    // The standing step's tick, and OFF otherwise: nothing has been consented to for a
-    // run that is not being opened, and the next step's tick starts unticked.
-    handover: pendingStart !== null && autoExecute,
-  });
+  const selectionPosture = agentPosture(
+    {
+      mode,
+      engine: connectionType,
+      engineLabel,
+      // The standing step's tick, and OFF otherwise: nothing has been consented to for a
+      // run that is not being opened, and the next step's tick starts unticked.
+      handover: pendingStart !== null && autoExecute,
+    },
+    t,
+  );
 
   /*
     An engine agent mode cannot execute a statement on, named before Start rather than
@@ -1944,15 +1950,15 @@ export function AgentRail({
     line rather than restated, and every figure is the gauge's own.
   */
   const detailsFigures = [
-    `${run.timeline.items.length} steps`,
+    t("stepsCount", { count: run.timeline.items.length }),
     ...run.timeline.budget
       // The two the ledger MEASURES, in the order the meter shows them. Repair attempts
       // are a count of a count and say nothing at a glance, so they stay in the gauges.
       .filter((gauge) => gauge.id === "statements" || gauge.id === "database-time")
       .map((gauge) =>
         gauge.id === "statements"
-          ? `${gauge.used}/${gauge.limit} stmt`
-          : `${seconds(gauge.used)}/${seconds(gauge.limit)} s`,
+          ? t("statementGaugeShort", { used: gauge.used, limit: gauge.limit })
+          : `${seconds(gauge.used, format)}/${seconds(gauge.limit, format)} s`,
       ),
   ].join(" · ");
 
@@ -1965,7 +1971,11 @@ export function AgentRail({
         <div className="flex items-center gap-2 min-w-0">
           <Bot strokeWidth={1.5} className="w-3.5 h-3.5 text-blue-400" />
           <span className="text-xs font-medium text-fg-secondary">Agent</span>
-          {connectionName !== null && <span className="text-xs text-fg-subtle truncate">on {connectionName}</span>}
+          {connectionName !== null && (
+            <span className="text-xs text-fg-subtle truncate">
+              {t("connectionContext", { connection: connectionName })}
+            </span>
+          )}
         </div>
         {/*
           Two toggle buttons rather than a labelled `role="group"`: the jsx-a11y gate
@@ -1978,7 +1988,7 @@ export function AgentRail({
               key={candidate}
               type="button"
               data-testid={`agent-mode-${candidate}`}
-              aria-label={`${MODE_LABELS[candidate]} mode`}
+              aria-label={t("modeName", { mode: t(MODE_LABELS[candidate]) })}
               aria-pressed={mode === candidate}
               // Frozen while a start is held; see `startHeld` for why this is the axis
               // that must not move under an asynchronous start.
@@ -1989,7 +1999,7 @@ export function AgentRail({
                 mode === candidate ? "bg-blue-500/15 text-blue-300" : "text-fg-muted hover:bg-fill",
               )}
             >
-              {MODE_LABELS[candidate]}
+              {t(MODE_LABELS[candidate])}
             </button>
           ))}
         </div>
@@ -2001,7 +2011,7 @@ export function AgentRail({
         {inSheet && (
           <button
             type="button"
-            aria-label="Close agent"
+            aria-label={t("closeAgent")}
             onClick={() => onSheetOpenChange?.(false)}
             className="p-1 rounded text-fg-tertiary hover:text-fg-bright hover:bg-fill transition-colors shrink-0"
           >
@@ -2038,7 +2048,7 @@ export function AgentRail({
         {objectiveEditable ? (
           <>
             <label htmlFor="agent-objective" className="text-xs text-fg-muted">
-              What should the run investigate?
+              {t("objectiveLabel")}
             </label>
             <textarea
               id="agent-objective"
@@ -2049,7 +2059,7 @@ export function AgentRail({
               maxLength={AGENT_MAX_OBJECTIVE_LENGTH}
               rows={3}
               className="mt-1 w-full resize-none rounded bg-sunken border border-hairline-strong px-2 py-1.5 text-xs text-fg placeholder:text-fg-subtle focus:outline-none focus:border-blue-500/40"
-              placeholder="Why is checkout slow?"
+              placeholder={t("objectivePlaceholder")}
             />
           </>
         ) : (
@@ -2072,7 +2082,7 @@ export function AgentRail({
               */}
               <p data-testid="agent-objective-summary" className="text-xs text-fg-secondary break-words">
                 <span data-testid="agent-objective-summary-label" className="sr-only">
-                  The objective this run was opened with:{" "}
+                  {t("objectiveSummary")}{" "}
                 </span>
                 {openedObjective}
               </p>
@@ -2083,14 +2093,17 @@ export function AgentRail({
                 sentence came from two sources.
               */}
               <p data-testid="agent-objective-frame" className="mt-0.5 text-[0.625rem] text-fg-subtle">
-                {WORKFLOW_LABELS[run.timeline.workflowType]} · {MODE_LABELS[describedMode]} mode
+                {t("objectiveFrame", {
+                  workflow: t(WORKFLOW_LABELS[run.timeline.workflowType]),
+                  mode: t(MODE_LABELS[describedMode]),
+                })}
               </p>
             </div>
             <button
               type="button"
               ref={objectiveEdit}
               data-testid="agent-objective-edit"
-              aria-label="Edit the objective and ask again"
+              aria-label={t("editObjective")}
               onClick={() => {
                 // The run's question, not the emptied box: refining what was asked is
                 // what this control is for, and retyping it is what it exists to avoid.
@@ -2100,7 +2113,7 @@ export function AgentRail({
               className="flex shrink-0 items-center gap-1 px-1.5 py-0.5 rounded text-[0.625rem] text-fg-tertiary hover:bg-fill hover:text-fg transition-colors"
             >
               <PencilLine strokeWidth={1.5} className="w-3 h-3" aria-hidden="true" />
-              Edit
+              {t("edit")}
             </button>
           </div>
         )}
@@ -2114,11 +2127,11 @@ export function AgentRail({
         */}
         {offeredObjective !== null && (
           <p data-testid="agent-prefill-offer" className="mt-2 text-[0.625rem] text-fg-muted">
-            Suggested: <span className="text-fg-tertiary">{offeredObjective}</span>
+            {t("suggested")} <span className="text-fg-tertiary">{offeredObjective}</span>
             <button
               type="button"
               data-testid="agent-prefill-offer-apply"
-              aria-label="Replace the objective with the suggested one"
+              aria-label={t("replaceObjective")}
               onClick={() => {
                 setObjective(offeredObjective);
                 prefilledObjective.current = offeredObjective;
@@ -2126,7 +2139,7 @@ export function AgentRail({
               }}
               className="ml-1 px-1 py-0.5 rounded text-[0.625rem] text-blue-300 hover:bg-fill transition-colors"
             >
-              Replace
+              {t("replace")}
             </button>
           </p>
         )}
@@ -2160,9 +2173,9 @@ export function AgentRail({
             ) : (
               <ChevronRight strokeWidth={1.5} className="w-3 h-3" aria-hidden="true" />
             )}
-            Advanced
+            {t("advanced")}
             <span data-testid="agent-workflow-choice" className="text-fg-tertiary">
-              {workflowChoice === "automatic" ? "Automatic" : WORKFLOW_LABELS[workflowChoice]}
+              {workflowChoice === "automatic" ? t("automatic") : t(WORKFLOW_LABELS[workflowChoice])}
             </span>
           </button>
           {advancedOpen && (
@@ -2180,7 +2193,9 @@ export function AgentRail({
                       type="button"
                       data-testid={`agent-workflow-${candidate}`}
                       aria-label={
-                        candidate === "automatic" ? "Automatic workflow" : `${WORKFLOW_LABELS[candidate]} workflow`
+                        candidate === "automatic"
+                          ? t("automaticWorkflow")
+                          : t("workflowName", { workflow: t(WORKFLOW_LABELS[candidate]) })
                       }
                       aria-pressed={workflowChoice === candidate}
                       // Frozen with the mode axis, and for the same reason: a start
@@ -2192,14 +2207,13 @@ export function AgentRail({
                         workflowChoice === candidate ? "bg-blue-500/15 text-blue-300" : "text-fg-muted hover:bg-fill",
                       )}
                     >
-                      {candidate === "automatic" ? "Automatic" : WORKFLOW_LABELS[candidate]}
+                      {candidate === "automatic" ? t("automatic") : t(WORKFLOW_LABELS[candidate])}
                     </button>
                   ),
                 )}
               </div>
               <p data-testid="agent-advanced-note" className="mt-1 text-[0.625rem] text-fg-subtle">
-                Automatic reads your objective on the server and opens the run for the workflow it names. Naming one
-                yourself skips that reading entirely.
+                {t("automaticNote")}
               </p>
             </div>
           )}
@@ -2221,14 +2235,11 @@ export function AgentRail({
               data-tone="warning"
               className="mt-2 text-xs text-amber-400/80"
             >
-              The server could not read its own connection configuration, so it cannot resolve a connection for a run.
-              This is not a problem with {connectionName ?? "this connection"} — the server log says what failed.
+              {t("seedConfigUnreadable", { connection: connectionName ?? t("thisConnection") })}
             </p>
           ) : (
             <p data-testid="agent-unresolvable-connection" className="mt-2 text-xs text-amber-400/80">
-              {connectionName ?? "This connection"} cannot be rebuilt on the server: its settings live in this browser.
-              A run re-resolves its connection there after a restart, so it can only investigate a connection the server
-              holds too.
+              {t("connectionBrowserOnly", { connection: connectionName ?? t("thisConnectionCapitalized") })}
             </p>
           ))}
 
@@ -2252,7 +2263,7 @@ export function AgentRail({
         {classifying && (
           <p data-testid="agent-classifying" className="mt-2 flex items-center gap-1 text-[0.625rem] text-fg-muted">
             <LoaderCircle strokeWidth={1.5} className="w-3 h-3 animate-spin" aria-hidden="true" />
-            Reading your objective to choose a workflow.
+            {t("classifying")}
           </p>
         )}
 
@@ -2270,7 +2281,7 @@ export function AgentRail({
         {pendingStart !== null && (
           <ConsentCard
             workflowType={pendingStart.workflowType}
-            workflowLabel={WORKFLOW_LABELS[pendingStart.workflowType]}
+            workflowLabel={t(WORKFLOW_LABELS[pendingStart.workflowType])}
             connectionName={pendingStart.connection.name}
             engine={pendingStart.connection.type}
             autoExecute={autoExecute}
@@ -2337,22 +2348,20 @@ export function AgentRail({
             */}
             {interruptedThread !== null && (
               <p data-testid="agent-thread-ended" className="text-amber-400/80">
-                {`The conversation this browser was in (${interruptedThread.steps} question${
-                  interruptedThread.steps === 1 ? "" : "s"
-                }, ${interruptedThread.threadId}) ended when the page reloaded. Your next question starts a new one.`}
+                {t("interruptedThread", { count: interruptedThread.steps, id: interruptedThread.threadId })}
               </p>
             )}
             {threadSteps.length > 0 && (
               <>
                 <p>
-                  {`Conversation: ${threadSteps.length} step${threadSteps.length === 1 ? "" : "s"} before this one`}
+                  {t("threadSteps", { count: threadSteps.length })}
                   <button
                     type="button"
                     data-testid="agent-thread-new"
                     onClick={() => setStartFresh(true)}
                     className="ml-1 px-1 py-0.5 rounded text-[0.625rem] text-blue-300 hover:bg-fill transition-colors"
                   >
-                    new conversation
+                    {t("newConversation")}
                   </button>
                 </p>
                 <ol data-testid="agent-thread-steps" className="mt-1 space-y-0.5">
@@ -2368,13 +2377,13 @@ export function AgentRail({
             )}
             {startFresh && (
               <p data-testid="agent-thread-fresh-pending" className="mt-1 text-blue-300/90">
-                Your next question will start a new conversation.
+                {t("freshConversation")}
                 <button
                   type="button"
                   onClick={() => setStartFresh(false)}
                   className="ml-1 px-1 py-0.5 rounded text-[0.625rem] text-blue-300 hover:bg-fill transition-colors"
                 >
-                  keep it
+                  {t("keepConversation")}
                 </button>
               </p>
             )}
@@ -2388,7 +2397,9 @@ export function AgentRail({
         {run.runId !== null && run.timeline.workflowSource === "inferred" && (
           <div data-testid="agent-opened-as" className="mt-2 text-[0.625rem] text-fg-muted">
             <p>
-              {OPENED_AS_SENTENCES[run.timeline.workflowReading](WORKFLOW_LABELS[run.timeline.workflowType])}
+              {t(OPENED_AS_SENTENCES[run.timeline.workflowReading], {
+                label: t(WORKFLOW_LABELS[run.timeline.workflowType]),
+              })}
               {runOpen && (
                 <button
                   type="button"
@@ -2398,7 +2409,7 @@ export function AgentRail({
                   onClick={() => setChangeOpen((open) => !open)}
                   className="ml-1 px-1 py-0.5 rounded text-[0.625rem] text-blue-300 hover:bg-fill transition-colors"
                 >
-                  change
+                  {t("change")}
                 </button>
               )}
             </p>
@@ -2411,9 +2422,7 @@ export function AgentRail({
                   user's to weigh.
                 */}
                 <p data-testid="agent-change-workflow-terms" className="text-fg-muted">
-                  Changing it stops this run and opens a new one. Stopping is observed between turns, so it is not
-                  instant: the run ends at its next checkpoint. The new run gets a new id, and this one stays in the
-                  ledger with everything it recorded.
+                  {t("changeWorkflowNote")}
                 </p>
                 <div className="mt-1 flex flex-wrap items-center gap-1">
                   {(Object.keys(WORKFLOW_LABELS) as AgentRunWorkflowType[]).map((candidate) => (
@@ -2435,9 +2444,7 @@ export function AgentRail({
             */}
             {replaceFailed && (
               <p role="alert" data-testid="agent-change-failed" className="mt-1 text-amber-400/80">
-                This run was not stopped, so nothing new was opened: it is still going and still spending its budget.
-                The line above is what the server answered. Ask again, or use Stop and start a new run once it has
-                ended.
+                {t("replacementFailed")}
               </p>
             )}
           </div>
@@ -2481,7 +2488,7 @@ export function AgentRail({
               onClick={() => setMode("planning")}
               className="px-1.5 py-0.5 rounded text-[0.625rem] text-blue-300 hover:bg-fill transition-colors"
             >
-              Switch to Plan
+              {t("switchPlan")}
             </button>
           </div>
         )}
@@ -2493,7 +2500,7 @@ export function AgentRail({
           {/* Folded from the ledger, so it says what the durable record says. */}
           {run.runId !== null && (
             <span data-testid="agent-run-status" className="text-xs text-fg-muted">
-              {run.timeline.status}
+              {t(`status_${run.timeline.status}`)}
             </span>
           )}
           <div className="flex items-center gap-1">
@@ -2505,7 +2512,7 @@ export function AgentRail({
                 className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 transition-colors"
               >
                 <Square strokeWidth={1.5} className="w-3 h-3" />
-                Stop
+                {t("stop")}
               </button>
             )}
             <button
@@ -2521,7 +2528,7 @@ export function AgentRail({
               ) : (
                 <Play strokeWidth={1.5} className="w-3 h-3" />
               )}
-              Start
+              {t("start")}
             </button>
           </div>
         </div>
@@ -2589,13 +2596,13 @@ export function AgentRail({
             data-testid="agent-model-refusal"
             className="mt-2 p-2 rounded border border-red-500/30 bg-red-500/5 space-y-1"
           >
-            <p className="text-xs text-red-300">This model cannot drive an agent run.</p>
+            <p className="text-xs text-red-300">{t("modelCannotDrive")}</p>
             {modelRefusal.missing.length > 0 && (
               <div data-testid="agent-model-refusal-missing" className="flex flex-wrap items-center gap-1">
-                <span className="text-[0.625rem] text-fg-tertiary">The probe could not establish:</span>
+                <span className="text-[0.625rem] text-fg-tertiary">{t("probeMissing")}</span>
                 {modelRefusal.missing.map((capability) => (
                   <span key={capability} className="px-1 py-0.5 rounded bg-red-500/10 text-[0.625rem] text-red-200/90">
-                    {describeAgentCapability(capability)}
+                    {t(`capability_${capability}`)}
                   </span>
                 ))}
               </div>
@@ -2604,7 +2611,7 @@ export function AgentRail({
               {modelRefusal.message}
             </p>
             <p data-testid="agent-model-refusal-action" className="text-[0.625rem] text-fg-tertiary">
-              {refusalActionText(planModeOffered, streamingDisproved)}
+              {refusalActionText(planModeOffered, streamingDisproved, t)}
             </p>
             {/*
               Offered only where it means something: not to a user already in plan mode,
@@ -2618,7 +2625,7 @@ export function AgentRail({
                 onClick={() => setMode("planning")}
                 className="px-1.5 py-0.5 rounded text-[0.625rem] text-blue-300 hover:bg-fill transition-colors"
               >
-                Switch to Plan mode
+                {t("switchPlanMode")}
               </button>
             )}
           </div>
@@ -2636,7 +2643,7 @@ export function AgentRail({
             */
             {...(engineRefusalExplained ? { "aria-describedby": ENGINE_UNSUPPORTED_REASON_ID } : {})}
           >
-            {engineRefusalExplained ? ENGINE_REFUSAL_CONSEQUENCE : run.error}
+            {engineRefusalExplained ? t(ENGINE_REFUSAL_CONSEQUENCE) : run.error}
           </p>
         )}
       </div>
@@ -2665,7 +2672,7 @@ export function AgentRail({
       */}
       <details data-testid="agent-run-details" open={runOpen} className="border-b border-hairline shrink-0">
         <summary className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-[0.625rem] text-fg-muted hover:text-fg-secondary">
-          Run details
+          {t("runDetails")}
           {/*
             The spend at a glance, so a folded meter still answers "how far in is it" —
             and only once a run exists, which is the gauges' own rule inside. Before one,
@@ -2696,7 +2703,7 @@ export function AgentRail({
               <div key={gauge.id} data-testid={`agent-budget-${gauge.id}`}>
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs text-fg-muted">{gauge.label}</span>
-                  <span className="font-mono text-[0.625rem] text-fg-tertiary">{readGauge(gauge)}</span>
+                  <span className="font-mono text-[0.625rem] text-fg-tertiary">{readGauge(gauge, format)}</span>
                 </div>
                 <div className="mt-1 h-0.5 rounded-full bg-fill">
                   <div
@@ -2713,14 +2720,10 @@ export function AgentRail({
               the gauges, so it sits with them.
             */}
             <span className="inline-flex items-center gap-0.5">
-              What is counted
-              <InfoNote title="What these figures count" testId="agent-budget-spend">
+              {t("counted")}
+              <InfoNote title={t("countedInfo")} testId="agent-budget-spend">
                 <span data-testid="agent-budget-caveats" className="block">
-                  Every ceiling is per drive, so a run resumed after a restart starts each of them again and these
-                  totals can read past a single drive&apos;s ceiling. What is counted comes from the run&apos;s ledger,
-                  which records less than the server charges: the schema capture&apos;s catalog reads are not itemized,
-                  and a completed read reports the engine&apos;s own elapsed time rather than the span the budget was
-                  charged. So a spend shown here is a floor, never a ceiling.
+                  {t("budgetCaveats")}
                   {/*
                     The one remaining gap in the database-time figure, and it is per RUN
                     rather than a standing claim (#512). A failed
@@ -2732,13 +2735,9 @@ export function AgentRail({
                     than letting the total read as measured (#477).
                   */}
                   {run.timeline.statementsWithoutDuration > 0 && (
-                    <>
-                      {" "}
-                      The ledger holds no duration for {run.timeline.statementsWithoutDuration} of this run&apos;s
-                      charged statements, so that spend is not in the figure above.
-                    </>
+                    <> {t("missingDuration", { count: run.timeline.statementsWithoutDuration })}</>
                   )}{" "}
-                  On SQLite a statement over its timeout is refused once it returns, not interrupted while it runs.
+                  {t("sqliteTimeout")}
                 </span>
               </InfoNote>
             </span>
@@ -2753,30 +2752,32 @@ export function AgentRail({
             */}
             {showBudgetLimits ? (
               <span className="inline-flex items-center gap-0.5">
-                Ceilings
-                <InfoNote title="The ceilings nothing measures" testId="agent-budget-ceilings">
+                {t("ceilings")}
+                <InfoNote title={t("ceilingsInfo")} testId="agent-budget-ceilings">
                   <span data-testid="agent-budget-limits" className="block">
-                    Each statement gets {seconds(meterBudget.policy.budgets.statementTimeoutMs)} s, each drive{" "}
-                    {(meterBudget.runDeadlineMs / 60_000).toFixed(1)} min and at most {meterBudget.maxModelTurns} model
-                    turns.
+                    {t("budgetLimits", {
+                      seconds: seconds(meterBudget.policy.budgets.statementTimeoutMs, format),
+                      minutes: format.number(meterBudget.runDeadlineMs / 60_000, {
+                        minimumFractionDigits: 1,
+                        maximumFractionDigits: 1,
+                        useGrouping: false,
+                      }),
+                      turns: meterBudget.maxModelTurns,
+                    })}
                   </span>
                 </InfoNote>
               </span>
             ) : (
-              <p data-testid="agent-budget-unknown">
-                Every ceiling here is per workflow, and Automatic decides the workflow from your objective when the run
-                opens — so the figures are stated once the run has one, and by the run&apos;s own record.
-              </p>
+              <p data-testid="agent-budget-unknown">{t("budgetUnknown")}</p>
             )}
             <span className="inline-flex items-center gap-0.5">
-              Report reserve
-              <InfoNote title="What is kept back for the report" testId="agent-budget-report-reserve">
+              {t("reportReserve")}
+              <InfoNote title={t("reserveInfo")} testId="agent-budget-report-reserve">
                 <span data-testid="agent-budget-reserve" className="block">
-                  The last {AGENT_REPORT_RESERVE_TURNS} model turns and the last {seconds(AGENT_REPORT_RESERVE_MS)} s
-                  are kept back for the report: whichever it reaches first, the run is asked once to stop and report
-                  what it has established. So a run that ends short of these figures was asked to stop rather than
-                  having given up, and its claims still cite what it read. A plan run is never asked, having no report
-                  to compose.
+                  {t("reserveNote", {
+                    turns: AGENT_REPORT_RESERVE_TURNS,
+                    seconds: seconds(AGENT_REPORT_RESERVE_MS, format),
+                  })}
                 </span>
               </InfoNote>
             </span>
@@ -2820,7 +2821,7 @@ export function AgentRail({
         <ol data-testid="agent-timeline" aria-live="polite" className="p-2 space-y-1">
           {run.timeline.items.length === 0 && (
             <li data-testid="agent-timeline-empty" className="p-2 text-xs text-fg-subtle">
-              No activity yet. A run's steps appear here as they are recorded.
+              {t("timelineEmpty")}
             </li>
           )}
           {/*
@@ -2845,7 +2846,7 @@ export function AgentRail({
             <li aria-live="off">
               <details data-testid="agent-timeline-chrome" className="rounded">
                 <summary className="cursor-pointer p-2 text-[0.625rem] text-fg-subtle hover:text-fg-muted">
-                  Run setup · {chromeItems.length} {chromeItems.length === 1 ? "entry" : "entries"}
+                  {t("setupCount", { count: chromeItems.length })}
                 </summary>
                 <ol className="space-y-1">
                   {chromeItems.map((item) => (
@@ -2898,8 +2899,7 @@ export function AgentRail({
         */}
         {onShowArtifact !== undefined && run.timeline.items.some((item) => item.artifactId !== undefined) && (
           <p data-testid="agent-report-retention" className="px-3 pb-2 text-[0.625rem] text-fg-subtle">
-            A run&apos;s stored rows are released when the run ends, so a result can be shown only while its run is
-            still going.
+            {t("resultRetention")}
           </p>
         )}
 

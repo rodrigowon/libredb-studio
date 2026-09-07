@@ -2,7 +2,8 @@ import "../setup-dom";
 
 import React from "react";
 import { afterEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, waitFor } from "@testing-library/react";
+import { renderWithIntl as render } from "../helpers/render-with-intl";
 import { CopyButton } from "@/components/copy-button";
 
 /**

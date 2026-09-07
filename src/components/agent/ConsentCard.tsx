@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+import type { AgentTranslator } from "@/i18n/agent";
 import React, { useEffect, useState, type RefObject } from "react";
 import { Info, Play } from "lucide-react";
 import { AGENT_HANDOVER_BUDGET } from "@/lib/agent/execution-policy";
@@ -85,10 +87,10 @@ export interface ConsentCardProps {
  * "no" is the part of the promise that does not hold literally. The terms popover carries
  * that full claim; the chip is its label, and sits beside it.
  */
-const handoverChips = (): readonly { readonly text: string; readonly tone: "neutral" | "warn" }[] => [
-  { text: "same read-only session", tone: "neutral" },
-  { text: `${AGENT_HANDOVER_BUDGET.maxResultRows} rows`, tone: "neutral" },
-  { text: "no time limit", tone: "warn" },
+const handoverChips = (t: AgentTranslator): readonly { readonly text: string; readonly tone: "neutral" | "warn" }[] => [
+  { text: t("handoverSession"), tone: "neutral" },
+  { text: t("handoverRows", { rows: AGENT_HANDOVER_BUDGET.maxResultRows }), tone: "neutral" },
+  { text: t("noTimeLimit"), tone: "warn" },
 ];
 
 /**
@@ -96,8 +98,7 @@ const handoverChips = (): readonly { readonly text: string; readonly tone: "neut
  * already uses for the same fact: SQLite does not preempt a statement over its timeout, so
  * the editor's missing time limit is a different promise there than it is on PostgreSQL.
  */
-const SQLITE_COST =
-  "On SQLite a read is not interrupted when it runs long: it blocks other writers and this application until it finishes.";
+const SQLITE_COST = "sqliteCost";
 
 export function ConsentCard({
   workflowType,
@@ -110,6 +111,7 @@ export function ConsentCard({
   onCancel,
   regionRef,
 }: ConsentCardProps): React.JSX.Element {
+  const t = useTranslations("Agent");
   const [termsOpen, setTermsOpen] = useState(false);
   const isSqlite = engine === "sqlite";
 
@@ -140,12 +142,12 @@ export function ConsentCard({
         data-testid="agent-consent-heading"
         className="flex items-center gap-1.5 text-[0.625rem] uppercase tracking-wide text-fg-tertiary"
       >
-        Start this run
+        {t("consentHeading")}
         <span
           data-testid="agent-consent-pill"
           className="rounded px-1 py-px text-[0.625rem] normal-case tracking-normal bg-emerald-500/10 text-emerald-400/90"
         >
-          read-only
+          {t("readOnlyLower")}
         </span>
       </div>
       {/*
@@ -153,11 +155,10 @@ export function ConsentCard({
         `connectionName` above for why the sentence has to say which one.
       */}
       <p id="agent-consent-workflow" data-testid="agent-consent-workflow" className="text-xs text-fg-secondary">
-        This run will open as {workflowLabel} on {connectionName ?? "the connection you started it on"}, which answers
-        with a result.
+        {t("consentWorkflow", { workflow: workflowLabel, connection: connectionName ?? t("originalConnection") })}
       </p>
       <p data-testid="agent-consent-editor-note" className="text-[0.625rem] text-fg-muted">
-        Nothing runs in your editor unless you ask for it below.
+        {t("consentEditorNote")}
       </p>
       <div className="mt-1.5 pt-1.5 border-t border-hairline space-y-1">
         <div className="flex items-start gap-1">
@@ -177,13 +178,13 @@ export function ConsentCard({
               className="mt-0.5 rounded border-edge bg-panel"
             />
             <span data-testid="agent-auto-execute-label" className="text-xs text-fg-secondary">
-              Also run the final answer in my editor
+              {t("consentCheckbox")}
             </span>
           </label>
           <button
             type="button"
             data-testid="agent-consent-terms-info"
-            aria-label="What the editor run adds"
+            aria-label={t("consentInfo")}
             aria-expanded={termsOpen}
             aria-controls="agent-consent-terms"
             onClick={() => setTermsOpen((open) => !open)}
@@ -207,7 +208,7 @@ export function ConsentCard({
               : "sr-only",
           )}
         >
-          {autoExecuteTerms(workflowType)}
+          {autoExecuteTerms(workflowType, t)}
         </p>
         {/*
           The bounds of what was ticked, and only once it is ticked: with the box off there
@@ -217,12 +218,12 @@ export function ConsentCard({
         {autoExecute && (
           <div data-testid="agent-consent-bounds" className="ml-5 flex flex-wrap items-center gap-1">
             {[
-              ...handoverChips(),
+              ...handoverChips(t),
               /*
                 The SQLite chip is the label of the sentence below it, not a second opinion:
                 the two are adjacent, so nothing can show the compressed form alone.
               */
-              ...(isSqlite ? ([{ text: "SQLite: not interruptible", tone: "warn" }] as const) : []),
+              ...(isSqlite ? ([{ text: t("sqliteUninterruptible"), tone: "warn" }] as const) : []),
             ].map((chip) => (
               <span
                 key={chip.text}
@@ -246,7 +247,7 @@ export function ConsentCard({
         */}
         {isSqlite && (
           <p data-testid="agent-auto-execute-sqlite" className="ml-5 text-[0.625rem] text-amber-400/70">
-            {SQLITE_COST}
+            {t(SQLITE_COST)}
           </p>
         )}
       </div>
@@ -258,7 +259,7 @@ export function ConsentCard({
           className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-blue-500/15 text-blue-300 hover:bg-blue-500/25 transition-colors"
         >
           <Play strokeWidth={1.5} className="w-3 h-3" aria-hidden="true" />
-          Start run
+          {t("startRun")}
         </button>
         {/* Cancel opens nothing: the objective stays in the box, and Start is live again —
             and takes focus back, since the control that is live again is the one that
@@ -269,7 +270,7 @@ export function ConsentCard({
           onClick={onCancel}
           className="px-2 py-1 rounded text-xs text-fg-tertiary hover:bg-fill transition-colors"
         >
-          Cancel
+          {t("cancel")}
         </button>
       </div>
       {/*
@@ -278,8 +279,7 @@ export function ConsentCard({
         not a term to read before deciding.
       */}
       <p data-testid="agent-consent-frozen" className="text-[0.625rem] text-fg-subtle">
-        This is decided by the request that opens the run and stays what it was: a later request cannot widen a run the
-        server already holds.
+        {t("consentFrozen")}
       </p>
     </section>
   );

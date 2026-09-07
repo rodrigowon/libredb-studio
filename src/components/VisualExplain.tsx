@@ -457,8 +457,9 @@ function AIExplainTab({
   onLoadQuery?: (query: string) => void;
 }) {
   const [aiResponse, setAiResponse] = useState("");
+  const tAi = useTranslations("Agent");
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; key?: string } | null>(null);
   const [hasRun, setHasRun] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -480,6 +481,7 @@ function AIExplainTab({
     setAiResponse("");
     setError(null);
     setHasRun(true);
+    let errorKey: string | undefined;
 
     // Abort previous request if any
     if (abortControllerRef.current) {
@@ -503,11 +505,15 @@ function AIExplainTab({
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
+        if (!errData.error) errorKey = "aiAnalysisFailed";
         throw new Error(errData.error || "AI analysis failed");
       }
 
       const reader = response.body?.getReader();
-      if (!reader) throw new Error("No response body");
+      if (!reader) {
+        errorKey = "aiNoBody";
+        throw new Error("No response body");
+      }
 
       const decoder = new TextDecoder();
       let accumulated = "";
@@ -522,7 +528,10 @@ function AIExplainTab({
       }
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
-      setError(err instanceof Error ? err.message : "AI analysis failed");
+      setError({
+        message: err instanceof Error ? err.message : "AI analysis failed",
+        key: err instanceof Error ? errorKey : "aiAnalysisFailed",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -559,7 +568,7 @@ function AIExplainTab({
                   onClick={() => onLoadQuery(content)}
                   className="absolute top-2 right-2 opacity-0 group-hover/code:opacity-100 transition-opacity px-2 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium flex items-center gap-1"
                 >
-                  <Play strokeWidth={1.5} className="w-3 h-3" /> Try This
+                  <Play strokeWidth={1.5} className="w-3 h-3" /> {tAi("tryThis")}
                 </button>
               )}
             </div>,
@@ -651,10 +660,8 @@ function AIExplainTab({
         <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500/20 to-blue-500/10 flex items-center justify-center mb-4">
           <Sparkles strokeWidth={1.5} className="w-7 h-7 text-purple-400" />
         </div>
-        <h3 className="text-xs font-medium text-fg mb-1">AI Query Analysis</h3>
-        <p className="text-xs text-fg-muted max-w-[280px] leading-relaxed mb-4">
-          Get a plain-language explanation of your query&apos;s execution plan with concrete optimization suggestions.
-        </p>
+        <h3 className="text-xs font-medium text-fg mb-1">{tAi("aiQueryAnalysis")}</h3>
+        <p className="text-xs text-fg-muted max-w-[280px] leading-relaxed mb-4">{tAi("aiExplainDescription")}</p>
         <button
           onClick={analyzeWithAI}
           disabled={!query}
@@ -666,9 +673,9 @@ function AIExplainTab({
           )}
         >
           <Sparkles strokeWidth={1.5} className="w-3 h-3" />
-          Analyze with AI
+          {tAi("aiAnalyze")}
         </button>
-        {!query && <p className="text-xs text-fg-subtle mt-2">Run a query first to enable AI analysis.</p>}
+        {!query && <p className="text-xs text-fg-subtle mt-2">{tAi("aiNeedsQuery")}</p>}
       </div>
     );
   }
@@ -679,7 +686,7 @@ function AIExplainTab({
       <div className="flex items-center justify-between px-4 py-2 border-b border-hairline bg-surface">
         <div className="flex items-center gap-2">
           <Sparkles strokeWidth={1.5} className="w-3 h-3 text-purple-400" />
-          <span className="text-xs font-medium text-purple-400">AI Analysis</span>
+          <span className="text-xs font-medium text-purple-400">{tAi("aiAnalysis")}</span>
         </div>
         <button
           onClick={analyzeWithAI}
@@ -691,7 +698,7 @@ function AIExplainTab({
           ) : (
             <Sparkles strokeWidth={1.5} className="w-3 h-3" />
           )}
-          {isLoading ? "Analyzing..." : "Re-analyze"}
+          {isLoading ? tAi("aiAnalyzing") : tAi("aiReanalyze")}
         </button>
       </div>
 
@@ -700,7 +707,7 @@ function AIExplainTab({
         {error && (
           <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/5 border border-red-500/10 text-red-400 text-xs mb-4">
             <TriangleAlert strokeWidth={1.5} className="w-3.5 h-3.5 shrink-0" />
-            {error}
+            {error.key ? tAi(error.key) : error.message}
           </div>
         )}
 
@@ -709,14 +716,14 @@ function AIExplainTab({
         {isLoading && !aiResponse && (
           <div className="flex items-center gap-3 text-fg-muted text-xs">
             <LoaderCircle strokeWidth={1.5} className="w-3.5 h-3.5 animate-spin text-purple-400" />
-            <span>Analyzing execution plan...</span>
+            <span>{tAi("aiAnalyzingPlan")}</span>
           </div>
         )}
 
         {isLoading && aiResponse && (
           <div className="flex items-center gap-2 mt-2 text-fg-subtle text-xs">
             <LoaderCircle strokeWidth={1.5} className="w-3 h-3 animate-spin" />
-            <span>Still generating...</span>
+            <span>{tAi("aiStillGenerating")}</span>
           </div>
         )}
       </div>

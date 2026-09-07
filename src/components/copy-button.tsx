@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Check, Copy, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -101,8 +102,8 @@ export interface CopyButtonProps {
 }
 
 const OUTCOME_LABELS: Readonly<Record<Exclude<CopyOutcome, "idle">, string>> = Object.freeze({
-  copied: "Copied",
-  failed: "Copy failed",
+  copied: "copied",
+  failed: "copyFailed",
 });
 
 /**
@@ -115,11 +116,13 @@ const OUTCOME_LABELS: Readonly<Record<Exclude<CopyOutcome, "idle">, string>> = O
  */
 const ACCESSIBLE_NAMES: Readonly<Record<CopyOutcome, string | undefined>> = Object.freeze({
   idle: undefined,
-  copied: "Copied",
-  failed: "Copy failed — select the text and copy it yourself",
+  copied: "copied",
+  failed: "copyFailedAccessible",
 });
 
-export function CopyButton({ text, testId, label = "Copy", className }: CopyButtonProps) {
+export function CopyButton({ text, testId, label, className }: CopyButtonProps) {
+  const t = useTranslations("Agent");
+  const restingLabel = label ?? t("copy");
   const [outcome, setOutcome] = useState<CopyOutcome>("idle");
 
   // The outcome is a report on one click, not a state the button stays in: left
@@ -147,7 +150,7 @@ export function CopyButton({ text, testId, label = "Copy", className }: CopyButt
         its own action owes the user the one that still works. It still contains the
         visible label, so 2.5.3 holds there too.
       */
-      aria-label={ACCESSIBLE_NAMES[outcome] ?? label}
+      aria-label={ACCESSIBLE_NAMES[outcome] === undefined ? restingLabel : t(ACCESSIBLE_NAMES[outcome]!)}
       onClick={() => {
         void writeToClipboard(text).then((copied) => setOutcome(copied ? "copied" : "failed"));
       }}
@@ -158,7 +161,7 @@ export function CopyButton({ text, testId, label = "Copy", className }: CopyButt
       )}
     >
       <Icon strokeWidth={1.5} className="w-3 h-3" />
-      {outcome === "idle" ? label : OUTCOME_LABELS[outcome]}
+      {outcome === "idle" ? restingLabel : t(OUTCOME_LABELS[outcome])}
     </button>
   );
 }

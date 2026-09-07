@@ -1,3 +1,4 @@
+import { agentInventoryLabel, englishAgentTranslator, type AgentTranslator } from "@/i18n/agent";
 import type { AgentContextCharge } from "@/lib/agent/context-snapshot";
 import { AGENT_MAX_REPAIR_ATTEMPTS, AGENT_WORKFLOW_BUDGETS } from "@/lib/agent/execution-policy";
 import type { AgentGoalShortfall } from "@/lib/agent/goal-verifier";
@@ -72,10 +73,10 @@ type PlanStatementEvent = Extract<AgentRunEvent, { kind: "plan-statement-drafted
  * written for a model to act on.
  */
 const GUIDANCE_HEADLINE: Record<Extract<AgentRunEvent, { kind: "guidance-issued" }>["notice"], string> = {
-  "report-reminder": "Asked to file its report",
-  "plan-statement": "Asked for a runnable statement",
-  "report-reserve": "Told this is its last turn",
-  "unread-stop": "Asked to read the database itself",
+  "report-reminder": "guidanceReport",
+  "plan-statement": "guidanceStatement",
+  "report-reserve": "guidanceLastTurn",
+  "unread-stop": "guidanceRead",
   /*
     The three notices delivered INSTEAD of running a call. They reach a reader through the
     `call-held` entry that records the hold, which is where the rail shows them — one entry
@@ -83,9 +84,9 @@ const GUIDANCE_HEADLINE: Record<Extract<AgentRunEvent, { kind: "guidance-issued"
     here because the vocabulary is one union (B51) and a reader of a ledger written by a
     later build must not meet an id this table has no word for.
   */
-  "present-before-report": "Asked to present the result first",
-  "cite-what-you-read": "Asked to cite what it read",
-  "compare-before-report": "Asked to compare the plans it holds",
+  "present-before-report": "guidancePresent",
+  "cite-what-you-read": "guidanceCite",
+  "compare-before-report": "guidanceCompare",
 };
 
 /**
@@ -464,18 +465,17 @@ const TERMINAL_TONES = {
  * or a driver, and the server keeps it in the log for exactly that reason.
  */
 const FAILURE_SENTENCES = {
-  "model-unavailable": "The model provider is not configured or could not be reached.",
+  "model-unavailable": "failureModelUnavailable",
   // Says what to do, because for this one there is something to do and it is not
   // opening the settings: the provider answered, and asked for less traffic.
-  "model-rate-limited": "The model provider is limiting this key's requests. Waiting a minute usually clears it.",
-  "model-unauthorized": "The model provider rejected the configured credentials.",
-  "engine-unsupported": "The agent cannot run on this database engine: it offers no read-only execution profile.",
+  "model-rate-limited": "failureRateLimited",
+  "model-unauthorized": "failureUnauthorized",
+  "engine-unsupported": "failureEngineUnsupported",
   // Names the credential, because that is the only thing to fix and the engine is
   // not at fault: this refusal reaches PostgreSQL and SQLite too (B47).
-  "agent-credential-unusable":
-    "This connection's agent credential cannot be used: check that both the agent user and password are set, that the password still decrypts under the current secret key, and that no connection string is set beside it.",
-  "connection-unresolvable": "This run's database connection no longer resolves on the server.",
-  internal: "The server could not carry this run. The reason is in the server log.",
+  "agent-credential-unusable": "failureCredential",
+  "connection-unresolvable": "failureConnection",
+  internal: "failureInternal",
 } as const satisfies Record<AgentRunFailureReason, string>;
 
 /**
@@ -487,11 +487,10 @@ const FAILURE_SENTENCES = {
  * comparison that read as a measurement would be describing something this runtime
  * is not permitted to do.
  */
-const PLAN_ESTIMATE_CAVEAT =
-  "Estimates only: these plans were described, not executed. EXPLAIN ANALYZE is policy-denied because it would run the statement.";
+const PLAN_ESTIMATE_CAVEAT = "planEstimateCaveat";
 
 /** Said on every recommendation, because the run does not make the change. */
-const NOT_APPLIED_CAVEAT = "Not applied: nothing here runs this statement.";
+const NOT_APPLIED_CAVEAT = "notAppliedCaveat";
 
 /**
  * What an answer's `handover` means, in the app's own words.
@@ -508,10 +507,9 @@ const NOT_APPLIED_CAVEAT = "Not applied: nothing here runs this statement.";
  */
 const HANDOVER_SENTENCES: Readonly<Record<Extract<AgentRunEvent, { kind: "answer-composed" }>["handover"], string>> =
   Object.freeze({
-    none: "Nothing was sent to the editor; applying the statement is the user's own action.",
-    applied: "The statement is in your editor and was not run there.",
-    "auto-executed":
-      "This run handed the statement to your editor to run: it ran on your connection, under the editor's own limits, and what it did with it is visible there rather than here.",
+    none: "handoverNone",
+    applied: "handoverApplied",
+    "auto-executed": "handoverExecuted",
   });
 
 /**
@@ -576,13 +574,12 @@ function guardSentence(
   readOnly: boolean,
   violation: PlanStatementEvent["guardViolation"],
   guardApplicable: boolean,
+  t: AgentTranslator,
 ): string {
   if (!guardApplicable) {
-    return "The statement guard reads SQL, and this engine's statements are not SQL, so nothing here examined this draft at all. Nothing about it was established, for or against.";
+    return t("timelineGuardUnread");
   }
-  return readOnly
-    ? "The statement guard read this as a bounded read and had no objection, which is not a promise about what it does."
-    : `The statement guard did not read this as a bounded read (${violation}). It is marked, not blocked: running it is your decision.`;
+  return readOnly ? t("timelineGuardChecked") : t("timelineGuardObjection", { reason: String(violation) });
 }
 
 /**
@@ -606,17 +603,21 @@ function guardSentence(
  * reader told "no inventory was read" when one was would go looking for a grounding
  * failure that did not happen.
  */
-function identifierSentence(identifiers: PlanStatementEvent["identifiers"], noun: AgentInventoryNoun): string {
+function identifierSentence(
+  identifiers: PlanStatementEvent["identifiers"],
+  noun: AgentInventoryNoun,
+  t: AgentTranslator,
+): string {
   if (identifiers.kind === "not-applicable") {
-    return "The name check reads SQL too, so the objects this draft names were not looked for in anything.";
+    return t("timelineNamesUnread");
   }
   if (identifiers.kind === "no-inventory") {
-    return "No schema inventory was read for this run, so the names it used were not checked at all.";
+    return t("timelineNoInventory");
   }
   const unknown = identifiers.unknownTables.length;
   return unknown === 0
-    ? `Every ${noun.singular} it names is in the inventory this run read — which records what exists, not what your role is permitted to read.`
-    : `${unknown} name(s) it uses are not in the inventory this run read, so it may not run as written.`;
+    ? t("namesAllFound", { noun: agentInventoryLabel(noun.singular, t) })
+    : t("namesNotFound", { count: unknown });
 }
 
 /**
@@ -630,28 +631,28 @@ function identifierSentence(identifiers: PlanStatementEvent["identifiers"], noun
  * on the operation id, which is the only thing on the event that identifies the
  * reading.
  */
-const POINT_IN_TIME_CAVEAT = "A moment, not a history: this reading says what the engine reported as it was taken.";
+const POINT_IN_TIME_CAVEAT = "pointInTimeCaveat";
 
 /** The operation a curated operational reading is stored under. */
 const OPERATIONS_OPERATION_ID = "db.operations.read";
 
 /** How an engine reaches the rows, in words. Total, so a new access kind cannot render blank. */
 const ACCESS_WORDS: Readonly<Record<AgentPlanAccess, string>> = {
-  "full-scan": "a full scan",
-  index: "an index",
-  mixed: "a mix of index and full scan",
-  unknown: "an access path this reading could not interpret",
+  "full-scan": "accessFull",
+  index: "accessIndex",
+  mixed: "accessMixed",
+  unknown: "accessUnknown",
 };
 
 /** One side of a comparison, with the engine's own estimate when it reported one. */
-function describeAccess(summary: AgentPlanSummary): string {
+function describeAccess(summary: AgentPlanSummary, t: AgentTranslator): string {
   const estimates = [
-    summary.estimatedRows === undefined ? null : `${summary.estimatedRows} row(s)`,
-    summary.estimatedCost === undefined ? null : `cost ${summary.estimatedCost}`,
+    summary.estimatedRows === undefined ? null : t("estimatedRows", { count: summary.estimatedRows }),
+    summary.estimatedCost === undefined ? null : t("estimatedCost", { cost: summary.estimatedCost }),
   ].filter((part) => part !== null);
   return estimates.length === 0
-    ? ACCESS_WORDS[summary.access]
-    : `${ACCESS_WORDS[summary.access]} (${estimates.join(", ")})`;
+    ? t(ACCESS_WORDS[summary.access])
+    : `${t(ACCESS_WORDS[summary.access])} (${estimates.join(", ")})`;
 }
 
 /**
@@ -660,11 +661,11 @@ function describeAccess(summary: AgentPlanSummary): string {
  * kebab-case token.
  */
 const WORKFLOW_WORDS: Readonly<Record<AgentRunWorkflowType, string>> = {
-  investigation: "an investigation",
-  "query-optimization": "query optimization",
-  "database-assessment": "a database assessment",
-  operations: "an operations reading",
-  "data-analysis": "a data analysis",
+  investigation: "workflowInvestigation",
+  "query-optimization": "workflowOptimization",
+  "database-assessment": "workflowAssessment",
+  operations: "workflowOperations",
+  "data-analysis": "workflowAnalysis",
 };
 
 /**
@@ -691,18 +692,18 @@ const WORKFLOW_WORDS: Readonly<Record<AgentRunWorkflowType, string>> = {
  */
 const AGENT_STOP_SENTENCES = {
   "report-composed": null,
-  "model-stopped": "The model stopped without composing a cited report.",
-  cancelled: "Stopped because it was cancelled.",
-  "deadline-exceeded": "The run reached its time limit before it finished.",
-  "model-timeout": "The model did not answer in time. Starting the run again is reasonable.",
-  "turn-limit": "The run reached its step limit before it finished. What it had gathered is above.",
+  "model-stopped": "stopNoReport",
+  cancelled: "stopCancelled",
+  "deadline-exceeded": "stopDeadline",
+  "model-timeout": "stopModelTimeout",
+  "turn-limit": "stopTurnLimit",
 } as const satisfies Record<AgentRunStopReason, string | null>;
 
 const STOP_SENTENCES: Readonly<Record<AgentRunMode, Record<AgentRunStopReason, string | null>>> = {
   agent: AGENT_STOP_SENTENCES,
   planning: {
     ...AGENT_STOP_SENTENCES,
-    "model-stopped": "The model finished its plan and stopped. Planning mode has no tools, so it composed no report.",
+    "model-stopped": "stopPlanComplete",
   },
 };
 
@@ -722,12 +723,13 @@ function endingSentence(
   stopReason: AgentRunStopReason | undefined,
   verdict: AgentGoalVerdictRecord | undefined,
   mode: AgentRunMode,
+  t: AgentTranslator,
 ): { detail?: string } {
-  if (reason !== undefined) return { detail: FAILURE_SENTENCES[reason] };
+  if (reason !== undefined) return { detail: t(FAILURE_SENTENCES[reason]) };
   // What the run was missing, when a verifier said. More specific than the stop
   // reason: "the model stopped" says how the loop ended, and this says what the run
   // did not produce — which is the thing a user can act on.
-  const shortfall = verdict?.unmet?.map((code) => SHORTFALL_SENTENCES[code]).join(" ");
+  const shortfall = verdict?.unmet?.map((code) => t(SHORTFALL_SENTENCES[code])).join(" ");
   if (shortfall !== undefined && shortfall.length > 0) return { detail: shortfall };
   if (stopReason === undefined) return {};
   // BOTH indexes are optional, and for the same reason. `parseLedgerLine` checks the
@@ -737,7 +739,7 @@ function endingSentence(
   // no sentence, which is a run read without a line under it rather than a rail torn
   // down mid-read.
   const sentence = STOP_SENTENCES[mode]?.[stopReason];
-  return sentence === null || sentence === undefined ? {} : { detail: sentence };
+  return sentence === null || sentence === undefined ? {} : { detail: t(sentence) };
 }
 
 /**
@@ -755,8 +757,7 @@ function endingSentence(
  * answered, and the verdict is about the run's output rather than about who asked
  * for what. What was missing is the fact, and the fact is on the ledger.
  */
-const STOP_ARRIVED_LATE =
-  "A stop was requested before this ending: the run took no further database step, and finished what it already had in hand.";
+const STOP_ARRIVED_LATE = "stopArrivedLate";
 
 /**
  * The ending's sentence, plus the stop that did not change it.
@@ -771,10 +772,11 @@ function describeEnding(
   verdict: AgentGoalVerdictRecord | undefined,
   mode: AgentRunMode,
   stopUnhonoured: boolean,
+  t: AgentTranslator,
 ): { detail?: string } {
-  const ending = endingSentence(reason, stopReason, verdict, mode);
+  const ending = endingSentence(reason, stopReason, verdict, mode, t);
   if (!stopUnhonoured) return ending;
-  return { detail: ending.detail === undefined ? STOP_ARRIVED_LATE : `${ending.detail} ${STOP_ARRIVED_LATE}` };
+  return { detail: ending.detail === undefined ? t(STOP_ARRIVED_LATE) : `${ending.detail} ${t(STOP_ARRIVED_LATE)}` };
 }
 
 /** The verdict as the ledger carries it. Optional everywhere, like the fields beside it. */
@@ -787,40 +789,34 @@ type AgentGoalVerdictRecord = NonNullable<Extract<AgentRunEvent, { kind: "run-fi
  * `failed` having answered nothing, and only this tells the two apart from a run
  * that did answer.
  */
-const answeredHeadline = (verdict: AgentGoalVerdictRecord): string =>
-  verdict.outcome === "answered" ? "Run answered" : "Run did not answer";
+const answeredHeadline = (verdict: AgentGoalVerdictRecord, t: AgentTranslator): string =>
+  verdict.outcome === "answered" ? t("runAnswered") : t("runUnanswered");
 
 /**
  * What each shortfall means, in the app's own words. Total over the union, so a
  * shortfall added to the contract cannot reach a user as a raw code.
  */
 const SHORTFALL_SENTENCES: Readonly<Record<AgentGoalShortfall, string>> = {
-  "no-report": "The run finished without composing a cited report, so nothing it found was written down.",
-  "empty-evidence": "Every result the report cited came back empty, so the answer rests on nothing.",
-  "no-plan": "The run produced no plan at all.",
-  "no-statement":
-    "The run described how it would approach the question and never wrote the statement, and it did not say what was missing either.",
-  "no-plan-comparison":
-    "No before-and-after plan comparison was recorded, and no index was recommended: a query optimization rests on one or the other.",
-  "no-plan-evidence":
-    "The index was recommended without citing a plan this run read, so nothing the engine said backs it.",
+  "no-report": "shortfallNoReport",
+  "empty-evidence": "shortfallEmpty",
+  "no-plan": "shortfallNoPlan",
+  "no-statement": "shortfallNoStatement",
+  "no-plan-comparison": "shortfallNoComparison",
+  "no-plan-evidence": "shortfallNoEvidence",
   // Stays "table" (#414): the profile is `sql.table.profile`, an SQL-only operation
   // offered on engines whose rows really are tables, so the engine's own word and this
   // one are the same word wherever this verdict can be reached.
-  "no-table-profile": "No table was profiled, so the state of the data was never established.",
+  "no-table-profile": "shortfallNoProfile",
   // "the schema inventory this run read" rather than "this database's list of tables"
   // (#414). This is an OPERATIONS verdict and that workflow reaches Redis, where the
   // inventory's rows are key prefixes this server grouped — and a verdict is the last
   // sentence that may put a noun the engine does not use in front of a reader. It
   // takes no noun of its own because it needs none: the inventory can be named without
   // naming what is in it. `no-table-profile` below keeps its word on purpose.
-  "no-reading":
-    "The report rests only on the schema inventory this run read, and on no reading of what the engine is doing, so nothing it says was measured on this server.",
-  "no-answer":
-    "The run reported what it found but never produced an answer to show, so there is nothing to put in front of you.",
-  "answer-uncited":
-    "The run presented one result as the answer and its report rests on other evidence entirely, so the claims and the picture are not about the same thing.",
-  cancelled: "The run was stopped before it could finish.",
+  "no-reading": "shortfallNoReading",
+  "no-answer": "shortfallNoAnswer",
+  "answer-uncited": "shortfallUncited",
+  cancelled: "shortfallCancelled",
 };
 
 /**
@@ -830,8 +826,8 @@ const SHORTFALL_SENTENCES: Readonly<Record<AgentGoalShortfall, string>> = {
  *
  */
 const READING_REFUSAL_HEADLINES: Readonly<Record<AgentReadingDenyCode, string>> = {
-  KIND_UNSUPPORTED_BY_PROVIDER: "This engine serves no reading of that kind",
-  READING_OVER_BUDGET: "The reading was larger than the run may carry",
+  KIND_UNSUPPORTED_BY_PROVIDER: "readingUnsupported",
+  READING_OVER_BUDGET: "readingOverBudget",
 };
 
 /**
@@ -840,22 +836,28 @@ const READING_REFUSAL_HEADLINES: Readonly<Record<AgentReadingDenyCode, string>> 
  * Exported so the rail's status line and the timeline entry cannot drift into two
  * wordings of the same failure.
  */
-export function describeFailureReason(reason: AgentRunFailureReason): string {
-  return FAILURE_SENTENCES[reason];
+export function describeFailureReason(
+  reason: AgentRunFailureReason,
+  t: AgentTranslator = englishAgentTranslator,
+): string {
+  return t(FAILURE_SENTENCES[reason]);
 }
 
-function describeRefusal(refusal: AgentToolRefusal): Omit<AgentTimelineItem, "id" | "atMs" | "tone"> {
+function describeRefusal(
+  refusal: AgentToolRefusal,
+  t: AgentTranslator,
+): Omit<AgentTimelineItem, "id" | "atMs" | "tone"> {
   // Narrowed by class, which is what makes the engine's text unreachable on the two
   // variants that have none: `refusal.message` does not compile before this switch.
   switch (refusal.class) {
     case "policy-denied":
-      return { headline: "Refused by policy", detail: refusal.reasonCode };
+      return { headline: t("refusedPolicy"), detail: refusal.reasonCode };
     case "approval-required":
-      return { headline: "Approval required", detail: refusal.operationId };
+      return { headline: t("approvalRequired"), detail: refusal.operationId };
     case "reading-refused":
-      return { headline: READING_REFUSAL_HEADLINES[refusal.reasonCode], detail: refusal.reasonCode };
+      return { headline: t(READING_REFUSAL_HEADLINES[refusal.reasonCode]), detail: refusal.reasonCode };
     default:
-      return { headline: "The database refused the statement", quoted: refusal.message };
+      return { headline: t("databaseRefusal"), quoted: refusal.message };
   }
 }
 
@@ -870,14 +872,14 @@ function describeRefusal(refusal: AgentToolRefusal): Omit<AgentTimelineItem, "id
  * this same drive is not a stale one, and a zero would read as a measurement that
  * failed.
  */
-function ageText(ms: number): string {
+function ageText(ms: number, t: AgentTranslator): string {
   const minutes = Math.floor(ms / 60_000);
-  if (minutes < 1) return "under a minute old";
-  if (minutes < 60) return `${minutes} ${minutes === 1 ? "minute" : "minutes"} old`;
+  if (minutes < 1) return t("ageUnderMinute");
+  if (minutes < 60) return t("ageMinutes", { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} ${hours === 1 ? "hour" : "hours"} old`;
+  if (hours < 24) return t("ageHours", { count: hours });
   const days = Math.floor(hours / 24);
-  return `${days} ${days === 1 ? "day" : "days"} old`;
+  return t("ageDays", { count: days });
 }
 
 /**
@@ -890,10 +892,11 @@ function describeEvent(
   mode: AgentRunMode,
   stopRequested: boolean,
   noun: AgentInventoryNoun,
+  t: AgentTranslator,
 ): Omit<AgentTimelineItem, "id" | "atMs"> {
   switch (event.kind) {
     case "run-started":
-      return { tone: "neutral", chrome: true, headline: `Run started in ${event.mode} mode` };
+      return { tone: "neutral", chrome: true, headline: t("runStarted", { mode: t(`mode_${event.mode}`) }) };
     case "driver-resolved":
       /*
         The model, and ONLY the model.
@@ -911,17 +914,21 @@ function describeEvent(
         A resume writes a second one of these, so a run whose model changed mid-flight shows both
         lines rather than one. That is the fact, not a duplicate.
       */
-      return { tone: "neutral", chrome: true, headline: `Driven by ${event.modelId}` };
+      return { tone: "neutral", chrome: true, headline: t("drivenBy", { model: event.modelId }) };
     case "context-captured":
       return {
         tone: "progress",
         chrome: true,
-        headline: "Schema captured",
+        headline: t("schemaCaptured"),
         // Counted in the engine's own word (#414). The rail said "17 tables" over a
         // Redis keyspace while the sidebar beside it said Key Patterns and the model
         // had been told key patterns — the same defect the prompt half of #414 fixed,
         // in the half a user actually reads.
-        detail: `${event.tableCount} ${event.tableCount === 1 ? noun.singular : noun.plural}, fingerprint ${event.fingerprint.slice(0, 8)}`,
+        detail: t("captureDetail", {
+          count: event.tableCount,
+          noun: agentInventoryLabel(event.tableCount === 1 ? noun.singular : noun.plural, t),
+          fingerprint: event.fingerprint.slice(0, 8),
+        }),
       };
     case "context-reused":
       return {
@@ -937,8 +944,13 @@ function describeEvent(
           a run that needed none.
         */
         tone: "progress",
-        headline: "Schema reused",
-        detail: `${event.tableCount} ${event.tableCount === 1 ? noun.singular : noun.plural}, fingerprint ${event.fingerprint.slice(0, 8)}, read by an earlier run and ${ageText(event.ageMs)}`,
+        headline: t("schemaReused"),
+        detail: t("reuseDetail", {
+          count: event.tableCount,
+          noun: agentInventoryLabel(event.tableCount === 1 ? noun.singular : noun.plural, t),
+          fingerprint: event.fingerprint.slice(0, 8),
+          age: ageText(event.ageMs, t),
+        }),
       };
     case "context-unavailable":
       /*
@@ -955,16 +967,20 @@ function describeEvent(
       return {
         tone: "neutral",
         chrome: true,
-        headline: "Schema not captured",
+        headline: t("schemaNotCaptured"),
         detail:
           event.rowBudget === undefined
             ? event.reasonCode
-            : `${event.reasonCode} — ${event.rowBudget.projected} rows read against a bound of ${event.rowBudget.allowed}`,
+            : t("captureBudget", {
+                reason: event.reasonCode,
+                rows: event.rowBudget.projected,
+                limit: event.rowBudget.allowed,
+              }),
       };
     case "statement-drafted":
       return {
         tone: "neutral",
-        headline: "Statement drafted",
+        headline: t("statementDrafted"),
         detail: event.rationale,
         quoted: event.sql,
         applySql: event.sql,
@@ -972,35 +988,48 @@ function describeEvent(
     case "tool-invoked":
       return {
         tone: "neutral",
-        headline: "Tool invoked",
-        detail: event.operationId === undefined ? event.tool : `${event.tool} via ${event.operationId}`,
+        headline: t("toolInvoked"),
+        detail:
+          event.operationId === undefined
+            ? event.tool
+            : t("toolVia", { tool: event.tool, operation: event.operationId }),
       };
     case "tool-completed": {
-      const stored = `${event.artifact.summary.rowCount} ${event.artifact.summary.rowCount === 1 ? "row" : "rows"}, ${event.artifact.summary.columnNames.length} ${event.artifact.summary.columnNames.length === 1 ? "column" : "columns"}, ${event.artifact.summary.elapsedMs} ms (${event.artifact.correlationId})`;
+      const stored = t("storedResult", {
+        rows: event.artifact.summary.rowCount,
+        columns: event.artifact.summary.columnNames.length,
+        elapsed: event.artifact.summary.elapsedMs,
+        id: event.artifact.correlationId,
+      });
       return {
         tone: "progress",
-        headline: "Result stored",
-        detail: event.artifact.operationId === OPERATIONS_OPERATION_ID ? `${stored} ${POINT_IN_TIME_CAVEAT}` : stored,
+        headline: t("resultStored"),
+        detail:
+          event.artifact.operationId === OPERATIONS_OPERATION_ID ? `${stored} ${t(POINT_IN_TIME_CAVEAT)}` : stored,
         artifactId: event.artifact.correlationId,
       };
     }
     case "tool-refused":
-      return { tone: "refused", ...describeRefusal(event.refusal) };
+      return { tone: "refused", ...describeRefusal(event.refusal, t) };
     case "report-composed":
       return {
         tone: "progress",
-        headline: "Report composed",
-        detail: `${event.claims.length} ${event.claims.length === 1 ? "claim" : "claims"}, each citing evidence`,
+        headline: t("reportComposed"),
+        detail: t("claimsCount", { count: event.claims.length }),
       };
     case "plan-comparison":
       return {
         tone: "progress",
-        headline: "Plans compared",
+        headline: t("plansCompared"),
         // The server's own reading of two plans the run asked for, plus the sentence
         // a reader is owed about what those plans are: nothing here was executed, and
         // the executing form of EXPLAIN is default-denied precisely because it would
         // have been. Stated by the app rather than left to the model to remember.
-        detail: `${describeAccess(event.before.summary)} to ${describeAccess(event.after.summary)}. ${PLAN_ESTIMATE_CAVEAT}`,
+        detail: t("accessComparison", {
+          before: describeAccess(event.before.summary, t),
+          after: describeAccess(event.after.summary, t),
+          caveat: t(PLAN_ESTIMATE_CAVEAT),
+        }),
         // The proposed statement, so the user can take it — the model's own SQL,
         // which is why it is quoted rather than narrated.
         quoted: event.after.sql,
@@ -1009,8 +1038,8 @@ function describeEvent(
     case "recommendation":
       return {
         tone: "progress",
-        headline: event.change === "index" ? "Index recommended" : "Rewrite recommended",
-        detail: `${event.rationale} ${NOT_APPLIED_CAVEAT}`,
+        headline: event.change === "index" ? t("indexRecommended") : t("rewriteRecommended"),
+        detail: `${event.rationale} ${t(NOT_APPLIED_CAVEAT)}`,
         quoted: event.statement,
         // The whole affordance: the statement is handed to the editor and to nobody
         // else. Nothing in this runtime executes it.
@@ -1019,15 +1048,23 @@ function describeEvent(
     case "table-profiled":
       return {
         tone: "progress",
-        headline: `Profiled ${event.profile.table}`,
+        headline: t("profiledTable", { table: event.profile.table }),
         // Counts and the app's own words for what they mean. No value from the
         // column is here, because none was read — see `table-profile.ts`.
         detail:
           event.profile.findings.length === 0
-            ? `${event.profile.rowCount} row(s), ${event.profile.columns.length} column(s) at ${event.profile.depth} depth. Nothing stood out.`
-            : `${event.profile.rowCount} row(s) at ${event.profile.depth} depth. ${event.profile.findings
-                .map((finding) => `${finding.column}: ${finding.code} — ${finding.detail}`)
-                .join(" ")}`,
+            ? t("profileNoFindings", {
+                rows: event.profile.rowCount,
+                columns: event.profile.columns.length,
+                depth: t(`profileDepth_${event.profile.depth}`),
+              })
+            : t("profileFindings", {
+                rows: event.profile.rowCount,
+                depth: t(`profileDepth_${event.profile.depth}`),
+                findings: event.profile.findings
+                  .map((finding) => `${finding.column}: ${finding.code} — ${finding.detail}`)
+                  .join(" "),
+              }),
       };
     case "answer-composed":
       return {
@@ -1035,11 +1072,19 @@ function describeEvent(
         // The app's own words for the app's own decision. The chart TYPE is one of
         // this repository's own vocabulary, so it may be spoken here; the columns
         // are the engine's text and may not, which is why none of them appear.
-        headline: "Answer composed",
+        headline: t("answerComposed"),
         // The gate's warning is the SERVER's own sentence, not model prose and not
         // engine text, so it is spoken in this line rather than quoted. A refusal
         // that says nothing is indistinguishable from the feature being broken.
-        detail: `Shown as a ${event.presentation.kind === "chart" ? `${event.presentation.spec.type} chart` : "table"}, from ${event.artifact.summary.rowCount} row(s). ${HANDOVER_SENTENCES[event.handover]}${event.handoverWarning === undefined ? "" : ` ${event.handoverWarning}`}`,
+        detail: t("answerPresentation", {
+          presentation:
+            event.presentation.kind === "chart"
+              ? t("chartPresentation", { type: t(`chartType_${event.presentation.spec.type}`) })
+              : t("tablePresentation"),
+          rows: event.artifact.summary.rowCount,
+          handover: t(HANDOVER_SENTENCES[event.handover]),
+          warning: event.handoverWarning === undefined ? "" : ` ${event.handoverWarning}`,
+        }),
         // The model's own prose about what the chart shows, quoted as model prose. A
         // table answer has no caption, so there is nothing to quote — and it carries
         // no spec either, so showing it opens the surface a table belongs in.
@@ -1070,7 +1115,7 @@ function describeEvent(
         // `refused` is the existing tone for "the server did not run this", which is
         // exactly what happened here; a new tone would be a second colour for one fact.
         tone: "refused",
-        headline: `Held back ${event.tool}`,
+        headline: t("callHeld", { tool: event.tool }),
         detail: event.reason,
       };
     case "call-declined":
@@ -1086,7 +1131,7 @@ function describeEvent(
           something that already has two.
         */
         tone: "refused",
-        headline: `Declined ${event.tool}`,
+        headline: t("callDeclined", { tool: event.tool }),
         detail: event.reasonCode,
       };
     case "guidance-issued":
@@ -1099,7 +1144,7 @@ function describeEvent(
           to read.
         */
         tone: "neutral",
-        headline: GUIDANCE_HEADLINE[event.notice],
+        headline: t(GUIDANCE_HEADLINE[event.notice]),
       };
     case "model-stopped-saying":
       return {
@@ -1113,7 +1158,7 @@ function describeEvent(
           an entire markdown answer as one run of literal characters.
         */
         tone: "neutral",
-        headline: "Stopped after saying",
+        headline: t("stoppedSaying"),
         prose: event.text,
       };
     case "closing-statement":
@@ -1121,7 +1166,7 @@ function describeEvent(
         // Content the run produced, so it reads like the report entry rather than
         // like an ending — but under its own name, because it cites nothing.
         tone: "progress",
-        headline: "Closing statement",
+        headline: t("closingStatement"),
         // The model's own words, and carried as such: this used to be a `detail`,
         // which is the field for the application's sentences, and the surface rendered
         // a plan run's entire markdown answer into one paragraph of literal characters.
@@ -1155,16 +1200,12 @@ function describeEvent(
         // the two-way headline announced every correct MongoDB aggregation as one the
         // guard had objected to — the same overstatement the paragraph above refuses,
         // arrived at from the other side.
-        headline: !guardApplicable
-          ? "Statement drafted — not examined by the statement guard"
-          : event.readOnly
-            ? "Statement drafted"
-            : "Statement drafted — not classified as a read",
+        headline: !guardApplicable ? t("draftUnexamined") : event.readOnly ? t("statementDrafted") : t("draftNotRead"),
         // The app's own words about the app's own checks, and only the app's: the
         // guard's reason is this repository's own closed vocabulary, while the table
         // names are model and engine text and are therefore COUNTED rather than
         // spoken. The statement itself is in the closing prose beside this entry.
-        detail: `${guardSentence(event.readOnly, event.guardViolation, guardApplicable)} ${identifierSentence(event.identifiers, noun)}`,
+        detail: `${guardSentence(event.readOnly, event.guardViolation, guardApplicable, t)} ${identifierSentence(event.identifiers, noun, t)}`,
         // The ledger's own record, carried whole so the card can show the statement
         // AND what was found about it in one place (item 7). Still no `applySql`: that
         // field drives the shared hydration control, whose "Apply to editor" says
@@ -1193,7 +1234,10 @@ function describeEvent(
         // `succeeded`, and one that ran out of turns ends `failed`, while both
         // answered nothing. An older ledger carries no verdict and keeps the status
         // it always had.
-        headline: event.goalVerdict === undefined ? `Run ${event.status}` : answeredHeadline(event.goalVerdict),
+        headline:
+          event.goalVerdict === undefined
+            ? t("runStatus", { status: t(`status_${event.status}`) })
+            : answeredHeadline(event.goalVerdict, t),
         // Absent unless the ledger recorded one. A sentence supplied by default
         // would be this component inventing a cause for every ending that had none.
         // `reason` wins when both are present: a drive that died outside the loop is
@@ -1204,6 +1248,7 @@ function describeEvent(
           event.goalVerdict,
           mode,
           stopRequested && event.status !== "cancelled",
+          t,
         ),
       };
   }
@@ -1214,6 +1259,7 @@ function describeEntry(
   mode: AgentRunMode,
   stopRequested: boolean,
   noun: AgentInventoryNoun,
+  t: AgentTranslator,
 ): Omit<AgentTimelineItem, "id"> {
   switch (entry.kind) {
     case "run-opened":
@@ -1226,17 +1272,17 @@ function describeEntry(
         // narrated as an investigation it never declared itself to be.
         headline:
           entry.workflowType === undefined
-            ? `Run opened in ${entry.mode} mode`
-            : `Run opened in ${entry.mode} mode for ${WORKFLOW_WORDS[entry.workflowType]}`,
+            ? t("runOpened", { mode: t(`mode_${entry.mode}`) })
+            : t("runOpenedFor", { mode: t(`mode_${entry.mode}`), workflow: t(WORKFLOW_WORDS[entry.workflowType]) }),
         quoted: entry.objective,
       };
     case "event":
-      return { atMs: entry.event.atMs, ...describeEvent(entry.event, mode, stopRequested, noun) };
+      return { atMs: entry.event.atMs, ...describeEvent(entry.event, mode, stopRequested, noun, t) };
     default:
       return {
         atMs: entry.atMs,
         tone: "neutral",
-        headline: "Stop requested",
+        headline: t("stopRequested"),
         // Deliberately not "cancelled": the run holds its budget and whatever it has
         // in flight until its own loop reaches a checkpoint (T7a).
         //
@@ -1244,7 +1290,7 @@ function describeEntry(
         // ends at its next checkpoint" was read as a promise the run ends, and twice
         // it then composed a report and answered — because the checkpoint sits in
         // the step that reaches a database, and composing a report reaches none.
-        detail: "the run takes no further database step; work already in hand, such as a report, still finishes",
+        detail: t("stopCheckpoint"),
       };
   }
 }
@@ -1289,7 +1335,12 @@ interface LedgerIndex {
  */
 const SHORT_IDENTIFIER_CHARS = 8;
 
-function citationOf(reference: AgentEvidenceReference, id: string, index: LedgerIndex): AgentEvidenceCitation {
+function citationOf(
+  reference: AgentEvidenceReference,
+  id: string,
+  index: LedgerIndex,
+  t: AgentTranslator,
+): AgentEvidenceCitation {
   const locator = reference.locator === undefined ? {} : { locator: reference.locator };
 
   if (reference.source === "artifact") {
@@ -1299,17 +1350,17 @@ function citationOf(reference: AgentEvidenceReference, id: string, index: Ledger
       drift into naming different things — the reason `shortLabel` is derived here at
       all rather than by whoever renders the chip.
     */
-    const name = (identifier: string): string => `Artifact ${identifier}`;
+    const name = (identifier: string): string => t("artifactLabel", { id: identifier });
     const label = name(reference.correlationId);
     const shortLabel = name(reference.correlationId.slice(0, SHORT_IDENTIFIER_CHARS));
     if (artifact === undefined)
-      return { id, label, shortLabel, detail: UNRESOLVED_DETAIL, resolved: false, ...locator };
+      return { id, label, shortLabel, detail: t(UNRESOLVED_DETAIL), resolved: false, ...locator };
     const sql = index.statements.get(artifact.stepId);
     return {
       id,
       label,
       shortLabel,
-      detail: `${artifact.rowCount} ${artifact.rowCount === 1 ? "row" : "rows"} via ${artifact.operationId}`,
+      detail: t("citationDetail", { count: artifact.rowCount, operation: artifact.operationId }),
       resolved: true,
       artifactId: reference.correlationId,
       ...(sql === undefined ? {} : { quoted: sql }),
@@ -1320,14 +1371,14 @@ function citationOf(reference: AgentEvidenceReference, id: string, index: Ledger
   const capture = index.captures.get(reference.fingerprint);
   // Already written at chip length, so the two labels are the same string: a
   // fingerprint is this product's own value and nothing reads more of it than this.
-  const label = `Schema snapshot ${reference.fingerprint.slice(0, SHORT_IDENTIFIER_CHARS)}`;
+  const label = t("snapshotLabel", { fingerprint: reference.fingerprint.slice(0, SHORT_IDENTIFIER_CHARS) });
   if (capture === undefined)
-    return { id, label, shortLabel: label, detail: UNRESOLVED_DETAIL, resolved: false, ...locator };
+    return { id, label, shortLabel: label, detail: t(UNRESOLVED_DETAIL), resolved: false, ...locator };
   return {
     id,
     label,
     shortLabel: label,
-    detail: `${capture.tableCount} ${capture.tableCount === 1 ? capture.noun.singular : capture.noun.plural}`,
+    detail: `${capture.tableCount} ${agentInventoryLabel(capture.tableCount === 1 ? capture.noun.singular : capture.noun.plural, t)}`,
     resolved: true,
     ...locator,
   };
@@ -1340,15 +1391,15 @@ function citationOf(reference: AgentEvidenceReference, id: string, index: Ledger
  * reader skipped, or a stream joined after it. Saying that is honest; rendering the
  * reference as if the rail had checked it would not be.
  */
-const UNRESOLVED_DETAIL = "not in the part of this run's timeline the rail has read";
+const UNRESOLVED_DETAIL = "citationUnresolved";
 
-function reportOf(claims: readonly AgentReportClaim[], index: LedgerIndex): AgentRunReport {
+function reportOf(claims: readonly AgentReportClaim[], index: LedgerIndex, t: AgentTranslator): AgentRunReport {
   return {
     claims: claims.map((claim, claimIndex) => ({
       id: `claim-${claimIndex}`,
       quoted: claim.claim,
       citations: claim.evidence.map((reference, evidenceIndex) =>
-        citationOf(reference, `claim-${claimIndex}-evidence-${evidenceIndex}`, index),
+        citationOf(reference, `claim-${claimIndex}-evidence-${evidenceIndex}`, index, t),
       ),
     })),
   };
@@ -1397,7 +1448,10 @@ function reportOf(claims: readonly AgentReportClaim[], index: LedgerIndex): Agen
  * field as the case where a capture still contributes nothing. The list is what is
  * KNOWN, not a proof that nothing else is missing.
  */
-export function foldLedgerEntries(entries: readonly AgentLedgerEntry[]): AgentRunTimeline {
+export function foldLedgerEntries(
+  entries: readonly AgentLedgerEntry[],
+  t: AgentTranslator = englishAgentTranslator,
+): AgentRunTimeline {
   const items: AgentTimelineItem[] = [];
   let status: AgentRunStatus = "queued";
   let stopRequested = false;
@@ -1591,7 +1645,7 @@ export function foldLedgerEntries(entries: readonly AgentLedgerEntry[]): AgentRu
     }
     // Indexed, because two entries can legitimately be identical in content and
     // timestamp (a resumed run replaying a step), and React needs distinct keys.
-    items.push({ id: `entry-${index}`, ...describeEntry(entry, mode, stopRequested, noun) });
+    items.push({ id: `entry-${index}`, ...describeEntry(entry, mode, stopRequested, noun, t) });
   });
 
   /*
@@ -1633,7 +1687,7 @@ export function foldLedgerEntries(entries: readonly AgentLedgerEntry[]): AgentRu
     // The headline is the app's own account of the ending, and it is a different
     // ending: "Closing statement" over a run that says it could not answer reads as
     // an answer the reader has to find in the text.
-    items[index] = { ...item, headline: "No statement drafted", prose: refused, planRefusal: true };
+    items[index] = { ...item, headline: t("noStatement"), prose: refused, planRefusal: true };
   }
 
   const budgets = AGENT_WORKFLOW_BUDGETS[workflowType].policy.budgets;
@@ -1647,12 +1701,12 @@ export function foldLedgerEntries(entries: readonly AgentLedgerEntry[]): AgentRu
     workflowSource,
     workflowReading,
     budget: [
-      { id: "statements", label: "Statements", used: statements, limit: budgets.maxStatementsPerRun, unit: "count" },
-      { id: "database-time", label: "Database time", used: databaseMs, limit: budgets.maxTotalRunMs, unit: "ms" },
-      { id: "repairs", label: "Repair attempts", used: repairs, limit: AGENT_MAX_REPAIR_ATTEMPTS, unit: "count" },
+      { id: "statements", label: t("statements"), used: statements, limit: budgets.maxStatementsPerRun, unit: "count" },
+      { id: "database-time", label: t("databaseTime"), used: databaseMs, limit: budgets.maxTotalRunMs, unit: "ms" },
+      { id: "repairs", label: t("repairs"), used: repairs, limit: AGENT_MAX_REPAIR_ATTEMPTS, unit: "count" },
     ],
     statementsWithoutDuration,
-    report: claims === null ? null : reportOf(claims, { artifacts, statements: statementsByStep, captures }),
+    report: claims === null ? null : reportOf(claims, { artifacts, statements: statementsByStep, captures }, t),
     capture,
   };
 }

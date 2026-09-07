@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import type { AgentChartSpec } from "@/lib/agent/types";
 import type { ExplainFormat } from "@/lib/db/types";
 import { type AgentArtifactHydration, hydrateAgentArtifact } from "./hydration";
@@ -55,6 +56,7 @@ function messageFor(error: unknown): string {
 }
 
 export function useAgentArtifact(options: AgentArtifactOptions): AgentArtifactHolder {
+  const t = useTranslations("Agent");
   const [artifact, setArtifact] = useState<AgentArtifactHydration | null>(null);
   /*
     Which ask the panel is showing. Two clicks in quick succession would otherwise be
@@ -74,10 +76,10 @@ export function useAgentArtifact(options: AgentArtifactOptions): AgentArtifactHo
       );
       const body = (await res.json().catch(() => ({}))) as { error?: unknown };
       if (!res.ok) {
-        throw new Error(typeof body.error === "string" ? body.error : `This result could not be read (${res.status})`);
+        throw new Error(typeof body.error === "string" ? body.error : t("artifactReadError", { status: res.status }));
       }
       const hydrated = hydrateAgentArtifact(body, options.explainFormat, chartSpec);
-      if (hydrated === null) throw new Error("The server answered with a result this build cannot read");
+      if (hydrated === null) throw new Error(t("artifactUnreadable"));
       if (ask !== latestAsk.current) return;
       setArtifact(hydrated);
       options.onShown(hydrated.surface);

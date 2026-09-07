@@ -14,6 +14,7 @@ import type {
   AgentThreadContext,
 } from "@/lib/agent/types";
 import { foldLedgerEntries, parseLedgerLine, type AgentRunTimeline } from "./timeline";
+import { englishAgentTranslator, type AgentTranslator } from "@/i18n/agent";
 
 /**
  * Starts one run and follows its ledger (#329 T10a).
@@ -419,18 +420,29 @@ function readCapabilities(value: unknown): readonly AgentModelCapability[] {
   return Array.isArray(value) ? value.filter(isAgentModelCapability) : [];
 }
 
-function messageFor(error: unknown): string {
+/** Marks only locally authored failures; provider/API text is never matched by value. */
+class AgentUiError extends Error {
+  constructor(
+    readonly key: string,
+    readonly values?: Record<string, string | number>,
+  ) {
+    super(englishAgentTranslator(key, values));
+  }
+}
+
+function messageFor(error: unknown): string | AgentUiError {
+  if (error instanceof AgentUiError) return error;
   return error instanceof Error ? error.message : String(error);
 }
 
-export function useAgentRun(): AgentRunFollower {
+export function useAgentRun(t: AgentTranslator = englishAgentTranslator): AgentRunFollower {
   const [runId, setRunId] = useState<string | null>(null);
   const [thread, setThread] = useState<AgentThreadContext | null>(null);
   const storedThread = useSyncExternalStore(subscribeStoredThread, storedThreadSnapshot, serverThreadSnapshot);
   const [entries, setEntries] = useState<readonly AgentLedgerEntry[]>([]);
   const [isBusy, setIsBusy] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | AgentUiError | null>(null);
   const [errorCode, setErrorCode] = useState<AgentStartRefusalCode | null>(null);
   const [refusal, setRefusal] = useState<AgentModelRefusal | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -446,9 +458,9 @@ export function useAgentRun(): AgentRunFollower {
     const res = await fetch(`/api/agent/runs/${encodeURIComponent(id)}/stream`, { signal });
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as StartResponse;
-      throw new Error(
-        typeof body.error === "string" ? body.error : `The run's timeline could not be read (${res.status})`,
-      );
+      throw typeof body.error === "string"
+        ? new Error(body.error)
+        : new AgentUiError("timelineReadError", { status: res.status });
     }
     // A response with no body is not an error: nothing to read, and the run stays
     // exactly as visible as the ledger made it.
@@ -525,10 +537,12 @@ export function useAgentRun(): AgentRunFollower {
           // sentence rather than replacing it: a surface that has no use for the code
           // renders `error` and is right (#513).
           if (isStartRefusalCode(body.refused)) throw new StartRefusedError(said, body.refused);
-          throw new Error(said);
+          throw typeof body.error === "string"
+            ? new Error(said)
+            : new AgentUiError("startError", { status: res.status });
         }
         if (typeof body.runId !== "string") {
-          throw new Error("The server opened a run without naming it");
+          throw new AgentUiError("missingRunId");
         }
         openedRunId = body.runId;
         openedThread = readThread(body.thread);
@@ -584,7 +598,9 @@ export function useAgentRun(): AgentRunFollower {
       });
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as StartResponse;
-        throw new Error(typeof body.error === "string" ? body.error : `The run could not be stopped (${res.status})`);
+        throw typeof body.error === "string"
+          ? new Error(body.error)
+          : new AgentUiError("stopError", { status: res.status });
       }
       // Nothing is set on success. The request wrote a ledger entry, and the
       // stream is what delivers it — so what the rail shows is what the durable
@@ -602,7 +618,8 @@ export function useAgentRun(): AgentRunFollower {
   }, [runId]);
 
   /*
-    Memoised on the entries alone, which is the whole of the fold's input. Without
+    Memoised on the entries and the presentation translator. A locale change rewords
+    the view without restarting a request or changing the ledger. Without
     it the fold re-walked the entire accumulated ledger on every render of the rail
     rather than on every new event — a multiplier that cost nothing while a run was
     sixteen turns and is worth removing now that a drive may take sixty turns and
@@ -614,7 +631,7 @@ export function useAgentRun(): AgentRunFollower {
     new entry, which is O(n squared) over a run's life; that is measured as fine at
     these sizes and is not optimised on a list nobody has seen be slow.
   */
-  const timeline = useMemo(() => foldLedgerEntries(entries), [entries]);
+  const timeline = useMemo(() => foldLedgerEntries(entries, t), [entries, t]);
 
   /*
     Derived rather than held: what makes a stored conversation INTERRUPTED is that nothing
@@ -634,5 +651,17 @@ export function useAgentRun(): AgentRunFollower {
   */
   const interrupted = runId === null && !isBusy ? storedThread : null;
 
-  return { runId, thread, interrupted, isBusy, isStopping, timeline, error, errorCode, refusal, start, cancel };
+  return {
+    runId,
+    thread,
+    interrupted,
+    isBusy,
+    isStopping,
+    timeline,
+    error: error instanceof AgentUiError ? t(error.key, error.values) : error,
+    errorCode,
+    refusal,
+    start,
+    cancel,
+  };
 }
