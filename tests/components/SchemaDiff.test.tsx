@@ -1051,4 +1051,23 @@ describe("SchemaDiff", () => {
     fireEvent.click(getByText("Migration SQL"));
     expect(container.textContent).toContain("CREATE TABLE new_table");
   });
+
+  for (const locale of ["en", "pt-BR"] as const) {
+    test(`${locale}: showing migration SQL preserves the artifact and never submits it`, () => {
+      const fetchSpy = spyOn(globalThis, "fetch").mockRejectedValue(new Error("Unexpected network request"));
+      const sql = '-- SQLite: Cannot alter column "email" type directly. Requires table recreation.\nCREATE INDEX "idx_email" ON "users" ("email");';
+      mockGenerateMigrationSQL.mockReturnValue(sql);
+      try {
+        const { getByText, container, queryByRole } = renderDiff({}, locale);
+        changeTarget("snap-1");
+        fireEvent.click(getByText(locale === "en" ? "SQL Migration" : "Migration SQL"));
+        expect(container.querySelector("pre")?.textContent).toBe(sql);
+        expect(mockGenerateMigrationSQL).toHaveBeenCalled();
+        expect(fetchSpy).not.toHaveBeenCalled();
+        expect(queryByRole("button", { name: /^(apply|execute|run|aplicar|executar)$/i })).toBeNull();
+      } finally {
+        fetchSpy.mockRestore();
+      }
+    });
+  }
 });
