@@ -231,6 +231,7 @@ run_group "Group 11/12: Smoke tests" \
   tests/components/CodeGenerator.test.tsx \
   tests/components/TestDataGenerator.test.tsx \
   tests/components/CreateTableModal.test.tsx \
+  tests/components/CreateTableModal.dialects.test.tsx \
   tests/components/SaveQueryModal.test.tsx \
   tests/components/MobileNav.test.tsx \
   tests/components/DataImportModal.test.tsx \
