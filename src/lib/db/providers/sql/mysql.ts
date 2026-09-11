@@ -15,6 +15,7 @@ import {
   type MaintenanceResult,
   type ProviderOptions,
   type ProviderCapabilities,
+  type ExplainFormat,
   type ProviderLabels,
   type SlowQuery,
   type ActiveSession,
@@ -509,6 +510,7 @@ const STORAGE_STATS_SQL = `
 
 export class MySQLProvider extends SQLBaseProvider {
   private pool: Pool | null = null;
+  private measuredExplainFormat: ExplainFormat | undefined = "mysql-json";
 
   // Transaction support: dedicated connection held outside pool
   private txConn: PoolConnection | null = null;
@@ -529,8 +531,9 @@ export class MySQLProvider extends SQLBaseProvider {
     return {
       ...super.getCapabilities(),
       defaultPort: 3306,
-      supportsExplain: true,
-      explainFormat: "mysql-json",
+      supportsExplain: this.measuredExplainFormat !== undefined,
+      ...(this.measuredExplainFormat === undefined ? {} : { explainFormat: this.measuredExplainFormat }),
+      supportsExplainAnalyze: false,
       supportsConnectionString: true,
       supportsInlineRowEdit: true,
       // The driver's own connection.beginTransaction() over one held connection.
@@ -623,6 +626,21 @@ export class MySQLProvider extends SQLBaseProvider {
       this.pool = mysql.createPool(this.buildPoolConfig());
 
       const conn = await this.pool.getConnection();
+      // Fixed, parameterless probes use the existing text-protocol path. A grammar
+      // refusal describes EXPLAIN support; it must not fail the connection.
+      this.measuredExplainFormat = undefined;
+      for (const [sql, format] of [
+        ["EXPLAIN FORMAT=JSON SELECT 1", "mysql-json"],
+        ["EXPLAIN SELECT 1", "mysql-text"],
+      ] as const) {
+        try {
+          await runStatement(conn, sql);
+          this.measuredExplainFormat = format;
+          break;
+        } catch {
+          /* Try only the next fixed grammar, never caller SQL. */
+        }
+      }
       conn.release();
 
       this.setConnected(true);

@@ -18,12 +18,16 @@ describe("postgresJsonStrategy", () => {
     );
   });
 
-  // PR-1 preserves current behavior: estimate mode also runs ANALYZE.
-  // PR-5 (#194 B5) will make estimate return plain EXPLAIN (FORMAT JSON).
-  test("buildSql estimate mode currently matches analyze mode", () => {
-    expect(postgresJsonStrategy.buildSql("SELECT 1", "estimate")).toBe(
-      postgresJsonStrategy.buildSql("SELECT 1", "analyze"),
-    );
+  test("estimate must never execute the underlying statement", () => {
+    expect(postgresJsonStrategy.buildSql("SELECT 1", "estimate")).toBe("EXPLAIN (FORMAT JSON) SELECT 1");
+    for (const sql of [
+      "UPDATE users SET a = 1",
+      "DELETE FROM customers",
+      "INSERT INTO users VALUES (1)",
+      "SELECT 1; DELETE FROM customers",
+    ]) {
+      expect(postgresJsonStrategy.buildSql(sql, "estimate")).toBeNull();
+    }
   });
 
   test("buildSql returns null for non-SELECT", () => {
@@ -105,7 +109,7 @@ describe("postgresJsonStrategy", () => {
   // every CTE that touches an `updated_at` column, which would be most of them.
   test("buildSql still explains a CTE over a column whose name merely contains a keyword", () => {
     const cte = "WITH t AS (SELECT updated_at FROM u) SELECT * FROM t";
-    expect(postgresJsonStrategy.buildSql(cte, "estimate")).toBe(`EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${cte}`);
+    expect(postgresJsonStrategy.buildSql(cte, "estimate")).toBe(`EXPLAIN (FORMAT JSON) ${cte}`);
   });
 
   // The screen is scoped to the WITH form on purpose. A statement leading with SELECT

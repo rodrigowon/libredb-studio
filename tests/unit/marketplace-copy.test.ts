@@ -76,7 +76,8 @@ function typeIdOf(file: string): string {
  * search provider explains at length why it declares none) are not read as declarations.
  */
 const explainCapable: DatabaseType[] = providerFiles(PROVIDER_ROOT)
-  .filter((file) => /^\s*explainFormat:\s*"/m.test(readFileSync(file, "utf8")))
+  // Upstream e11015ab: measured formats are spread in, not literal declarations.
+  .filter((file) => /^\s*explainFormat:\s*"|^\s*\.\.\..*\bexplainFormat: this\./m.test(readFileSync(file, "utf8")))
   .map(typeIdOf)
   .filter((id): id is DatabaseType => id in DB_UI_CONFIG)
   .sort();

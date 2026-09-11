@@ -1,4 +1,10 @@
 {
+  "errors": {
+    "EXPLAIN_INVALID_REQUEST": "Invalid EXPLAIN request. Choose estimate or analyze.",
+    "EXPLAIN_UNSUPPORTED": "This server does not support the requested EXPLAIN mode.",
+    "EXPLAIN_STATEMENT_UNSUPPORTED": "EXPLAIN requires a single supported SELECT statement.",
+    "EXPLAIN_FORMAT_UNSUPPORTED": "The server returned an unsupported EXPLAIN format."
+  },
   "emptyTitle": "No execution plan",
   "emptyDescription": "Run a SELECT query to see its execution plan and performance insights.",
   "unknown": "Unknown",

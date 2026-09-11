@@ -142,6 +142,7 @@ describe("POST /api/db/provider-meta", () => {
 
     const res = await POST(req as never);
     const data = await parseResponseJSON<{
+      explainRequestVersion: number;
       capabilities: Record<string, unknown>;
       labels: Record<string, unknown>;
     }>(res);
@@ -149,6 +150,8 @@ describe("POST /api/db/provider-meta", () => {
     expect(res.status).toBe(200);
     expect(mockCreateDatabaseProvider).toHaveBeenCalled();
     expect(data.capabilities).toBeDefined();
+    expect(data.explainRequestVersion).toBe(1);
+    expect(mockProvider.connect).not.toHaveBeenCalled();
     expect(data.labels).toBeDefined();
     expect(data.capabilities.queryLanguage).toBe("sql");
     expect(data.labels.entityName).toBe("Table");

@@ -14,6 +14,22 @@ let originalFetch: typeof globalThis.fetch;
 describe("Visual EXPLAIN localization", () => {
   afterEach(cleanup);
 
+  test("text plans preserve node details, raw newlines and Portuguese UI", () => {
+    const plan = {
+      kind: "tree" as const,
+      root: {
+        label: "• scan",
+        detail: "table: orders@orders_pkey, spans: FULL SCAN",
+        children: [],
+      },
+      raw: "• scan\n  table: orders@orders_pkey",
+    };
+    const view = render(<VisualExplain plan={plan} query="SELECT 1" databaseType="postgres" />, "pt-BR");
+    expect(view.getByText("table: orders@orders_pkey, spans: FULL SCAN")).toBeTruthy();
+    fireEvent.click(view.getByText("dados brutos"));
+    expect(view.container.querySelector("pre")?.textContent).toBe(plan.raw);
+  });
+
   test("Portuguese empty state", () => {
     const view = render(<VisualExplain plan={null} />, "pt-BR");
     expect(view.getByText("Nenhum plano de execução")).toBeTruthy();

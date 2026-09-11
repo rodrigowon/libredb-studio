@@ -8,6 +8,8 @@ import { buildConnectionPayload } from "./use-connection-payload";
 
 export interface ProviderMetadata {
   capabilities: ProviderCapabilities;
+  /** Transport capability, not a database capability. Absent on older servers. */
+  explainRequestVersion?: 1;
   /**
    * Optional because one producer genuinely cannot supply it. `/api/db/provider-meta`
    * always answers with both, but the embedded shell has no such route: the host

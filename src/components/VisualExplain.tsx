@@ -383,6 +383,9 @@ const TreeNodeView = ({ node, depth = 0 }: { node: ExplainTreeNode; depth?: numb
       {/* Label */}
       <div className="flex-1 min-w-0">
         <span className="text-xs font-medium text-fg truncate">{node.label}</span>
+        {node.detail !== undefined && (
+          <span className="block text-[11px] font-mono text-fg-muted truncate">{node.detail}</span>
+        )}
       </div>
 
       {/* Metric badges — only when the node actually carries metrics */}
@@ -996,7 +999,9 @@ export function VisualExplain({ plan, query, schemaContext, databaseType, onLoad
         {activeTab === "raw" && (
           <div className="p-4">
             <pre className="text-xs font-mono text-fg-tertiary bg-fill-subtle rounded-lg p-4 overflow-auto border border-hairline">
-              {JSON.stringify(input.kind === "tree" ? input.raw : postgresPlan, null, 2)}
+              {input.kind === "tree" && typeof input.raw === "string"
+                ? input.raw
+                : JSON.stringify(input.kind === "tree" ? input.raw : postgresPlan, null, 2)}
             </pre>
           </div>
         )}

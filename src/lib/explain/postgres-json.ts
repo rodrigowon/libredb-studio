@@ -1,5 +1,5 @@
 import { resolveSqlGrammar } from "@/lib/sql/grammar";
-import { classifySelectPrefix, hasDataModifyingStatement } from "./select-prefix";
+import { isExplainableSelect } from "./select-prefix";
 import type { ExplainPlanResult, ExplainStrategy } from "./types";
 
 /**
@@ -32,8 +32,8 @@ const POSTGRES_GRAMMAR = resolveSqlGrammar("postgres");
  * off queries that merely mention a keyword, such as `SELECT 'insert'`, which explains
  * fine today.
  *
- * The narrower question of ANALYZE executing an ordinary SELECT twice - once for the
- * user, once for the background pre-warm - is issue #194's remaining work, not this.
+ * Background estimate now uses FORMAT JSON without ANALYZE. The conservative
+ * SELECT/CTE screen remains the same in both modes.
  *
  * The classification is read under PostgreSQL's own grammar, and that is load-bearing
  * rather than tidiness: block comments NEST here, so read flat,
@@ -46,18 +46,15 @@ const POSTGRES_GRAMMAR = resolveSqlGrammar("postgres");
  * table left zero rows. Under this dialect's grammar the comment is read whole, the
  * statement leads with `DELETE`, and nothing is built (#300).
  */
-function isExplainable(sql: string): boolean {
-  const prefix = classifySelectPrefix(sql, POSTGRES_GRAMMAR);
-  if (prefix === null) return false;
-
-  return prefix === "select" || !hasDataModifyingStatement(sql);
+export function isExplainableUnderPostgresGrammar(sql: string): boolean {
+  return isExplainableSelect(sql, POSTGRES_GRAMMAR, true);
 }
 
 export const postgresJsonStrategy: ExplainStrategy = {
   format: "postgres-json",
-  buildSql(sql) {
-    if (!isExplainable(sql)) return null;
-    return `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${sql}`;
+  buildSql(sql, mode) {
+    if (!isExplainableUnderPostgresGrammar(sql)) return null;
+    return mode === "analyze" ? `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${sql}` : `EXPLAIN (FORMAT JSON) ${sql}`;
   },
   extractPlan(result) {
     return result.rows?.[0]?.["QUERY PLAN"] || result.rows;

@@ -46,7 +46,9 @@ const mockConnection: DatabaseConnection = {
 };
 
 const mockMetadata: ProviderMetadata = {
+  explainRequestVersion: 1,
   capabilities: {
+    supportsExplainAnalyze: true,
     queryLanguage: "sql" as const,
     supportsExplain: true,
     explainFormat: "postgres-json" as const,
@@ -141,6 +143,81 @@ describe("useQueryExecution", () => {
   });
 
   // ── Initially bottomPanelMode is 'results' ────────────────────────────────
+
+  test("an older server is never sent raw SQL as an explain intent", async () => {
+    const fetchMock = mockGlobalFetch({ "/api/db/query": { ok: true, json: mockQueryResult } });
+    const { result } = renderHook(() =>
+      useQueryExecution(
+        createDefaultParams({
+          metadata: { ...mockMetadata, explainRequestVersion: undefined },
+        }),
+      ),
+    );
+    await act(async () => {
+      await result.current.executeQuery("SELECT 1", undefined, true);
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+    await act(async () => {
+      await result.current.executeQuery("SELECT 1");
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(fetchMock.mock.calls[0][1]!.body as string).explain).toBeUndefined();
+  });
+
+  test("direct PostgreSQL sends analyze intent; background sends estimate; no client SQL construction", async () => {
+    const fetchMock = mockGlobalFetch({
+      "/api/db/query": {
+        ok: true,
+        json: {
+          ...mockQueryResult,
+          explainFormat: "postgres-json",
+        },
+      },
+    });
+    const { result } = renderHook(() => useQueryExecution(createDefaultParams()));
+    await act(async () => {
+      await result.current.executeQuery("SELECT 1", undefined, true);
+    });
+    await act(async () => {
+      await result.current.executeQuery("SELECT 1");
+    });
+    const bodies = fetchMock.mock.calls.map((call) => JSON.parse(call[1]!.body as string));
+    expect(bodies.map((body) => body.sql)).toEqual(["SELECT 1", "SELECT 1", "SELECT 1"]);
+    expect(bodies.map((body) => body.explain)).toEqual([{ mode: "analyze" }, undefined, { mode: "estimate" }]);
+  });
+
+  test.each(["mysql-text", "postgres-text", "postgres-text-analyze"])(
+    "stores the server's format %s instead of the static format",
+    async (explainFormat) => {
+      const rows = [{ info: "• scan" }];
+      mockGlobalFetch({ "/api/db/query": { ok: true, json: { ...mockQueryResult, rows, explainFormat } } });
+      const snapshots: QueryTab[][] = [];
+      const setTabs = mock((fn: unknown) => {
+        if (typeof fn === "function") snapshots.push(fn([createTab()]));
+      });
+      const { result } = renderHook(() => useQueryExecution(createDefaultParams({ setTabs })));
+      await act(async () => {
+        await result.current.executeQuery("SELECT 1", undefined, true);
+      });
+      expect(snapshots.flat().find((tab) => tab.explainPlan)?.explainPlan).toEqual({
+        format: explainFormat,
+        raw: rows,
+      });
+    },
+  );
+
+  test.each([undefined, "constructor", "unknown"])(
+    "refuses response format %s without guessing or retrying SQL",
+    async (explainFormat) => {
+      const fetchMock = mockGlobalFetch({ "/api/db/query": { ok: true, json: { ...mockQueryResult, explainFormat } } });
+      const { result } = renderHook(() => useQueryExecution(createDefaultParams()));
+      await act(async () => {
+        await result.current.executeQuery("SELECT 1", undefined, true);
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(mockToastError).toHaveBeenCalled();
+    },
+  );
 
   test("initially bottomPanelMode is results", () => {
     mockGlobalFetch({});
@@ -611,7 +688,13 @@ describe("useQueryExecution", () => {
     mockGlobalFetch({
       "/api/db/query": {
         ok: true,
-        json: { rows: [{ "QUERY PLAN": { plan: "Seq Scan" } }], fields: ["QUERY PLAN"], rowCount: 1, executionTime: 5 },
+        json: {
+          explainFormat: "postgres-json",
+          rows: [{ "QUERY PLAN": { plan: "Seq Scan" } }],
+          fields: ["QUERY PLAN"],
+          rowCount: 1,
+          executionTime: 5,
+        },
       },
     });
     const params = createDefaultParams();
@@ -829,7 +912,7 @@ describe("useQueryExecution", () => {
 
     const explainCall = fetchMock.mock.calls.find((call) => {
       const body = JSON.parse((call[1] as RequestInit).body as string);
-      return typeof body.sql === "string" && body.sql.startsWith("EXPLAIN");
+      return body.explain !== undefined;
     });
     expect(explainCall).toBeDefined();
     expect(JSON.parse((explainCall![1] as RequestInit).body as string).params).toEqual([7]);
@@ -1379,7 +1462,7 @@ describe("useQueryExecution", () => {
 
   // ── executeQuery with EXPLAIN builds correct query for mysql ───────────
 
-  test("executeQuery builds EXPLAIN FORMAT=JSON for mysql", async () => {
+  test("executeQuery sends original SQL and estimate intent for mysql", async () => {
     const fetchMock = mockGlobalFetch({
       "/api/db/query": {
         ok: true,
@@ -1389,7 +1472,11 @@ describe("useQueryExecution", () => {
     const mysqlConnection = { ...mockConnection, type: "mysql" as const };
     const mysqlMetadata: ProviderMetadata = {
       ...mockMetadata,
-      capabilities: { ...mockMetadata.capabilities, explainFormat: "mysql-json" as const },
+      capabilities: {
+        ...mockMetadata.capabilities,
+        explainFormat: "mysql-json" as const,
+        supportsExplainAnalyze: false,
+      },
     };
     const params = createDefaultParams({ activeConnection: mysqlConnection, metadata: mysqlMetadata });
 
@@ -1404,7 +1491,8 @@ describe("useQueryExecution", () => {
     );
     expect(queryCall).toBeDefined();
     const body = JSON.parse(queryCall![1]!.body as string);
-    expect(body.sql).toContain("EXPLAIN FORMAT=JSON");
+    expect(body.sql).toBe("SELECT * FROM users");
+    expect(body.explain).toEqual({ mode: "estimate" });
   });
 
   // ── executeQuery EXPLAIN refuses non-SELECT ────────────────────────────
@@ -1592,7 +1680,13 @@ describe("useQueryExecution", () => {
     mockGlobalFetch({
       "/api/db/query": {
         ok: true,
-        json: { rows: [{ "QUERY PLAN": { plan: "test" } }], fields: ["QUERY PLAN"], rowCount: 1, executionTime: 5 },
+        json: {
+          explainFormat: "postgres-json",
+          rows: [{ "QUERY PLAN": { plan: "test" } }],
+          fields: ["QUERY PLAN"],
+          rowCount: 1,
+          executionTime: 5,
+        },
       },
     });
 
@@ -1725,7 +1819,13 @@ describe("useQueryExecution", () => {
     mockGlobalFetch({
       "/api/db/query": {
         ok: true,
-        json: { rows: [{ "QUERY PLAN": { plan: "Seq Scan" } }], fields: ["QUERY PLAN"], rowCount: 1, executionTime: 5 },
+        json: {
+          explainFormat: "postgres-json",
+          rows: [{ "QUERY PLAN": { plan: "Seq Scan" } }],
+          fields: ["QUERY PLAN"],
+          rowCount: 1,
+          executionTime: 5,
+        },
       },
     });
 
@@ -1769,8 +1869,8 @@ describe("useQueryExecution", () => {
 
     mockGlobalFetch({
       "/api/db/query": async (req) => {
-        const body = (await req.json()) as { sql: string };
-        if (!body.sql.toUpperCase().startsWith("EXPLAIN")) {
+        const body = (await req.json()) as { sql: string; explain?: unknown };
+        if (body.explain === undefined) {
           return { ok: true, json: mockQueryResult };
         }
         explainCount += 1;
@@ -1778,9 +1878,23 @@ describe("useQueryExecution", () => {
           // The first run's plan is still in flight while the second run starts,
           // runs, and finishes.
           await firstExplainGate;
-          return { ok: true, json: { rows: [{ "QUERY PLAN": { plan: "stale" } }], fields: ["QUERY PLAN"] } };
+          return {
+            ok: true,
+            json: {
+              explainFormat: "postgres-json",
+              rows: [{ "QUERY PLAN": { plan: "stale" } }],
+              fields: ["QUERY PLAN"],
+            },
+          };
         }
-        return { ok: true, json: { rows: [{ "QUERY PLAN": { plan: "current" } }], fields: ["QUERY PLAN"] } };
+        return {
+          ok: true,
+          json: {
+            explainFormat: "postgres-json",
+            rows: [{ "QUERY PLAN": { plan: "current" } }],
+            fields: ["QUERY PLAN"],
+          },
+        };
       },
     });
 
@@ -2091,7 +2205,7 @@ describe("useQueryExecution", () => {
       return calls;
     }
 
-    const isExplain = (c: DeferredCall) => typeof c.body.sql === "string" && c.body.sql.startsWith("EXPLAIN");
+    const isExplain = (c: DeferredCall) => c.body.explain !== undefined;
     const mainCalls = (calls: DeferredCall[]) => calls.filter((c) => c.url.includes("/api/db/query") && !isExplain(c));
     const explainCalls = (calls: DeferredCall[]) => calls.filter(isExplain);
 
@@ -2311,7 +2425,10 @@ describe("useQueryExecution", () => {
         mainCalls(calls)[0].settle(mockQueryResult);
       });
       await act(async () => {
-        explainCalls(calls)[0].settle({ rows: [{ "QUERY PLAN": [{ Plan: { "Node Type": "Seq Scan" } }] }] });
+        explainCalls(calls)[0].settle({
+          explainFormat: "postgres-json",
+          rows: [{ "QUERY PLAN": [{ Plan: { "Node Type": "Seq Scan" } }] }],
+        });
       });
       await flush();
 
@@ -2338,7 +2455,10 @@ describe("useQueryExecution", () => {
       await flush();
 
       await act(async () => {
-        explainCalls(calls)[0].settle({ rows: [{ "QUERY PLAN": [{ Plan: { "Node Type": "Seq Scan" } }] }] });
+        explainCalls(calls)[0].settle({
+          explainFormat: "postgres-json",
+          rows: [{ "QUERY PLAN": [{ Plan: { "Node Type": "Seq Scan" } }] }],
+        });
       });
       await flush();
 
@@ -2351,7 +2471,7 @@ describe("useQueryExecution", () => {
       globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
         const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
         const body = init?.body ? (JSON.parse(init.body as string) as Record<string, unknown>) : {};
-        if (url.includes("/api/db/query") && typeof body.sql === "string" && body.sql.startsWith("EXPLAIN")) {
+        if (url.includes("/api/db/query") && body.explain !== undefined) {
           return Promise.reject(new TypeError("network down"));
         }
         return Promise.resolve(
@@ -2380,8 +2500,7 @@ describe("useQueryExecution", () => {
       globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
         const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
         const body = init?.body ? (JSON.parse(init.body as string) as Record<string, unknown>) : {};
-        const isPlanRequest =
-          url.includes("/api/db/query") && typeof body.sql === "string" && body.sql.startsWith("EXPLAIN");
+        const isPlanRequest = url.includes("/api/db/query") && body.explain !== undefined;
         return Promise.resolve(
           new Response(isPlanRequest ? "<html>gateway timeout</html>" : JSON.stringify(mockQueryResult), {
             status: 200,

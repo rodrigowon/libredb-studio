@@ -171,7 +171,10 @@ export function maintenanceControl(
  */
 export type ExplainFormat =
   | "postgres-json"
+  | "postgres-text"
+  | "postgres-text-analyze"
   | "mysql-json"
+  | "mysql-text"
   | "sqlite-queryplan"
   | "couchbase-json"
   | "clickhouse-json"
@@ -198,6 +201,8 @@ export interface ProviderCapabilities {
    * Undefined = no explain support; the UI hides the Explain button and tab.
    */
   explainFormat?: ExplainFormat;
+  /** True only when the selected grammar also supports actual execution measurements. */
+  supportsExplainAnalyze?: boolean;
   supportsExternalQueryLimiting: boolean;
   supportsCreateTable: boolean;
   /**

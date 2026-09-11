@@ -1,4 +1,10 @@
 {
+  "errors": {
+    "EXPLAIN_INVALID_REQUEST": "Solicitação de EXPLAIN inválida. Escolha estimate ou analyze.",
+    "EXPLAIN_UNSUPPORTED": "Este servidor não oferece suporte ao modo de EXPLAIN solicitado.",
+    "EXPLAIN_STATEMENT_UNSUPPORTED": "O EXPLAIN exige uma única instrução SELECT compatível.",
+    "EXPLAIN_FORMAT_UNSUPPORTED": "O servidor retornou um formato de EXPLAIN não compatível."
+  },
   "emptyTitle": "Nenhum plano de execução",
   "emptyDescription": "Execute uma consulta SELECT para ver o plano de execução e a análise de desempenho.",
   "unknown": "Desconhecido",

@@ -10,6 +10,44 @@ import { CACHE_HIT_RATIO_UNAVAILABLE } from "@/lib/monitoring-cache-ratio";
 import { asBytes, binaryText } from "@/lib/export/binary";
 import { mysqlJsonStrategy } from "@/lib/explain/mysql-json";
 
+describe("MySQL EXPLAIN capability negotiation", () => {
+  for (const [accepted, expected] of [
+    [["EXPLAIN FORMAT=JSON SELECT 1"], "mysql-json"],
+    [["EXPLAIN SELECT 1"], "mysql-text"],
+    [[], undefined],
+  ] as const) {
+    test(`measures ${expected ?? "unsupported"} without failing connect`, async () => {
+      mockExecuteFn = async (sql) => {
+        if (!(accepted as readonly string[]).includes(sql)) throw new Error("fixture grammar refusal");
+        return [[], []];
+      };
+      protocolCalls = [];
+      const provider = new MySQLProvider(makeMySQLConfig());
+      expect(provider.getCapabilities().explainFormat).toBe("mysql-json");
+      expect(protocolCalls).toEqual([]);
+      await provider.connect();
+      expect(provider.isConnected()).toBe(true);
+      const caps = provider.getCapabilities();
+      expect(caps.explainFormat).toBe(expected);
+      expect(caps.supportsExplain).toBe(expected !== undefined);
+      expect(caps.supportsExplainAnalyze).toBe(false);
+      expect(Object.hasOwn(caps, "explainFormat")).toBe(expected !== undefined);
+      const statements =
+        expected === "mysql-json"
+          ? ["EXPLAIN FORMAT=JSON SELECT 1"]
+          : ["EXPLAIN FORMAT=JSON SELECT 1", "EXPLAIN SELECT 1"];
+      expect(protocolCalls.map((call) => call.sql)).toEqual(statements);
+      expect(protocolCalls.every((call) => call.method === "query" && call.params === undefined)).toBe(true);
+      await provider.connect();
+      expect(protocolCalls.map((call) => call.sql)).toEqual(statements);
+      await provider.disconnect();
+      await provider.connect();
+      expect(protocolCalls.map((call) => call.sql)).toEqual([...statements, ...statements]);
+      await provider.disconnect();
+    });
+  }
+});
+
 // ============================================================================
 // Mock mysql2/promise BEFORE importing the provider
 // ============================================================================

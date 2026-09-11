@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
     const provider = await createDatabaseProvider(connection);
 
     return NextResponse.json({
+      explainRequestVersion: 1,
       capabilities: provider.getCapabilities(),
       labels: provider.getLabels(),
     });

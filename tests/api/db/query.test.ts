@@ -28,6 +28,121 @@ import {
 const mockProvider = createMockProvider();
 const mockGetOrCreateProvider = mock(async () => mockProvider);
 
+describe("server-side EXPLAIN intent", () => {
+  beforeEach(() => {
+    clearRateLimitState();
+    mockGetSession.mockImplementation(async () => ({ role: "admin", username: "admin" }));
+    mockGetOrCreateProvider.mockClear();
+  });
+
+  async function explainRequest(sql: unknown, explain: unknown, capabilities = {}, params?: unknown[]) {
+    const provider = createMockProvider({
+      capabilities: {
+        explainFormat: "postgres-json",
+        supportsExplainAnalyze: true,
+        ...capabilities,
+      },
+    });
+    mockGetOrCreateProvider.mockResolvedValueOnce(provider as never);
+    const res = await POST(
+      createMockRequest("/api/db/query", {
+        method: "POST",
+        body: {
+          connection: validConnection,
+          sql,
+          explain,
+          ...(params && { params }),
+        },
+      }) as never,
+    );
+    return { provider, res, data: await res.json() };
+  }
+
+  test.each(["estimate", "analyze"])("builds %s on the server and binds original parameters", async (mode) => {
+    const { res, provider, data } = await explainRequest("SELECT * FROM users WHERE id = $1", { mode }, {}, [7]);
+    expect(res.status).toBe(200);
+    expect(data.explainFormat).toBe("postgres-json");
+    const calls = (provider.query as ReturnType<typeof mock>).mock.calls;
+    expect(calls).toHaveLength(1);
+    expect(calls[0][0]).toStartWith(
+      mode === "estimate" ? "EXPLAIN (FORMAT JSON) " : "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ",
+    );
+    expect(calls[0][0]).toContain("$1");
+    expect(calls[0][1]).toEqual([7]);
+  });
+
+  test.each(
+    [null, false, true, "estimate", [], {}, { mode: "profile" }, { mode: null }, { mode: "estimate", extra: true }].map(
+      (value) => [value],
+    ),
+  )("rejects malformed explain %j", async (explain) => {
+    const { res, data, provider } = await explainRequest("SELECT 1", explain);
+    expect(res.status).toBe(400);
+    expect(data.code).toBe("EXPLAIN_INVALID_REQUEST");
+    expect(provider.query).not.toHaveBeenCalled();
+    expect(mockGetOrCreateProvider).not.toHaveBeenCalled();
+    // Invalid requests never consumed the one-shot mock.
+    mockGetOrCreateProvider.mockReset();
+    mockGetOrCreateProvider.mockImplementation(async () => mockProvider);
+  });
+
+  test.each([
+    { supportsExplain: false },
+    { explainFormat: undefined },
+    { explainFormat: "not-registered" },
+    { explainFormat: "constructor" },
+    { supportsExplainAnalyze: false },
+  ])("unsupported strategy never falls back to original SQL: %j", async (capabilities) => {
+    const { res, provider, data } = await explainRequest("SELECT * FROM users", { mode: "analyze" }, capabilities);
+    expect(res.status).toBe(400);
+    expect(data.code).toBe("EXPLAIN_UNSUPPORTED");
+    expect(provider.query).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    "UPDATE users SET a = 1",
+    "DELETE FROM customers;",
+    "INSERT INTO users VALUES (1)",
+    "SELECT 1; DELETE FROM customers",
+    "SELECT 1; SELECT 2",
+    "EXPLAIN ANALYZE SELECT 1",
+  ])("estimate must never execute the underlying statement: %s", async (sql) => {
+    const { res, provider, data } = await explainRequest(sql, { mode: "estimate" });
+    expect(res.status).toBe(400);
+    expect(data.code).toBe("EXPLAIN_STATEMENT_UNSUPPORTED");
+    expect(provider.query).not.toHaveBeenCalled();
+    mockGetOrCreateProvider.mockReset();
+    mockGetOrCreateProvider.mockImplementation(async () => mockProvider);
+  });
+
+  test.each(["postgres-text", "postgres-text-analyze", "mysql-json", "mysql-text"])(
+    "returns connected format %s, not the DatabaseType default",
+    async (explainFormat) => {
+      const { res, data, provider } = await explainRequest("SELECT 1", { mode: "estimate" }, { explainFormat });
+      expect(res.status).toBe(200);
+      expect(data.explainFormat).toBe(explainFormat);
+      expect((provider.query as ReturnType<typeof mock>).mock.calls[0][0]).not.toContain("ANALYZE");
+    },
+  );
+
+  test("explicit textual analyze uses the measured analyze strategy", async () => {
+    const { res, provider, data } = await explainRequest(
+      "SELECT 1",
+      { mode: "analyze" },
+      { explainFormat: "postgres-text-analyze" },
+    );
+    expect(res.status).toBe(200);
+    expect(data.explainFormat).toBe("postgres-text-analyze");
+    expect((provider.query as ReturnType<typeof mock>).mock.calls[0][0]).toStartWith("EXPLAIN ANALYZE SELECT 1");
+  });
+
+  test("strategy refusal runs neither EXPLAIN nor original SQL", async () => {
+    const { res, provider } = await explainRequest("SELECT 1", { mode: "analyze" }, { explainFormat: "postgres-text" });
+    expect(res.status).toBe(400);
+    expect(provider.query).not.toHaveBeenCalled();
+  });
+});
+
 const mockGetSession = mock(
   async (): Promise<{ role: string; username: string } | null> => ({ role: "admin", username: "admin" }),
 );

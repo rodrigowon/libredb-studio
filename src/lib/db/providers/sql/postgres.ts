@@ -15,6 +15,7 @@ import {
   type MaintenanceResult,
   type ProviderOptions,
   type ProviderCapabilities,
+  type ExplainFormat,
   type ProviderLabels,
   type ProviderExecutionContext,
   type ReadOnlyStatementBudget,
@@ -606,6 +607,8 @@ function assertAgentRoleIsUnprivileged(rows: unknown[]): void {
 
 export class PostgresProvider extends SQLBaseProvider {
   private pool: Pool | null = null;
+  private measuredExplainFormat: ExplainFormat | undefined = "postgres-json";
+  private measuredExplainAnalyze = true;
 
   // Transaction support: dedicated client held outside pool
   private txClient: PoolClient | null = null;
@@ -633,8 +636,9 @@ export class PostgresProvider extends SQLBaseProvider {
     return {
       ...super.getCapabilities(),
       defaultPort: 5432,
-      supportsExplain: true,
-      explainFormat: "postgres-json",
+      supportsExplain: this.measuredExplainFormat !== undefined,
+      ...(this.measuredExplainFormat === undefined ? {} : { explainFormat: this.measuredExplainFormat }),
+      supportsExplainAnalyze: this.measuredExplainAnalyze,
       supportsConnectionString: true,
       supportsInlineRowEdit: true,
       // BEGIN / COMMIT / ROLLBACK over one held pool client (`beginTransaction()` below).
@@ -707,6 +711,36 @@ export class PostgresProvider extends SQLBaseProvider {
         // on the same client this connect already borrowed.
         if (this.readOnlyProfile) {
           assertAgentRoleIsUnprivileged((await client.query(AGENT_ROLE_PRIVILEGE_SQL)).rows);
+        }
+        // Agent connections keep their original envelope and static capability.
+        // Measure estimate FIRST: accepting ANALYZE does not prove estimate syntax.
+        if (!this.readOnlyProfile) {
+          this.measuredExplainFormat = undefined;
+          this.measuredExplainAnalyze = false;
+          for (const [estimate, analyze, format, analyzeFormat] of [
+            [
+              "EXPLAIN (FORMAT JSON) SELECT 1",
+              "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) SELECT 1",
+              "postgres-json",
+              "postgres-json",
+            ],
+            ["EXPLAIN SELECT 1", "EXPLAIN ANALYZE SELECT 1", "postgres-text", "postgres-text-analyze"],
+          ] as const) {
+            try {
+              await client.query(estimate);
+            } catch {
+              continue;
+            }
+            this.measuredExplainFormat = format;
+            try {
+              await client.query(analyze);
+              this.measuredExplainAnalyze = true;
+              this.measuredExplainFormat = analyzeFormat;
+            } catch {
+              /* Estimate remains available; analyze is explicitly unavailable. */
+            }
+            break;
+          }
         }
       } finally {
         client.release();

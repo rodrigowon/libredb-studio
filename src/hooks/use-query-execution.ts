@@ -15,6 +15,8 @@ import { ApiErrorCode } from "@/lib/api/error-codes";
 import { logger } from "@/lib/logger";
 import { newLocalId } from "@/lib/ids";
 import { getExplainStrategy } from "@/lib/explain";
+import { isExplainableSelect } from "@/lib/explain/select-prefix";
+import { isExplainErrorCode } from "@/lib/explain/request";
 import { maybeInviteToStar } from "@/lib/community/star-prompt-toast";
 import { buildConnectionPayload } from "./use-connection-payload";
 import { useTranslations } from "next-intl";
@@ -90,6 +92,7 @@ export function useQueryExecution({
   queryEditorRef,
 }: UseQueryExecutionParams) {
   const t = useTranslations("Editor.messages");
+  const te = useTranslations("Explain.errors");
   /**
    * The run in flight for each tab, keyed by tab id.
    *
@@ -241,15 +244,15 @@ export function useQueryExecution({
 
       const explainStrategy = getExplainStrategy(metadata?.capabilities.explainFormat);
 
-      // An explain run skips the dangerous-query gate above, so it may only ever
-      // send SQL the dialect actually built for it — whether the provider denies
-      // EXPLAIN outright, ships no strategy, or the statement is not a SELECT.
-      // Falling back to the original statement would execute e.g. an UPDATE
-      // unguarded (#201).
-      const explainSupported = !metadata || metadata.capabilities.supportsExplain;
-      const directExplainSql =
-        isExplain && explainSupported ? (explainStrategy?.buildSql(queryToExecute, "analyze") ?? null) : null;
-      if (isExplain && !directExplainSql) {
+      // Never send raw SQL as an explain intent to a server that would ignore it.
+      // Only the server builds SQL; client preflight preserves the existing refusal.
+      const explainSupported = metadata?.explainRequestVersion === 1 && metadata.capabilities.supportsExplain;
+      const directExplainMode = metadata?.capabilities.supportsExplainAnalyze === true ? "analyze" : "estimate";
+      const explainAccepted =
+        explainSupported &&
+        explainStrategy &&
+        isExplainableSelect(queryToExecute, resolveSqlGrammar(activeConnection.type), directExplainMode === "analyze");
+      if (isExplain && !explainAccepted) {
         toast({
           ...explainRefusal(metadata, Boolean(explainStrategy), {
             notReady: t("notReady"),
@@ -312,9 +315,6 @@ export function useQueryExecution({
           }
         }
 
-        // If isExplain mode, run the dialect's EXPLAIN query instead
-        const queryToRun = directExplainSql || queryToExecute;
-
         // Detect multi-statement queries (not for EXPLAIN or load-more or transaction)
         //
         // A parameterized statement never takes this route: `/api/db/multi-query`
@@ -365,8 +365,9 @@ export function useQueryExecution({
             ...(useTransaction
               ? { action: "query", sql: queryToExecute, options: { limit, offset, unlimited } }
               : {
-                  sql: isExplain ? queryToRun : queryToExecute,
+                  sql: queryToExecute,
                   options: isExplain ? {} : { limit, offset, unlimited },
+                  ...(isExplain && { explain: { mode: directExplainMode } }),
                   ...(!useMultiQuery && { queryId }),
                 }),
           }),
@@ -380,17 +381,23 @@ export function useQueryExecution({
         // query settles, and a plan request that fails first — or is aborted with
         // its run — would be an unhandled rejection until then.
         let explainPromise: Promise<Response | null> | null = null;
-        if (!isExplain && !isLoadMore && explainStrategy) {
-          const explainSql = explainStrategy.buildSql(queryToExecute, "estimate");
-          if (explainSql) {
+        if (!isExplain && !isLoadMore && explainSupported && explainStrategy) {
+          if (
+            isExplainableSelect(
+              queryToExecute,
+              resolveSqlGrammar(activeConnection.type),
+              metadata?.capabilities.supportsExplainAnalyze === true,
+            )
+          ) {
             explainPromise = fetch("/api/db/query", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 ...buildConnectionPayload(activeConnection),
-                sql: explainSql,
+                sql: queryToExecute,
+                explain: { mode: "estimate" },
                 options: {},
-                // The explain SQL is the statement with a prefix, so its
+                // The server prefixes the original statement, so its
                 // placeholders are the same ones in the same order and the same
                 // values bind them. Without this the plan request would run
                 // unbound and the panel would keep the previous plan (PR #304).
@@ -427,8 +434,11 @@ export function useQueryExecution({
           // of hammering a closed door (#459). Only the 429 is rephrased:
           // a Retry-After on any other status says nothing about this query's failure.
           const retryAfter = response.status === 429 ? retryAfterSeconds(response) : null;
-          const errorMessage =
-            retryAfter !== null ? t("rateLimitSeconds", { seconds: retryAfter }) : error.error || t("queryFailed");
+          const errorMessage = isExplainErrorCode(errorCode)
+            ? te(errorCode)
+            : retryAfter !== null
+              ? t("rateLimitSeconds", { seconds: retryAfter })
+              : error.error || t("queryFailed");
 
           storage.addToHistory({
             id: newLocalId(),
@@ -496,17 +506,20 @@ export function useQueryExecution({
 
         // Process EXPLAIN results (from background or direct)
         let explainPlanData = null;
+        const readPlan = (data: { explainFormat?: string; rows?: Array<Record<string, unknown>> }) => {
+          const strategy = getExplainStrategy(data.explainFormat);
+          if (!strategy) throw new Error(te("EXPLAIN_FORMAT_UNSUPPORTED"));
+          return { format: strategy.format, raw: strategy.extractPlan(data) };
+        };
         if (isExplain) {
-          explainPlanData = explainStrategy
-            ? { format: explainStrategy.format, raw: explainStrategy.extractPlan(resultData) }
-            : null;
+          explainPlanData = readPlan(resultData);
         } else if (explainPromise && explainStrategy) {
           // Background EXPLAIN - don't block, update async
           explainPromise
             .then(async (explainRes) => {
               if (!explainRes?.ok) return;
               const explainData = await explainRes.json();
-              const plan = { format: explainStrategy.format, raw: explainStrategy.extractPlan(explainData) };
+              const plan = readPlan(explainData);
               // `commitToTab` drops the plan if a newer run owns the tab: a plan
               // describing the previous statement is worse than no plan at all.
               commitToTab((t) => ({ ...t, explainPlan: plan }));
@@ -632,7 +645,7 @@ export function useQueryExecution({
         }
       }
     },
-    [activeConnection, toast, fetchSchema, metadata, transactionActive, playgroundMode, setTabs, queryEditorRef, t],
+    [activeConnection, toast, fetchSchema, metadata, transactionActive, playgroundMode, setTabs, queryEditorRef, t, te],
   );
 
   // Force execute (bypass safety check) — unified via skipSafety flag

@@ -10,6 +10,83 @@ import type { ReadOnlyStatementBudget } from "@/lib/db/types";
 import { ConnectionError, DatabaseConfigError, ExecutionProfileError } from "@/lib/db/errors";
 import { CACHE_HIT_RATIO_UNAVAILABLE } from "@/lib/monitoring-cache-ratio";
 
+describe("PostgreSQL EXPLAIN capability negotiation", () => {
+  const jsonEstimate = "EXPLAIN (FORMAT JSON) SELECT 1";
+  const jsonAnalyze = "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) SELECT 1";
+  const textEstimate = "EXPLAIN SELECT 1";
+  const textAnalyze = "EXPLAIN ANALYZE SELECT 1";
+  for (const shape of [
+    {
+      name: "JSON estimate and analyze",
+      accepted: [jsonEstimate, jsonAnalyze],
+      format: "postgres-json" as const,
+      analyze: true,
+      sent: [jsonEstimate, jsonAnalyze],
+    },
+    {
+      name: "JSON estimate only",
+      accepted: [jsonEstimate],
+      format: "postgres-json" as const,
+      analyze: false,
+      sent: [jsonEstimate, jsonAnalyze],
+    },
+    {
+      name: "text estimate and analyze",
+      accepted: [textEstimate, textAnalyze],
+      format: "postgres-text-analyze" as const,
+      analyze: true,
+      sent: [jsonEstimate, textEstimate, textAnalyze],
+    },
+    {
+      name: "text estimate only",
+      accepted: [textEstimate],
+      format: "postgres-text" as const,
+      analyze: false,
+      sent: [jsonEstimate, textEstimate, textAnalyze],
+    },
+    {
+      name: "analyze alone never implies estimate",
+      accepted: [jsonAnalyze, textAnalyze],
+      format: undefined,
+      analyze: false,
+      sent: [jsonEstimate, textEstimate],
+    },
+    {
+      name: "no supported grammar",
+      accepted: [],
+      format: undefined,
+      analyze: false,
+      sent: [jsonEstimate, textEstimate],
+    },
+  ]) {
+    test(shape.name, async () => {
+      const sent: string[] = [];
+      mockQueryFn = async (sql) => {
+        sent.push(sql);
+        if (!shape.accepted.includes(sql)) throw new Error("fixture grammar refusal");
+        return { rows: [] };
+      };
+      const provider = new PostgresProvider(makePgConfig());
+      expect(provider.getCapabilities().explainFormat).toBe("postgres-json");
+      expect(sent).toEqual([]);
+      await provider.connect();
+      expect(provider.isConnected()).toBe(true);
+      const caps = provider.getCapabilities();
+      expect(caps.explainFormat).toBe(shape.format);
+      expect(caps.supportsExplainAnalyze).toBe(shape.analyze);
+      expect(caps.supportsExplain).toBe(shape.format !== undefined);
+      expect(Object.hasOwn(caps, "explainFormat")).toBe(shape.format !== undefined);
+      expect(sent).toEqual(shape.sent);
+      await provider.connect();
+      expect(sent).toEqual(shape.sent);
+      await provider.disconnect();
+      await provider.connect();
+      expect(sent).toEqual([...shape.sent, ...shape.sent]);
+      await provider.disconnect();
+    });
+  }
+});
+
 // ============================================================================
 // Mock pg BEFORE importing the provider
 // ============================================================================
@@ -2390,6 +2467,23 @@ describe("PostgresProvider", () => {
       releaseSpy.mockRestore();
     });
 
+    test("Agent connection never probes EXPLAIN outside its read-only envelope", async () => {
+      const fresh = new ReadOnlyEngineMock();
+      mockQueryFn = (sql, params) => fresh.query(sql, params);
+      const profiled = new PostgresProvider(makePgConfig(), {}, { readOnly: true });
+      await profiled.connect();
+      expect(fresh.statements).toEqual([]);
+      expect(profiled.getCapabilities().explainFormat).toBe("postgres-json");
+      await profiled.disconnect();
+      const editor = new PostgresProvider(makePgConfig());
+      await editor.connect();
+      expect(fresh.statements.map((statement) => statement.text)).toEqual([
+        "EXPLAIN (FORMAT JSON) SELECT 1",
+        "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) SELECT 1",
+      ]);
+      await editor.disconnect();
+    });
+
     test("runs exactly one statement inside BEGIN READ ONLY with a transaction-local timeout, then rolls back and releases", async () => {
       const result = await provider.queryReadOnly("SELECT 1 AS ok", roBudget());
 
@@ -2438,6 +2532,8 @@ describe("PostgresProvider", () => {
     test("refuses queryReadOnly on a provider that was not opened under the profile", async () => {
       const unprofiled = new PostgresProvider(makePgConfig());
       await unprofiled.connect();
+      // Exclude connect-time probes; this assertion concerns queryReadOnly only.
+      engine.statements.length = 0;
 
       // Fail closed, and for the reason the SQLite profile fails closed too: a
       // provider opened outside the profile has had no role verification, so

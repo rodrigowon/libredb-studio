@@ -24,6 +24,14 @@
 
 import type { SqlGrammar } from "@/lib/sql/grammar";
 import { readLeadingKeyword } from "@/lib/sql/leading-keyword";
+import { isMultiStatement } from "@/lib/sql/statement-splitter";
+
+/** Preflight only, not authorization: never wrap a second executable statement. */
+export function isExplainableSelect(sql: string, grammar?: SqlGrammar, executes = false): boolean {
+  if (isMultiStatement(sql, grammar)) return false;
+  const prefix = classifySelectPrefix(sql, grammar);
+  return prefix !== null && (!executes || prefix === "select" || !hasDataModifyingStatement(sql));
+}
 
 /**
  * Which keyword a statement leads with, ignoring whitespace and comments, or `null`

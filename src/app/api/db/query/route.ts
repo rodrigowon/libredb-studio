@@ -4,6 +4,15 @@ import { createErrorResponse } from "@/lib/api/errors";
 import { resolveConnection } from "@/lib/seed/resolve-connection";
 import { guardRoute } from "@/lib/api/require-session";
 import { readBoundParams } from "@/lib/api/bound-params";
+import { getExplainStrategy } from "@/lib/explain";
+import { EXPLAIN_ERRORS, readExplainRequest, type ExplainErrorCode } from "@/lib/explain/request";
+import { isExplainableSelect } from "@/lib/explain/select-prefix";
+import { resolveSqlGrammar } from "@/lib/sql/grammar";
+import type { ExplainFormat } from "@/lib/db/types";
+
+function explainError(code: ExplainErrorCode) {
+  return NextResponse.json({ code, error: EXPLAIN_ERRORS[code] }, { status: 400 });
+}
 
 export async function POST(req: NextRequest) {
   // Moved ahead of req.json(): an unauthenticated caller no longer gets a body parsed on its
@@ -29,8 +38,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: bound.message }, { status: 400 });
     }
 
+    const requested = Object.hasOwn(body, "explain");
+    const explain = requested ? readExplainRequest(body.explain) : null;
+    if (requested && !explain) return explainError("EXPLAIN_INVALID_REQUEST");
+    if (
+      explain &&
+      (typeof sql !== "string" ||
+        !isExplainableSelect(sql, resolveSqlGrammar(connection.type), explain.mode === "analyze"))
+    ) {
+      return explainError("EXPLAIN_STATEMENT_UNSUPPORTED");
+    }
+
     const provider = await getOrCreateProvider(connection);
-    const prepared = provider.prepareQuery(sql, options);
+    let statement = sql;
+    let explainFormat: ExplainFormat | undefined;
+    if (explain) {
+      const caps = provider.getCapabilities();
+      const strategy = caps.supportsExplain ? getExplainStrategy(caps.explainFormat) : null;
+      if (!strategy || (explain.mode === "analyze" && caps.supportsExplainAnalyze !== true)) {
+        return explainError("EXPLAIN_UNSUPPORTED");
+      }
+      const built = strategy.buildSql(sql, explain.mode);
+      if (built === null) return explainError("EXPLAIN_STATEMENT_UNSUPPORTED");
+      statement = built;
+      explainFormat = strategy.format;
+    }
+    const prepared = provider.prepareQuery(statement, options);
 
     // Pass queryId to provider for cancellation tracking
     const supportsCancel = "cancelQuery" in provider;
@@ -47,6 +80,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       ...result,
+      ...(explainFormat !== undefined && { explainFormat }),
       pagination: {
         limit: prepared.limit,
         offset: prepared.offset,

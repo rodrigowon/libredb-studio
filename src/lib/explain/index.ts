@@ -1,6 +1,8 @@
 import type { ExplainFormat } from "@/lib/db/types";
 import type { ExplainPlanInput, ExplainStrategy, StoredExplainPlan } from "./types";
 import { postgresJsonStrategy } from "./postgres-json";
+import { postgresTextAnalyzeStrategy, postgresTextStrategy } from "./postgres-text";
+import { mysqlTextStrategy } from "./mysql-text";
 import { mysqlJsonStrategy } from "./mysql-json";
 import { sqliteQueryplanStrategy } from "./sqlite-queryplan";
 import { couchbaseJsonStrategy } from "./couchbase-json";
@@ -16,6 +18,9 @@ export type { ExplainPlanInput } from "./types";
 // registry entry is a compile error.
 const registry: Record<ExplainFormat, ExplainStrategy> = {
   "postgres-json": postgresJsonStrategy,
+  "postgres-text": postgresTextStrategy,
+  "postgres-text-analyze": postgresTextAnalyzeStrategy,
+  "mysql-text": mysqlTextStrategy,
   "mysql-json": mysqlJsonStrategy,
   "sqlite-queryplan": sqliteQueryplanStrategy,
   "couchbase-json": couchbaseJsonStrategy,
@@ -25,8 +30,8 @@ const registry: Record<ExplainFormat, ExplainStrategy> = {
   "duckdb-json": duckdbJsonStrategy,
 };
 
-export function getExplainStrategy(format: ExplainFormat | undefined): ExplainStrategy | null {
-  return format ? registry[format] : null;
+export function getExplainStrategy(format: string | undefined): ExplainStrategy | null {
+  return format && Object.hasOwn(registry, format) ? registry[format as ExplainFormat] : null;
 }
 
 function isStoredExplainPlan(value: unknown): value is StoredExplainPlan {
