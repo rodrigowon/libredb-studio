@@ -18,6 +18,7 @@ import type { AgentToolContext } from "@/lib/agent/tools";
 import type { AgentContextSnapshot, AgentRunEvent } from "@/lib/agent/types";
 import { UNTRUSTED_CONTENT_BEGIN, UNTRUSTED_CONTENT_END } from "@/lib/agent/untrusted-content";
 import { ConnectionError, ExecutionProfileError, QueryError } from "@/lib/db/errors";
+import { measureResultBytes } from "@/lib/db/providers/sql/read-only-budget";
 import { ExecutionArtifactStore } from "@/lib/db/operations/artifacts";
 import { ExecutionBudgetTracker } from "@/lib/db/operations/budgets";
 import {
@@ -74,19 +75,25 @@ function result(rows: readonly Record<string, unknown>[]): QueryResult {
   };
 }
 
-/** What a PostgreSQL server answers each of the three composed catalog reads. */
+/** PostgreSQL columns arrive aggregated per table; other catalog kinds stay flat. */
 const PG_COLUMNS = [
-  { table_schema: "public", table_name: "orders", column_name: "id", data_type: "integer", is_nullable: "NO" },
   {
     table_schema: "public",
     table_name: "orders",
-    column_name: "customer_id",
-    data_type: "integer",
-    is_nullable: "NO",
+    columns: [
+      { name: "id", type: "integer", nullable: "NO" },
+      { name: "customer_id", type: "integer", nullable: "NO" },
+      { name: "total", type: "numeric", nullable: "YES" },
+    ],
   },
-  { table_schema: "public", table_name: "orders", column_name: "total", data_type: "numeric", is_nullable: "YES" },
-  { table_schema: "public", table_name: "customers", column_name: "id", data_type: "integer", is_nullable: "NO" },
-  { table_schema: "public", table_name: "customers", column_name: "name", data_type: "text", is_nullable: "YES" },
+  {
+    table_schema: "public",
+    table_name: "customers",
+    columns: [
+      { name: "id", type: "integer", nullable: "NO" },
+      { name: "name", type: "text", nullable: "YES" },
+    ],
+  },
 ];
 
 const PG_RELATIONS = [
@@ -248,6 +255,117 @@ describe("captureContextSnapshot — PostgreSQL", () => {
   });
 });
 
+describe("PostgreSQL aggregated grounding and filtering", () => {
+  test("300 columns consume 2 object rows without changing row or byte budgets", async () => {
+    const rows = ["customers", "orders"].map((name) => ({
+      table_schema: "public",
+      table_name: name,
+      columns: Array.from({ length: 150 }, (_, index) => ({ name: `col_${index}`, type: "integer", nullable: "NO" })),
+    }));
+    const budget = AGENT_WORKFLOW_BUDGETS.investigation.policy.budgets;
+    expect(budget.maxResultRows).toBe(200);
+    expect(rows.flatMap((row) => row.columns).length).toBeGreaterThan(budget.maxResultRows);
+    expect(rows.length).toBeLessThan(budget.maxResultRows);
+    expect(measureResultBytes(rows)).toBeLessThan(budget.maxResultBytes);
+    const h = harness("postgres", async (sql) => {
+      if (!sql.includes("information_schema.columns")) return result([]);
+      // Enforce the real distinction, not merely return a small canned answer.
+      if (!sql.includes("json_agg")) throw new QueryError("300 rows > 200 allowed", "postgres");
+      return result(rows);
+    });
+    const capture = await captureContextSnapshot(h.context);
+    if (capture.kind !== "captured") throw new Error("expected aggregated capture");
+    expect(capture.snapshot.tables.map((table) => table.name)).toEqual(["public.customers", "public.orders"]);
+    expect(capture.snapshot.tables[0].columns).toHaveLength(150);
+    expect(capture.snapshot.tables[0].columns[149].name).toBe("col_149");
+    expect(capture.charged?.statements).toBe(3);
+    expect(packContextForTask(capture.snapshot, "customers").length).toBeLessThanOrEqual(AGENT_CONTEXT_PACK_MAX_CHARS);
+  });
+
+  test("JSON transport and mixed malformed elements retain valid columns", async () => {
+    for (const columns of [
+      [null, 42, "bad", { name: "id", type: "integer", nullable: "NO" }],
+      '[null,42,"bad",{"name":"id","type":"integer","nullable":"NO"}]',
+    ]) {
+      const h = harness("postgres", async (sql) =>
+        result(
+          sql.includes("information_schema.columns") ? [{ table_schema: "public", table_name: "orders", columns }] : [],
+        ),
+      );
+      const capture = await captureContextSnapshot(h.context);
+      if (capture.kind !== "captured") throw new Error("expected capture");
+      expect(capture.snapshot.tables[0].columns).toEqual([
+        { name: "id", type: "integer", nullable: false, isPrimary: false },
+      ]);
+    }
+  });
+
+  test("missing and malformed column metadata yields empty columns, not a crash", async () => {
+    for (const columns of [undefined, null, "", "not json", '"scalar"', "[null,1]", 42, {}]) {
+      const h = harness("postgres", async (sql) =>
+        result(
+          sql.includes("information_schema.columns") ? [{ table_schema: "public", table_name: "orders", columns }] : [],
+        ),
+      );
+      const capture = await captureContextSnapshot(h.context);
+      if (capture.kind !== "captured") throw new Error("expected capture");
+      expect(capture.snapshot.tables[0].columns).toEqual([]);
+    }
+  });
+
+  for (const shape of [
+    { schema: "_timescaledb_internal", table: "_hyper_1_1_chunk", fragment: "'_timescaledb_internal'" },
+    { schema: "gp_toolkit", table: "gp_stats_missing", fragment: "'gp_toolkit'" },
+    { schema: "google_ml", table: "extension_models", fragment: "'pg_namespace'::regclass" },
+    { schema: "public", table: "extension_view", fragment: "'pg_class'::regclass" },
+  ]) {
+    test(`filtering ${shape.schema}.${shape.table} preserves public user tables`, async () => {
+      // SQL-shape fixture, not a live-engine claim: only this shape's own
+      // predicate removes its row. Catalog correctness is pinned by composer tests.
+      const h = harness("postgres", async (sql) => {
+        if (!sql.includes("information_schema.columns")) return result([]);
+        const extra = {
+          table_schema: shape.schema,
+          table_name: shape.table,
+          columns: [{ name: "id", type: "integer", nullable: "NO" }],
+        };
+        return result(sql.includes(shape.fragment) ? PG_COLUMNS : [...PG_COLUMNS, extra]);
+      });
+      const capture = await captureContextSnapshot(h.context);
+      if (capture.kind !== "captured") throw new Error("expected capture");
+      expect(capture.snapshot.tables.map((table) => table.name)).toEqual(["public.customers", "public.orders"]);
+    });
+  }
+
+  test("missing ownership catalogs across reads cannot bypass the repair budget", async () => {
+    const h = harness("postgres", async (sql) => {
+      if (sql.includes("pg_depend")) throw new QueryError('relation "pg_depend" does not exist', "postgres");
+      expect(sql).toContain("'_timescaledb_internal'");
+      return sql.includes("information_schema.columns") ? result(PG_COLUMNS) : result([]);
+    });
+    const capture = await captureContextSnapshot(h.context);
+    expect(capture.kind).toBe("unavailable");
+    if (capture.kind !== "unavailable") throw new Error("expected controlled refusal");
+    expect(capture.reasonCode).toBe("CATALOG_READ_REFUSED");
+    expect(h.context.repairs.admit("unseen-fingerprint")).toEqual({
+      admitted: false,
+      reasonCode: "REPAIR_BUDGET_EXHAUSTED",
+    });
+    expect(capture.charged?.statements).toBe(5);
+  });
+
+  test("stale relation/index metadata never recreates a missing table", async () => {
+    const h = harness("postgres", async (sql) =>
+      sql.includes("information_schema.columns")
+        ? result(PG_COLUMNS.filter((row) => row.table_name === "customers"))
+        : answerPostgres(sql),
+    );
+    const capture = await captureContextSnapshot(h.context);
+    if (capture.kind !== "captured") throw new Error("expected capture");
+    expect(capture.snapshot.tables.map((table) => table.name)).toEqual(["public.customers"]);
+  });
+});
+
 describe("captureContextSnapshot — SQLite", () => {
   test("takes two reads, because the table DDL carries the relations as well", async () => {
     const h = harness("sqlite");
@@ -317,16 +435,13 @@ describe("captureContextSnapshot — the fingerprint", () => {
 
     const withColumn = harness("postgres", async (sql: string) =>
       sql.includes("information_schema.columns")
-        ? result([
-            ...PG_COLUMNS,
-            {
-              table_schema: "public",
-              table_name: "orders",
-              column_name: "note",
-              data_type: "text",
-              is_nullable: "YES",
-            },
-          ])
+        ? result(
+            PG_COLUMNS.map((row) =>
+              row.table_name === "orders"
+                ? { ...row, columns: [...row.columns, { name: "note", type: "text", nullable: "YES" }] }
+                : row,
+            ),
+          )
         : answerPostgres(sql),
     );
     const withIndex = harness("postgres", async (sql: string) =>
@@ -367,7 +482,12 @@ describe("captureContextSnapshot — the fingerprint", () => {
     // A column that changed type, keeping its name and position.
     const withRetypedColumn = harness("postgres", async (sql: string) =>
       sql.includes("information_schema.columns")
-        ? result(PG_COLUMNS.map((row) => (row.column_name === "total" ? { ...row, data_type: "bigint" } : row)))
+        ? result(
+            PG_COLUMNS.map((row) => ({
+              ...row,
+              columns: row.columns.map((column) => (column.name === "total" ? { ...column, type: "bigint" } : column)),
+            })),
+          )
         : answerPostgres(sql),
     );
 

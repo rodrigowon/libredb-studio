@@ -6,6 +6,7 @@ import {
   composeEstimatingExplain,
   composeStatisticsAvailabilityProbe,
   MAX_CATALOG_SELECTOR_LENGTH,
+  withoutExtensionOwnershipTest,
 } from "@/lib/agent/composed-sql";
 import { agentReadSqlInput, inspectAgentStatement } from "@/lib/db/operations/statement-guard";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -69,6 +70,75 @@ describe("composeCatalogRead — PostgreSQL", () => {
 
   test("orders the rows, so two identical inventories serialise identically", () => {
     expect(composeCatalogRead("postgres", {})).toContain("ORDER BY");
+  });
+});
+
+describe("PostgreSQL grounding bundle", () => {
+  // Exact upstream 830d68fc list: this fork intentionally does not change providers.
+  const systemSchemas = [
+    "pg_catalog",
+    "information_schema",
+    "pg_toast",
+    "mz_catalog",
+    "mz_internal",
+    "mz_introspection",
+    "crdb_internal",
+    "pg_extension",
+    "_timescaledb_catalog",
+    "_timescaledb_config",
+    "_timescaledb_functions",
+    "_timescaledb_internal",
+    "_timescaledb_cache",
+    "timescaledb_experimental",
+    "timescaledb_information",
+    "gp_toolkit",
+    "pg_aoseg",
+    "pg_bitmapindex",
+    "pg_ext_aux",
+  ];
+
+  test("columns aggregate per table in ordinal order, with no flat projection", () => {
+    const sql = composeCatalogRead("postgres", {});
+    expect(sql).toContain(
+      "json_agg(json_build_object('name', column_name, 'type', data_type, 'nullable', is_nullable)",
+    );
+    expect(sql).toContain("ORDER BY ordinal_position) AS columns");
+    expect(sql).toContain("GROUP BY table_schema, table_name ORDER BY table_schema, table_name");
+    expect(sql).not.toContain("table_name, column_name, data_type");
+    expect(sql).not.toContain("table_type"); // User views are not excluded by kind.
+  });
+
+  for (const kind of ["columns", "relations", "indexes", "statistics"] as const) {
+    test(`${kind}: exact schema list and schema/relation ownership, read-only`, () => {
+      const sql = composeCatalogRead("postgres", { kind, schema: "public", table: "orders" });
+      expect(sql).toContain(`NOT IN (${systemSchemas.map((name) => `'${name}'`).join(", ")})`);
+      expect(sql).toContain("d.classid = 'pg_namespace'::regclass AND d.deptype = 'e'");
+      expect(sql).toContain("d.classid = 'pg_class'::regclass AND d.deptype = 'e'");
+      expect(sql.match(/JOIN pg_extension e ON e.oid = d.refobjid/g)).toHaveLength(2);
+      expect(sql).not.toContain("'google_ml'");
+      expect(sql).not.toContain("'ai'");
+      expect(guardAccepts(sql)).toBe(true);
+      expect(agentReadSqlInput.safeParse({ sql }).success).toBe(true);
+    });
+
+    test(`${kind}: fallback preserves selectors, fixed exclusions and guard`, () => {
+      const sql = composeCatalogRead("postgres", { kind, schema: "public", table: "owner's_orders" });
+      const fallback = withoutExtensionOwnershipTest(sql);
+      expect(fallback).not.toContain("pg_depend");
+      expect(fallback).not.toContain("JOIN pg_extension");
+      expect(fallback).not.toContain("regclass");
+      expect(fallback).toContain(`NOT IN (${systemSchemas.map((name) => `'${name}'`).join(", ")})`);
+      expect(fallback).toContain("= 'public'");
+      expect(fallback).toContain("= 'owner''s_orders'");
+      expect(guardAccepts(fallback)).toBe(true);
+      expect(withoutExtensionOwnershipTest(fallback)).toBe(fallback);
+    });
+  }
+
+  test("fallback is a no-op for statements without ownership tests", () => {
+    expect(withoutExtensionOwnershipTest("SELECT 1")).toBe("SELECT 1");
+    const sqlite = composeCatalogRead("sqlite", {});
+    expect(withoutExtensionOwnershipTest(sqlite)).toBe(sqlite);
   });
 });
 

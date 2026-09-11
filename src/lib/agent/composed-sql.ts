@@ -81,9 +81,8 @@ export const MAX_CATALOG_SELECTOR_LENGTH = 128;
  * how many reads the inventory takes and a single composed monster would have to be
  * verified per dialect anyway. Each kind is one bounded read (`sql.query.read`)
  * under the same descriptor, so the split costs statements out of the run's budget
- * and buys nothing in privilege — which is exactly the trade the row cap forces:
- * one flat projection per kind stays diagnosable when it overflows, where a nested
- * aggregate would come back as one unreadable row-per-table blob.
+ * and buys nothing in privilege. PostgreSQL columns are aggregated per table;
+ * the other kinds stay flat and keep the same refusal behavior at their bounds.
  *
  * `statistics` is the newest and the only one whose values are ESTIMATES: it reads
  * what the engine already recorded about table sizes and column distributions, and
@@ -153,14 +152,81 @@ function equalsClause(column: string, value: string | undefined, field: string, 
   return ` AND ${column} = ${quoteLiteral(assertSelector(value, field), dialect)}`;
 }
 
+// Upstream 830d68fc's exact engine-builtin set. Kept on the Agent boundary:
+// this fork has not integrated the separate provider/browser filtering commits.
+const POSTGRES_SYSTEM_SCHEMAS = [
+  "pg_catalog",
+  "information_schema",
+  "pg_toast",
+  "mz_catalog",
+  "mz_internal",
+  "mz_introspection",
+  "crdb_internal",
+  "pg_extension",
+  "_timescaledb_catalog",
+  "_timescaledb_config",
+  "_timescaledb_functions",
+  "_timescaledb_internal",
+  "_timescaledb_cache",
+  "timescaledb_experimental",
+  "timescaledb_information",
+  "gp_toolkit",
+  "pg_aoseg",
+  "pg_bitmapindex",
+  "pg_ext_aux",
+] as const;
+
+const POSTGRES_SYSTEM_SCHEMA_LIST = POSTGRES_SYSTEM_SCHEMAS.map((schema) => `'${schema}'`).join(", ");
+
+// Ownership, not names: user-created schemas named ai/google_ml must survive.
+const POSTGRES_EXTENSION_OWNED_SCHEMAS_SQL =
+  "SELECT n.nspname FROM pg_namespace n " +
+  "JOIN pg_depend d ON d.objid = n.oid AND d.classid = 'pg_namespace'::regclass AND d.deptype = 'e' " +
+  "JOIN pg_extension e ON e.oid = d.refobjid";
+
+// Also reaches extension objects installed in shared schemas such as public.
+const POSTGRES_EXTENSION_OWNED_RELATIONS_SQL =
+  "SELECT n.nspname, c.relname FROM pg_class c " +
+  "JOIN pg_namespace n ON n.oid = c.relnamespace " +
+  "JOIN pg_depend d ON d.objid = c.oid AND d.classid = 'pg_class'::regclass AND d.deptype = 'e' " +
+  "JOIN pg_extension e ON e.oid = d.refobjid";
+
+function postgresSchemaExclusion(column: string): string {
+  return `${column} NOT IN (${POSTGRES_SYSTEM_SCHEMA_LIST}) AND ${column} NOT IN (${POSTGRES_EXTENSION_OWNED_SCHEMAS_SQL})`;
+}
+
+function postgresRelationExclusion(schemaColumn: string, tableColumn: string): string {
+  return `(${schemaColumn}, ${tableColumn}) NOT IN (${POSTGRES_EXTENSION_OWNED_RELATIONS_SQL})`;
+}
+
+/** Upstream fallback for PostgreSQL-wire engines missing ownership catalogs.
+ * Only removes the two application-composed tests; fixed schema exclusions and
+ * selectors remain. The caller still executes through the normal read-only path.
+ */
+export function withoutExtensionOwnershipTest(sql: string): string {
+  const withoutSchemas = sql.replace(
+    /\s+AND\s+[\w.]+ NOT IN \(SELECT n\.nspname FROM pg_namespace n JOIN pg_depend[^)]*\)/g,
+    "",
+  );
+  return withoutSchemas.replace(
+    /\s+AND\s+\([\w.]+,\s*[\w.]+\) NOT IN \(SELECT n\.nspname,\s*c\.relname FROM pg_class c JOIN pg_namespace n[^)]*\)/g,
+    "",
+  );
+}
+
+// One row per table (7249283e), ordered columns inside JSON. Row/byte bounds
+// and the separately bounded model-facing pack remain unchanged.
 function composePostgresCatalog(selector: AgentCatalogSelector): string {
   return (
-    "SELECT table_schema, table_name, column_name, data_type, is_nullable, ordinal_position " +
+    "SELECT table_schema, table_name, json_agg(json_build_object(" +
+    "'name', column_name, 'type', data_type, 'nullable', is_nullable) " +
+    "ORDER BY ordinal_position) AS columns " +
     "FROM information_schema.columns " +
-    "WHERE table_schema NOT IN ('pg_catalog', 'information_schema')" +
+    `WHERE ${postgresSchemaExclusion("table_schema")}` +
+    ` AND ${postgresRelationExclusion("table_schema", "table_name")}` +
     equalsClause("table_schema", selector.schema, "schema", "postgres") +
     equalsClause("table_name", selector.table, "table", "postgres") +
-    " ORDER BY table_schema, table_name, ordinal_position"
+    " GROUP BY table_schema, table_name ORDER BY table_schema, table_name"
   );
 }
 
@@ -211,7 +277,9 @@ function composePostgresRelations(selector: AgentCatalogSelector): string {
     "JOIN LATERAL unnest(c.conkey, c.confkey) WITH ORDINALITY AS k(attnum, fattnum, ord) ON true " +
     "JOIN pg_attribute att ON att.attrelid = c.conrelid AND att.attnum = k.attnum " +
     "JOIN pg_attribute fatt ON fatt.attrelid = c.confrelid AND fatt.attnum = k.fattnum " +
-    "WHERE c.contype = 'f' AND rn.nspname NOT IN ('pg_catalog', 'information_schema')" +
+    "WHERE c.contype = 'f' AND " +
+    postgresSchemaExclusion("rn.nspname") +
+    ` AND ${postgresRelationExclusion("rn.nspname", "rel.relname")}` +
     equalsClause("rn.nspname", selector.schema, "schema", "postgres") +
     equalsClause("rel.relname", selector.table, "table", "postgres") +
     " ORDER BY rn.nspname, rel.relname, k.ord"
@@ -263,7 +331,8 @@ function composePostgresIndexes(selector: AgentCatalogSelector): string {
     "JOIN pg_namespace n ON n.oid = t.relnamespace " +
     "JOIN LATERAL unnest(ix.indkey) WITH ORDINALITY AS k(attnum, ord) ON true " +
     "LEFT JOIN pg_attribute att ON att.attrelid = t.oid AND att.attnum = k.attnum " +
-    "WHERE n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" +
+    `WHERE ${postgresSchemaExclusion("n.nspname")}` +
+    ` AND ${postgresRelationExclusion("n.nspname", "t.relname")}` +
     equalsClause("n.nspname", selector.schema, "schema", "postgres") +
     equalsClause("t.relname", selector.table, "table", "postgres") +
     " ORDER BY n.nspname, t.relname, i.relname, k.ord"
@@ -316,7 +385,9 @@ function composePostgresStatistics(selector: AgentCatalogSelector): string {
     "JOIN pg_namespace n ON n.oid = c.relnamespace " +
     "LEFT JOIN pg_stats s ON s.schemaname = n.nspname AND s.tablename = c.relname " +
     "WHERE c.relkind IN ('r', 'p') " +
-    "AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" +
+    "AND " +
+    postgresSchemaExclusion("n.nspname") +
+    ` AND ${postgresRelationExclusion("n.nspname", "c.relname")}` +
     equalsClause("n.nspname", selector.schema, "schema", "postgres") +
     equalsClause("c.relname", selector.table, "table", "postgres") +
     " ORDER BY n.nspname, c.relname, s.attname"
@@ -638,14 +709,9 @@ const ESTIMATING_EXPLAIN_PREFIX: Partial<Record<DatabaseType, string>> = {
  * claims to be whole is worse than a refusal a caller can narrow — and the selector
  * is how a caller narrows it.
  *
- * KNOWN LIMITATION, with its number: the PostgreSQL projection is one row per COLUMN,
- * so against `maxResultRows: 200` an unnarrowed call overflows at roughly 25 tables of
- * eight columns and comes back as a repairable database error. The engine's message
- * names the budget, so it is diagnosable, but it does cost one repair attempt. The
- * SQLite side is one row per OBJECT and is nowhere near the cap. Making the two
- * symmetric means aggregating columns per table, which changes what a caller parses
- * out of the result — that decision belongs with the context snapshot that consumes
- * it, not here.
+ * PostgreSQL columns now count one row per table, symmetric with SQLite objects.
+ * More tables than the row cap, or an aggregate beyond the byte cap, still refuse.
+ * The context snapshot consumes the ordered column array, then bounds its own pack.
  */
 export function composeCatalogRead(dialect: DatabaseType, selector: AgentCatalogSelector): string {
   if (!Object.hasOwn(CATALOG_COMPOSERS, dialect)) {

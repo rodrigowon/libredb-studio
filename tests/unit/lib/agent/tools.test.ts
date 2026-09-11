@@ -2744,6 +2744,59 @@ describe("the grounding seam — the server's own read, outside agent mode", () 
   });
 });
 
+describe("readCatalog — ownership fallback retains the execution boundary", () => {
+  for (const catalog of ["pg_depend", "pg_extension"]) {
+    test(`${catalog}: retries once with the same scoped read-only operation`, async () => {
+      let attempts = 0;
+      const h = harness({}, async () => {
+        if (++attempts === 1) throw new QueryError(`relation "${catalog}" does not exist`, "postgres");
+        return queryResult();
+      });
+      const outcome = await readCatalogForGrounding(h.context, { schema: "public", table: "orders" });
+      expect(outcome.kind).toBe("completed");
+      expect(h.queryReadOnly).toHaveBeenCalledTimes(2);
+      const statements = h.queryReadOnly.mock.calls.map((call) => String(call[0]));
+      expect(statements[0]).toContain("pg_depend");
+      expect(statements[1]).not.toContain("pg_depend");
+      expect(statements[1]).toContain("table_schema = 'public'");
+      expect(statements[1]).toContain("table_name = 'orders'");
+      expect(statements[1]).toContain("'_timescaledb_internal'");
+      expect(h.tracker.usage("run-1").executedStatements).toBe(2);
+    });
+  }
+
+  test("unrelated database errors do not retry", async () => {
+    const h = harness({}, async () => {
+      throw new QueryError('column "missing" does not exist', "postgres");
+    });
+    expect((await readCatalogForGrounding(h.context, {})).kind).toBe("refused");
+    expect(h.queryReadOnly).toHaveBeenCalledTimes(1);
+  });
+
+  test("a failed fallback remains a refusal, without a retry loop", async () => {
+    const h = harness({}, async () => {
+      throw new QueryError('relation "pg_depend" does not exist', "postgres");
+    });
+    expect((await readCatalogForGrounding(h.context, {})).kind).toBe("refused");
+    expect(h.queryReadOnly).toHaveBeenCalledTimes(2);
+  });
+
+  test("denied scope cannot reach either ownership read", async () => {
+    const h = harness({ scope: createTargetScope("conn-1", { schemas: ["public"] }) });
+    expect((await readCatalogForGrounding(h.context, {})).kind).toBe("refused");
+    expect(h.queryReadOnly).not.toHaveBeenCalled();
+    expect(h.acquireProvider).not.toHaveBeenCalled();
+  });
+
+  test("other engines do not use the PostgreSQL retry", async () => {
+    const h = harness({ connection: { ...connection, type: "sqlite" } }, async () => {
+      throw new QueryError("no such table: pg_depend", "sqlite");
+    });
+    expect((await readCatalogForGrounding(h.context, {})).kind).toBe("refused");
+    expect(h.queryReadOnly).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("inspectPlanTool — the estimating variant only", () => {
   test("composes the estimating EXPLAIN for the connection's dialect", async () => {
     const h = harness();

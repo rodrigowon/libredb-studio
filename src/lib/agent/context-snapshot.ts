@@ -65,7 +65,7 @@
  * identity it advertises is the one its own inventory produces.
  *
  * SQLite and PostgreSQL answer differently and the asymmetry is structural, not
- * cosmetic: PostgreSQL has three flat catalog projections, while SQLite has no
+ * cosmetic: PostgreSQL aggregates columns per table (relations/indexes stay flat), while SQLite has no
  * structured catalog on this path at all (the guard refuses every `pragma_*`
  * function) and its columns, keys and relations are read out of the DDL text the
  * engine stored — see `sqlite-ddl.ts`.
@@ -258,6 +258,24 @@ function truthy(value: unknown): boolean {
 
 const qualified = (schema: unknown, table: unknown): string => `${text(schema)}.${text(table)}`;
 
+// pg returns JSON arrays; other transports may return JSON text. Malformed
+// values/entries degrade to absent column metadata instead of losing a snapshot.
+function parsePostgresColumns(value: unknown): readonly Record<string, unknown>[] {
+  const entries = (candidate: unknown): readonly Record<string, unknown>[] =>
+    Array.isArray(candidate)
+      ? candidate.filter((entry): entry is Record<string, unknown> => typeof entry === "object" && entry !== null)
+      : [];
+  if (Array.isArray(value)) return entries(value);
+  if (typeof value === "string" && value.trim() !== "") {
+    try {
+      return entries(JSON.parse(value) as unknown);
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 /** Applies `change` to a known table, and drops the row when there is no such table. */
 function attach(tables: TableIndex, name: string, change: (table: MutableTable) => void): void {
   const table = tables.get(name);
@@ -281,12 +299,14 @@ function buildPostgresTables(rows: ReadonlyMap<AgentCatalogKind, readonly Record
     const name = qualified(row.table_schema, row.table_name);
     const table = tables.get(name) ?? emptyTable(name);
     tables.set(name, table);
-    table.columns.push({
-      name: text(row.column_name),
-      type: text(row.data_type),
-      nullable: text(row.is_nullable).toUpperCase() === "YES",
-      isPrimary: false,
-    });
+    for (const column of parsePostgresColumns(row.columns)) {
+      table.columns.push({
+        name: text(column.name),
+        type: text(column.type),
+        nullable: text(column.nullable).toUpperCase() === "YES",
+        isPrimary: false,
+      });
+    }
   }
 
   for (const row of rows.get("relations") ?? []) {

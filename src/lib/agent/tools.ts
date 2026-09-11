@@ -84,6 +84,7 @@ import {
   AgentComposedSqlError,
   composeCatalogRead,
   composeEstimatingExplain,
+  withoutExtensionOwnershipTest,
 } from "./composed-sql";
 import type { AgentDeadlineDenyCode, AgentRunDeadline } from "./deadline";
 import {
@@ -2232,6 +2233,12 @@ export async function readStatementForGrounding(
   });
 }
 
+// Match upstream's controlled retry trigger, never a policy/guard refusal.
+function isMissingExtensionCatalogError(message: string): boolean {
+  const lowered = message.toLowerCase();
+  return lowered.includes("pg_depend") || lowered.includes("pg_extension");
+}
+
 async function readCatalog(
   context: AgentToolContext,
   selectorSchema: z.ZodType<{ kind?: AgentCatalogKind; schema?: string; table?: string }>,
@@ -2247,7 +2254,7 @@ async function readCatalog(
   } catch (error) {
     return composedSqlOutcome(error);
   }
-  const outcome = await executeAgentOperation(context, {
+  const request: AgentOperationRequest = {
     operationId: "sql.query.read",
     sql,
     grounding,
@@ -2278,7 +2285,20 @@ async function readCatalog(
     // case-sensitively, so declaring a raw `MAIN` would compose fine and then be
     // denied against a `["main"]` allowlist.
     ...(selector.schema === undefined ? {} : { target: { schema: normalizeDeclaredSchema(context, selector.schema) } }),
-  });
+  };
+  let outcome = await executeAgentOperation(context, request);
+  if (
+    context.connection.type === "postgres" &&
+    outcome.kind === "refused" &&
+    outcome.refusal.class === "database-error" &&
+    isMissingExtensionCatalogError(outcome.refusal.message)
+  ) {
+    const fallback = withoutExtensionOwnershipTest(sql);
+    if (fallback !== sql) {
+      // One retry, with the same target, profile, guard, budgets and audit path.
+      outcome = await executeAgentOperation(context, { ...request, sql: fallback });
+    }
+  }
   /*
     A catalog read that matched NO OBJECT is a refusal, not a result.
 
