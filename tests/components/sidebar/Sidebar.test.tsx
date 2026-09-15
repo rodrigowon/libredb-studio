@@ -79,7 +79,8 @@ mock.module("@radix-ui/react-scroll-area", () => {
 });
 
 import { describe, test, expect, afterEach } from "bun:test";
-import { fireEvent, cleanup } from "@testing-library/react";
+import { cleanup } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 import { renderWithIntl as render } from "../../helpers/render-with-intl";
 
@@ -169,19 +170,16 @@ describe("Sidebar", () => {
     expect(getByTestId("schema-explorer").getAttribute("data-schema-error")).toBe("'(' expected");
   });
 
-  test("ERD button only appears when activeConnection exists", () => {
-    // With active connection — should have ERD button (title="Show ERD Diagram")
+  test("schema tools only appear when activeConnection exists", () => {
     const propsWithConn = createDefaultProps({ activeConnection: mockPostgresConnection });
-    const { unmount, container: c1 } = render(<Sidebar {...propsWithConn} />);
-    const erdButton = c1.querySelector('[title="Show ERD Diagram"]');
-    expect(erdButton).not.toBeNull();
+    const { unmount, getByRole } = render(<Sidebar {...propsWithConn} />);
+    expect(getByRole("button", { name: "Schema tools" })).not.toBeNull();
     unmount();
 
     // Without active connection — no ERD button
     const propsNoConn = createDefaultProps({ activeConnection: null });
-    const { container: c2 } = render(<Sidebar {...propsNoConn} />);
-    const noErdButton = c2.querySelector('[title="Show ERD Diagram"]');
-    expect(noErdButton).toBeNull();
+    const { queryByRole } = render(<Sidebar {...propsNoConn} />);
+    expect(queryByRole("button", { name: "Schema tools" })).toBeNull();
   });
 
   test("passes correct props to ConnectionsList", () => {
@@ -251,17 +249,15 @@ describe("Sidebar", () => {
     expect(queryByText("Connected")).not.toBeNull();
   });
 
-  test("clicking ERD button calls onShowDiagram", () => {
+  test("schema tools menu opens ERD", async () => {
     const onShowDiagram = mock(() => {});
     const props = createDefaultProps({
       activeConnection: mockPostgresConnection,
       onShowDiagram,
     });
-    const { container } = render(<Sidebar {...props} />);
-
-    const erdButton = container.querySelector('[title="Show ERD Diagram"]');
-    expect(erdButton).not.toBeNull();
-    fireEvent.click(erdButton!);
+    const { getByRole } = render(<Sidebar {...props} />);
+    await userEvent.click(getByRole("button", { name: "Schema tools" }));
+    await userEvent.click(getByRole("menuitem", { name: "ERD diagram" }));
 
     expect(onShowDiagram).toHaveBeenCalledTimes(1);
   });

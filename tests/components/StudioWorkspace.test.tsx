@@ -415,6 +415,14 @@ describe("StudioWorkspace", () => {
   // Rendering
   // =========================================================================
 
+  test("schema tools retain docs and diff access in the embedded shell", () => {
+    renderWorkspace();
+    (capturedSidebarProps.onShowDocs as () => void)();
+    expect(mockSetBottomPanelMode).toHaveBeenCalledWith("docs");
+    (capturedSidebarProps.onCompareSchemas as () => void)();
+    expect(mockSetBottomPanelMode).toHaveBeenCalledWith("schemadiff");
+  });
+
   test("renders shell with sidebar, tab bar, toolbar, editor and bottom panel", () => {
     const { getByTestId, queryByTestId } = renderWorkspace();
     expect(getByTestId("sidebar").textContent).toBe("Sidebar");

@@ -3,13 +3,14 @@
 import React from "react";
 import { DatabaseConnection, TableSchema } from "@/lib/types";
 import type { ProviderMetadata } from "@/hooks/use-provider-metadata";
-import { Plus, Zap, Layers } from "lucide-react";
+import { Plus, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SchemaExplorer } from "@/components/schema-explorer";
 import { GitHubRepoLink } from "@/components/github-repo-link";
 import { getAppVersion } from "@/lib/app-version";
 import { ConnectionsList } from "./ConnectionsList";
+import { SchemaTools } from "./SchemaTools";
 import { useTranslations } from "next-intl";
 
 interface SidebarProps {
@@ -27,6 +28,8 @@ interface SidebarProps {
   onGenerateSelect?: (tableName: string) => void;
   onCreateTableClick?: () => void;
   onShowDiagram?: () => void;
+  onShowDocs?: () => void;
+  onCompareSchemas?: () => void;
   isAdmin?: boolean;
   onOpenMaintenance?: (tab?: "global" | "tables" | "sessions", table?: string) => void;
   databaseType?: string;
@@ -50,6 +53,8 @@ export function Sidebar({
   onGenerateSelect,
   onCreateTableClick,
   onShowDiagram,
+  onShowDocs,
+  onCompareSchemas,
   isAdmin = false,
   onOpenMaintenance,
   databaseType,
@@ -74,16 +79,6 @@ export function Sidebar({
           </span>
         </div>
         <div className="flex items-center gap-1">
-          {activeConnection && (
-            <button
-              className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-              onClick={onShowDiagram}
-              title={t("showErd")}
-              aria-label={t("showErd")}
-            >
-              <Layers strokeWidth={1.5} className="w-3.5 h-3.5" />
-            </button>
-          )}
           <button
             className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
             onClick={onAddConnection}
@@ -106,6 +101,8 @@ export function Sidebar({
           />
 
           {activeConnection && (
+            <div className="space-y-1">
+              <SchemaTools onShowDiagram={onShowDiagram} onShowDocs={onShowDocs} onCompareSchemas={onCompareSchemas} />
             <SchemaExplorer
               schema={schema}
               isLoadingSchema={isLoadingSchema}
@@ -121,6 +118,7 @@ export function Sidebar({
               onGenerateCode={onGenerateCode}
               onGenerateTestData={onGenerateTestData}
             />
+            </div>
           )}
         </div>
       </ScrollArea>

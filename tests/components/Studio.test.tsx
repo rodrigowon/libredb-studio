@@ -590,6 +590,14 @@ describe("Studio", () => {
     expect(sidebar.textContent).toBe("Sidebar");
   });
 
+  test("sidebar schema tools select the existing docs and schema diff modes", () => {
+    render(<Studio />);
+    (capturedSidebarProps.onShowDocs as () => void)();
+    expect(mockSetBottomPanelMode).toHaveBeenCalledWith("docs");
+    (capturedSidebarProps.onCompareSchemas as () => void)();
+    expect(mockSetBottomPanelMode).toHaveBeenCalledWith("schemadiff");
+  });
+
   test("shows desktop header", () => {
     const { getByTestId } = render(<Studio />);
     const header = getByTestId("desktop-header");

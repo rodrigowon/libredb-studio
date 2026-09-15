@@ -1,5 +1,6 @@
 {
   "header": {
+    "userMenu": "User menu",
     "quickAccess": "Quick Access",
     "online": "Online",
     "slow": "Slow",
@@ -44,15 +45,18 @@
     "selectFirst": "Select a connection first"
   },
   "navigation": {
+    "tools": "Tools",
+    "schemaTools": "Schema tools",
+    "erd": "ERD diagram",
     "results": "Results",
     "explain": "EXPLAIN",
     "history": "History",
     "saved": "Saved",
     "charts": "Charts",
     "pivot": "Pivot",
-    "docs": "Docs",
-    "diff": "Diff",
-    "dashboard": "Dashboard",
+    "docs": "Database documentation",
+    "diff": "Compare schemas",
+    "dashboard": "Saved charts",
     "empty": "Execute a query or check history",
     "ready": "Ready to query"
   },

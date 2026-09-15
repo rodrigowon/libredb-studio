@@ -1,5 +1,6 @@
 {
   "header": {
+    "userMenu": "Menu do usuário",
     "quickAccess": "Acesso rápido",
     "online": "Online",
     "slow": "Lenta",
@@ -44,15 +45,18 @@
     "selectFirst": "Selecione uma conexão primeiro"
   },
   "navigation": {
+    "tools": "Ferramentas",
+    "schemaTools": "Ferramentas do schema",
+    "erd": "Diagrama ERD",
     "results": "Resultados",
     "explain": "EXPLAIN",
     "history": "Histórico",
     "saved": "Salvas",
     "charts": "Gráficos",
     "pivot": "Tabela dinâmica",
-    "docs": "Documentação",
-    "diff": "Comparação",
-    "dashboard": "Painel",
+    "docs": "Documentação do banco",
+    "diff": "Comparar schemas",
+    "dashboard": "Gráficos salvos",
     "empty": "Execute uma consulta ou consulte o histórico",
     "ready": "Pronto para executar consultas"
   },

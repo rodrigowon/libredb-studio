@@ -18,6 +18,7 @@ import { resolveExplainPlan } from "@/lib/explain";
 import { cn } from "@/lib/utils";
 import {
   ChartColumn,
+  ChevronDown,
   Bookmark,
   Clock,
   Columns3,
@@ -274,64 +275,67 @@ export function BottomPanel({
   const exportScope = describeExportScope(displayedResult ?? { rows: [] });
   const exportCountLabel = format.number(exportScope.rowCount);
 
-  const tabs: { key: BottomPanelMode; label: string; icon: React.ReactNode; activeClass: string }[] = [
+  const tabs: { key: BottomPanelMode; label: string; icon: React.ReactNode }[] = [
     {
       key: "results",
       label: t("results"),
       icon: <LayoutGrid strokeWidth={1.5} className="w-3 h-3" />,
-      activeClass: "text-blue-400 border-blue-500 bg-fill",
     },
     {
       key: "explain",
       label: t("explain"),
       icon: <Zap strokeWidth={1.5} className="w-3 h-3" />,
-      activeClass: "text-amber-400 border-amber-500 bg-fill",
     },
     {
       key: "history",
       label: t("history"),
       icon: <Clock strokeWidth={1.5} className="w-3 h-3" />,
-      activeClass: "text-emerald-400 border-emerald-500 bg-fill",
     },
     {
       key: "saved",
       label: t("saved"),
       icon: <Bookmark strokeWidth={1.5} className="w-3 h-3" />,
-      activeClass: "text-purple-400 border-purple-500 bg-fill",
     },
     {
       key: "charts",
       label: t("charts"),
       icon: <ChartColumn strokeWidth={1.5} className="w-3 h-3" />,
-      activeClass: "text-cyan-400 border-cyan-500 bg-fill",
     },
     {
       key: "pivot",
       label: t("pivot"),
       icon: <Columns3 strokeWidth={1.5} className="w-3 h-3" />,
-      activeClass: "text-orange-400 border-orange-500 bg-fill",
     },
     {
       key: "docs",
       label: t("docs"),
       icon: <FileText strokeWidth={1.5} className="w-3 h-3" />,
-      activeClass: "text-teal-400 border-teal-500 bg-fill",
     },
     {
       key: "schemadiff",
       label: t("diff"),
       icon: <GitCompare strokeWidth={1.5} className="w-3 h-3" />,
-      activeClass: "text-rose-400 border-rose-500 bg-fill",
     },
     {
       key: "dashboard",
       label: t("dashboard"),
       icon: <LayoutDashboard strokeWidth={1.5} className="w-3 h-3" />,
-      activeClass: "text-indigo-400 border-indigo-500 bg-fill",
     },
   ];
 
-  const visibleTabs = metadata?.capabilities.explainFormat ? tabs : tabs.filter((tab) => tab.key !== "explain");
+  // Presentation only: every mode and programmatic selection remains unchanged.
+  const resultTools = tabs.filter((tab) => ["charts", "pivot", "dashboard"].includes(tab.key));
+  const activeTool = resultTools.find((tab) => tab.key === mode);
+  const visibleTabs = tabs.filter((tab) => {
+    if (["results", "history", "saved"].includes(tab.key)) return true;
+    if (tab.key === "explain") {
+      return !!metadata?.capabilities.explainFormat &&
+        (mode === "explain" || currentTab.explainPlan != null || agentArtifact?.surface === "explain");
+    }
+    return (tab.key === "docs" || tab.key === "schemadiff") && tab.key === mode;
+  });
+  // Primary destinations always precede contextual panels.
+  visibleTabs.sort((a, b) => Number(!["results", "history", "saved"].includes(a.key)) - Number(!["results", "history", "saved"].includes(b.key)));
 
   return (
     /*
@@ -353,14 +357,34 @@ export function BottomPanel({
               key={tab.key}
               data-testid={tab.key === "explain" ? "bottom-panel-tab-explain" : undefined}
               onClick={() => onSetMode(tab.key)}
+              aria-pressed={mode === tab.key}
               className={cn(
                 "h-full px-3 text-xs font-medium transition-all border-b-2 flex items-center gap-2",
-                mode === tab.key ? tab.activeClass : "text-fg-muted border-transparent hover:text-fg-secondary",
+                mode === tab.key ? "text-blue-400 border-blue-500 bg-fill" : "text-fg-muted border-transparent hover:text-fg-secondary",
               )}
             >
               {tab.icon} {tab.label}
             </button>
           ))}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn("h-7 shrink-0 gap-1.5 rounded-md px-2 text-xs", activeTool ? "bg-fill text-blue-400" : "text-fg-muted")}
+              >
+                {t("tools")}{activeTool ? `: ${activeTool.label}` : ""}
+                <ChevronDown className="h-3 w-3" aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-44 rounded-md">
+              {resultTools.map((tool) => (
+                <DropdownMenuItem key={tool.key} onSelect={() => onSetMode(tool.key)}>
+                  {tool.icon}{tool.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {displayedResult && mode === "results" && (

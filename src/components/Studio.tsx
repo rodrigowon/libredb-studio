@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Sidebar, ConnectionsList } from "@/components/sidebar";
+import { SchemaTools } from "@/components/sidebar/SchemaTools";
 import { MobileNav } from "@/components/MobileNav";
 import { SchemaExplorer } from "@/components/schema-explorer";
 import { ConnectionModal } from "@/components/ConnectionModal";
@@ -492,6 +493,8 @@ export default function Studio() {
                 onGenerateSelect={tabMgr.handleGenerateSelect}
                 onCreateTableClick={() => setIsCreateTableModalOpen(true)}
                 onShowDiagram={() => setShowDiagram(true)}
+                onShowDocs={() => queryExec.setBottomPanelMode("docs")}
+                onCompareSchemas={() => queryExec.setBottomPanelMode("schemadiff")}
                 isAdmin={isAdmin}
                 onOpenMaintenance={openMaintenance}
                 databaseType={conn.activeConnection?.type}
@@ -610,6 +613,12 @@ export default function Studio() {
               {activeMobileTab === "schema" && (
                 <div className="md:hidden h-full bg-sunken overflow-auto p-4">
                   {conn.activeConnection ? (
+                    <>
+                    <SchemaTools
+                      onShowDiagram={() => setShowDiagram(true)}
+                      onShowDocs={() => { queryExec.setBottomPanelMode("docs"); setActiveMobileTab("editor"); }}
+                      onCompareSchemas={() => { queryExec.setBottomPanelMode("schemadiff"); setActiveMobileTab("editor"); }}
+                    />
                     <SchemaExplorer
                       schema={conn.schema}
                       isLoadingSchema={conn.isLoadingSchema}
@@ -631,6 +640,7 @@ export default function Studio() {
                       onGenerateCode={(name) => setCodeGenTable(name)}
                       onGenerateTestData={(name) => setTestDataTable(name)}
                     />
+                    </>
                   ) : (
                     <div className="flex flex-col items-center justify-center h-full text-fg-muted">
                       <Database strokeWidth={1.5} className="w-12 h-12 mb-4 opacity-30" />

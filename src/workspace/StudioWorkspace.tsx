@@ -11,6 +11,7 @@ import { CodeGenerator } from "@/components/CodeGenerator";
 import { TestDataGenerator } from "@/components/TestDataGenerator";
 import { SaveQueryModal } from "@/components/SaveQueryModal";
 import { StudioTabBar, QueryToolbar, BottomPanel } from "@/components/studio/index";
+import { SchemaTools } from "@/components/sidebar/SchemaTools";
 import type { MaskingConfig } from "@/lib/data-masking";
 import { useToast } from "@/hooks/use-toast";
 import { useTabManager } from "@/hooks/use-tab-manager";
@@ -327,6 +328,8 @@ export function StudioWorkspace({
                 onGenerateSelect={tabMgr.handleGenerateSelect}
                 onCreateTableClick={undefined}
                 onShowDiagram={features.schemaDiagram ? () => setShowDiagram(true) : undefined}
+                onShowDocs={() => queryExec.setBottomPanelMode("docs")}
+                onCompareSchemas={() => queryExec.setBottomPanelMode("schemadiff")}
                 isAdmin={false}
                 onOpenMaintenance={noop}
                 databaseType={conn.activeConnection?.type}
@@ -342,6 +345,13 @@ export function StudioWorkspace({
         <ResizablePanel id="workspace-body" defaultSize="78">
           <div className="flex-1 flex flex-col min-w-0 h-full bg-surface">
             {/* No desktop/mobile headers — platform provides its own */}
+            {isMobile && conn.activeConnection && (
+              <SchemaTools
+                onShowDiagram={features.schemaDiagram ? () => setShowDiagram(true) : undefined}
+                onShowDocs={() => queryExec.setBottomPanelMode("docs")}
+                onCompareSchemas={() => queryExec.setBottomPanelMode("schemadiff")}
+              />
+            )}
 
             <StudioTabBar
               tabs={tabMgr.tabs}

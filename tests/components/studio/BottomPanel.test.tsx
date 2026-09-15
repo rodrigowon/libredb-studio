@@ -248,7 +248,7 @@ describe("BottomPanel", () => {
     });
     const { getByText, queryByText } = render(<BottomPanel {...(props as React.ComponentProps<typeof BottomPanel>)} />);
 
-    const expectedLabels = ["Results", "EXPLAIN", "History", "Saved", "Charts", "Pivot", "Docs", "Diff", "Dashboard"];
+    const expectedLabels = ["Results", "History", "Saved", "Tools"];
     for (const label of expectedLabels) {
       const btn = getByText(label);
       expect(btn).not.toBeNull();
@@ -261,7 +261,7 @@ describe("BottomPanel", () => {
       here to catch — the milestone's gate asks for the removal to be asserted rather
       than eyeballed. Found by review on #349.
     */
-    for (const removed of ["NL2SQL", "Autopilot"]) {
+    for (const removed of ["NL2SQL", "Autopilot", "EXPLAIN", "Charts", "Pivot", "Database documentation", "Compare schemas", "Saved charts"]) {
       expect(queryByText(removed)).toBeNull();
     }
   });
@@ -272,8 +272,9 @@ describe("BottomPanel", () => {
     expect(queryByText("EXPLAIN")).toBeNull();
   });
 
-  test("Explain tab is visible when provider declares explainFormat", () => {
+  test("Explain is visible when selected programmatically on a supported provider", () => {
     const props = createDefaultProps({
+      mode: "explain",
       metadata: { capabilities: { explainFormat: "postgres-json", supportsExplain: true } },
     });
     const { getByText } = render(<BottomPanel {...(props as React.ComponentProps<typeof BottomPanel>)} />);
@@ -503,35 +504,37 @@ describe("BottomPanel", () => {
     expect(queryByText("No saved charts yet")).not.toBeNull();
   });
 
-  test("clicking Charts tab fires onSetMode with charts", () => {
+  test("clicking grouped Charts fires onSetMode with charts", async () => {
     const onSetMode = mock(() => {});
     const props = createDefaultProps({ onSetMode });
     const { getByText } = render(<BottomPanel {...(props as React.ComponentProps<typeof BottomPanel>)} />);
-    fireEvent.click(getByText("Charts").closest("button")!);
+    await userEvent.click(getByText("Tools"));
+    await userEvent.click(getByText("Charts"));
     expect(onSetMode).toHaveBeenCalledWith("charts");
   });
 
-  test("clicking Pivot tab fires onSetMode with pivot", () => {
+  test("clicking grouped Pivot fires onSetMode with pivot", async () => {
     const onSetMode = mock(() => {});
     const props = createDefaultProps({ onSetMode });
     const { getByText } = render(<BottomPanel {...(props as React.ComponentProps<typeof BottomPanel>)} />);
-    fireEvent.click(getByText("Pivot").closest("button")!);
+    await userEvent.click(getByText("Tools"));
+    await userEvent.click(getByText("Pivot"));
     expect(onSetMode).toHaveBeenCalledWith("pivot");
   });
 
   test("clicking Diff tab fires onSetMode with schemadiff", () => {
     const onSetMode = mock(() => {});
-    const props = createDefaultProps({ onSetMode });
+    const props = createDefaultProps({ onSetMode, mode: "schemadiff" });
     const { getByText } = render(<BottomPanel {...(props as React.ComponentProps<typeof BottomPanel>)} />);
-    fireEvent.click(getByText("Diff").closest("button")!);
+    fireEvent.click(getByText("Compare schemas").closest("button")!);
     expect(onSetMode).toHaveBeenCalledWith("schemadiff");
   });
 
   test("clicking Docs tab fires onSetMode with docs", () => {
     const onSetMode = mock(() => {});
-    const props = createDefaultProps({ onSetMode });
+    const props = createDefaultProps({ onSetMode, mode: "docs" });
     const { getByText } = render(<BottomPanel {...(props as React.ComponentProps<typeof BottomPanel>)} />);
-    fireEvent.click(getByText("Docs").closest("button")!);
+    fireEvent.click(getByText("Database documentation").closest("button")!);
     expect(onSetMode).toHaveBeenCalledWith("docs");
   });
 
@@ -826,7 +829,7 @@ describe("BottomPanel", () => {
     });
   });
 
-  test("renders the primary tool navigation in Brazilian Portuguese", () => {
+  test("renders primary destinations and grouped tools in Brazilian Portuguese", async () => {
     const props = createDefaultProps({
       metadata: { capabilities: { explainFormat: "postgres-json", supportsExplain: true } },
     });
@@ -834,16 +837,42 @@ describe("BottomPanel", () => {
 
     for (const label of [
       "Resultados",
-      "EXPLAIN",
       "Histórico",
       "Salvas",
-      "Gráficos",
-      "Tabela dinâmica",
-      "Documentação",
-      "Comparação",
-      "Painel",
+      "Ferramentas",
     ]) {
       expect(getByText(label)).toBeTruthy();
     }
+    await userEvent.click(getByText("Ferramentas"));
+    for (const label of ["Gráficos", "Tabela dinâmica", "Gráficos salvos"]) expect(getByText(label)).toBeTruthy();
+  });
+
+  test("saved charts remain accessible from Tools", async () => {
+    const props = createDefaultProps();
+    const { getByRole } = render(<BottomPanel {...(props as React.ComponentProps<typeof BottomPanel>)} />);
+    await userEvent.click(getByRole("button", { name: "Tools" }));
+    await userEvent.click(getByRole("menuitem", { name: "Saved charts" }));
+    expect(props.onSetMode).toHaveBeenCalledWith("dashboard");
+  });
+
+  test("a programmatic tool selection names the active tool and leaves primary destinations accessible", () => {
+    const props = createDefaultProps();
+    const { rerender, getByRole } = render(<BottomPanel {...(props as React.ComponentProps<typeof BottomPanel>)} />);
+    for (const [mode, label] of [["charts", "Charts"], ["pivot", "Pivot"], ["dashboard", "Saved charts"]] as const) {
+      rerender(<BottomPanel {...(props as React.ComponentProps<typeof BottomPanel>)} mode={mode} />);
+      expect(getByRole("button", { name: `Tools: ${label}` })).toBeTruthy();
+      for (const name of ["Results", "History", "Saved"]) expect(getByRole("button", { name })).toBeTruthy();
+    }
+  });
+
+  test("an existing EXPLAIN result remains discoverable after switching to History", () => {
+    const props = createDefaultProps({
+      mode: "history",
+      metadata: { capabilities: { explainFormat: "postgres-json" } },
+    });
+    const currentTab = { ...props.currentTab, explainPlan: [{ Plan: { "Node Type": "Result" } }] };
+    const { getByRole } = render(<BottomPanel {...(props as React.ComponentProps<typeof BottomPanel>)} currentTab={currentTab} />);
+    fireEvent.click(getByRole("button", { name: "EXPLAIN" }));
+    expect(props.onSetMode).toHaveBeenCalledWith("explain");
   });
 });

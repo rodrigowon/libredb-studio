@@ -97,7 +97,7 @@ export function StudioDesktopHeader({
         {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 gap-2 hover:bg-fill px-2">
+              <Button variant="ghost" size="sm" className="h-8 gap-2 hover:bg-fill px-2" aria-label={t("userMenu")}>
                 <User strokeWidth={1.5} className="w-3 h-3 text-blue-400" />
               </Button>
             </DropdownMenuTrigger>
@@ -120,10 +120,6 @@ export function StudioDesktopHeader({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-        <Settings
-          strokeWidth={1.5}
-          className="w-3.5 h-3.5 text-fg-tertiary cursor-pointer hover:text-fg-bright transition-colors mx-2"
-        />
         {/* Renders nothing when a host (platform) owns the theme — see ThemeToggle. */}
         <ThemeToggle className="mr-1" />
         <GitHubRepoLink className="text-fg-tertiary hover:text-fg-bright mr-2" />
