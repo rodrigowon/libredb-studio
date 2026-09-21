@@ -277,6 +277,7 @@ mock.module("lucide-react", () => {
 // ── Imports AFTER mocks ─────────────────────────────────────────────────────
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { fireEvent, cleanup } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { renderWithIntl as render } from "../helpers/render-with-intl";
 import { ConnectionModal } from "@/components/ConnectionModal";
 
@@ -295,6 +296,71 @@ function createDefaultProps(overrides: Partial<Parameters<typeof ConnectionModal
 }
 
 describe("ConnectionModal", () => {
+  test("engine and essential fields precede identification in DOM and keyboard order", () => {
+    const { getByRole, getByLabelText } = render(<ConnectionModal {...createDefaultProps()} />);
+    const ordered = [getByRole("button", { name: /PostgreSQL/ }), getByRole("button", { name: "Paste URL" }), getByLabelText("Host"), getByLabelText("Password"), getByLabelText("Connection Name"), getByRole("group", { name: "Environment" })];
+    for (let i = 1; i < ordered.length; i++) {
+      expect(ordered[i - 1].compareDocumentPosition(ordered[i]) & 4).toBe(4);
+    }
+    expect(getByRole("button", { name: /PostgreSQL/ }).getAttribute("aria-pressed")).toBe("true");
+    expect(getByLabelText("Port")).toBeTruthy();
+  });
+
+  test("SSL and SSH disclosures expose their state and support keyboard activation", async () => {
+    const user = userEvent.setup();
+    const { getByRole } = render(<ConnectionModal {...createDefaultProps()} />);
+    const ssl = getByRole("button", { name: "SSL / TLS" });
+    const ssh = getByRole("button", { name: "SSH Tunnel" });
+    expect(ssl.getAttribute("aria-expanded")).toBe("false");
+    expect(ssh.getAttribute("aria-expanded")).toBe("false");
+    ssl.focus();
+    await user.keyboard("{Enter}");
+    expect(mockSetShowSSL).toHaveBeenCalledWith(true);
+    ssh.focus();
+    await user.keyboard("{Enter}");
+    expect(mockSetShowSSH).toHaveBeenCalledWith(true);
+  });
+
+  test("wire compatibility remains available after essential fields in a collapsed disclosure", () => {
+    const { getByText, getByLabelText } = render(<ConnectionModal {...createDefaultProps()} />);
+    const summary = getByText("Driver compatibility");
+    expect(summary.closest("details")?.open).toBe(false);
+    expect(getByLabelText("Connection Name").compareDocumentPosition(summary) & 4).toBe(4);
+    expect(summary.closest("details")?.querySelector('[data-testid="wire-compat-hint"]')).toBeTruthy();
+  });
+
+  for (const locale of ["en", "pt-BR"] as const) {
+    test(`${locale}: SQLite explains server path and does not expose network settings`, () => {
+      mockFormOverrides = { type: "sqlite" };
+      const { getByLabelText, getByText, queryByRole } = render(<ConnectionModal {...createDefaultProps()} />, locale);
+      const path = getByLabelText(locale === "en" ? "Database File Path" : "Caminho do arquivo do banco de dados");
+      expect(path.getAttribute("aria-describedby")).toBe("connection-path-hint");
+      expect(getByText(locale === "en" ? "Path to the file on the server running LibreDB, not in your browser." : "Caminho do arquivo no servidor que executa o LibreDB, não no navegador.")).toBeTruthy();
+      expect(queryByRole("button", { name: /SSH/ })).toBeNull();
+    });
+
+    test(`${locale}: optional test and neutral environment hint leave submit available`, () => {
+      const { getByRole, getByText } = render(<ConnectionModal {...createDefaultProps()} />, locale);
+      expect(getByText(locale === "en" ? "Used to identify this connection’s environment." : "Usado para identificar o ambiente desta conexão.")).toBeTruthy();
+      expect(getByText(locale === "en" ? "Testing is optional. Connecting or saving also checks the connection." : "O teste é opcional. Conectar ou salvar também verifica a conexão.")).toBeTruthy();
+      fireEvent.click(getByRole("button", { name: locale === "en" ? "Connect" : "Conectar" }));
+      expect(mockHandleConnect).toHaveBeenCalledTimes(1);
+      expect(mockHandleTestConnection).not.toHaveBeenCalled();
+    });
+  }
+
+  test("expanded edit settings keep values and expose associated SSL and SSH fields", () => {
+    mockFormOverrides = { isEditMode: true, showSSL: true, sslMode: "verify-full", caCert: "test-ca", clientCert: "test-cert", clientKey: "test-key", showSSH: true, sshEnabled: true, sshHost: "bastion.test", sshUsername: "tester", sshPassword: "fixture-only" };
+    const { getByLabelText, getByRole } = render(<ConnectionModal {...createDefaultProps()} />);
+    expect((getByLabelText("CA Certificate (PEM)") as HTMLTextAreaElement).value).toBe("test-ca");
+    expect((getByLabelText("SSH Host") as HTMLInputElement).value).toBe("bastion.test");
+    expect((getByLabelText("SSH Password") as HTMLInputElement).value).toBe("fixture-only");
+    expect(getByRole("button", { name: /SSL \/ TLS/ }).getAttribute("aria-expanded")).toBe("true");
+    expect((getByRole("button", { name: /PostgreSQL/ }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(getByRole("button", { name: "Save Changes" }));
+    expect(mockHandleConnect).toHaveBeenCalledTimes(1);
+  });
+
   afterEach(() => {
     cleanup();
   });
@@ -318,7 +384,7 @@ describe("ConnectionModal", () => {
     const { queryByText } = render(React.createElement(ConnectionModal, props));
 
     expect(queryByText("New Connection")).toBeNull();
-    expect(queryByText("Establish Connection")).toBeNull();
+    expect(queryByText("Connect")).toBeNull();
   });
 
   // ── 2. Renders dialog when isOpen=true ──────────────────────────────────────
@@ -388,7 +454,7 @@ describe("ConnectionModal", () => {
     const props = createDefaultProps();
     const { queryByText, container } = render(React.createElement(ConnectionModal, props));
 
-    expect(queryByText("Host & Instance")).not.toBeNull();
+    expect(queryByText("Host")).not.toBeNull();
     const hostInput = container.querySelector("#host");
     const portInput = container.querySelector("#port");
     expect(hostInput).not.toBeNull();
@@ -406,11 +472,11 @@ describe("ConnectionModal", () => {
 
   // ── 9. Connect button renders ──────────────────────────────────────────────
 
-  test("Establish Connection button renders", () => {
+  test("Connect button renders", () => {
     const props = createDefaultProps();
     const { queryByText } = render(React.createElement(ConnectionModal, props));
 
-    expect(queryByText("Establish Connection")).not.toBeNull();
+    expect(queryByText("Connect")).not.toBeNull();
   });
 
   // ── 10. Save Changes button renders in edit mode ───────────────────────────

@@ -13,7 +13,13 @@
     "test": "Testar conexão",
     "connecting": "Conectando...",
     "saveChanges": "Salvar alterações",
-    "establish": "Criar conexão"
+    "establish": "Conectar",
+    "identification": "Identificação da conexão",
+    "advancedOptions": "Opções avançadas",
+    "driverCompatibility": "Compatibilidade do driver",
+    "environmentHint": "Usado para identificar o ambiente desta conexão.",
+    "serverPathHint": "Caminho do arquivo no servidor que executa o LibreDB, não no navegador.",
+    "testOptional": "O teste é opcional. Conectar ou salvar também verifica a conexão."
   },
   "fields": {
     "type": "Tipo de banco de dados",

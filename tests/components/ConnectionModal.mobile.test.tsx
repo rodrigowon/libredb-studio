@@ -260,6 +260,16 @@ function createDefaultProps(overrides: Partial<Parameters<typeof ConnectionModal
 }
 
 describe("ConnectionModal (mobile Drawer path)", () => {
+  test("mobile keeps engine selection, advanced disclosures and footer actions accessible", () => {
+    const { getByRole, getByLabelText } = render(<ConnectionModal {...createDefaultProps()} />);
+    expect(getByRole("group", { name: "Database Type" }).className).toContain("grid-cols-1");
+    expect(getByLabelText("Host")).toBeTruthy();
+    expect(getByRole("button", { name: "SSL / TLS" }).getAttribute("aria-expanded")).toBe("false");
+    expect(getByRole("button", { name: "SSH Tunnel" }).getAttribute("aria-expanded")).toBe("false");
+    expect(getByRole("button", { name: "Connect" })).toBeTruthy();
+    expect(getByRole("button", { name: "Cancel" })).toBeTruthy();
+  });
+
   afterEach(() => {
     cleanup();
   });

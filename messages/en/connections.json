@@ -13,7 +13,13 @@
     "test": "Test Connection",
     "connecting": "Connecting...",
     "saveChanges": "Save Changes",
-    "establish": "Establish Connection"
+    "establish": "Connect",
+    "identification": "Connection details",
+    "advancedOptions": "Advanced options",
+    "driverCompatibility": "Driver compatibility",
+    "environmentHint": "Used to identify this connection’s environment.",
+    "serverPathHint": "Path to the file on the server running LibreDB, not in your browser.",
+    "testOptional": "Testing is optional. Connecting or saving also checks the connection."
   },
   "fields": {
     "type": "Database Type",
