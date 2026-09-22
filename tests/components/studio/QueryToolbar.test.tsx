@@ -132,7 +132,7 @@ describe("QueryToolbar", () => {
   test("Edit button highlights when editingEnabled true", () => {
     const { queryByText } = render(<QueryToolbar {...createDefaultProps({ editingEnabled: true })} />);
 
-    const editText = queryByText("EDIT");
+    const editText = queryByText("EDIT RESULTS");
     expect(editText).not.toBeNull();
     const editButton = editText!.closest("button");
     expect(editButton).not.toBeNull();
@@ -145,7 +145,7 @@ describe("QueryToolbar", () => {
     // controls must keep rendering.
     const { queryByText } = render(<QueryToolbar {...createDefaultProps({ onToggleEditing: undefined })} />);
 
-    expect(queryByText("EDIT")).toBeNull();
+    expect(queryByText("EDIT RESULTS")).toBeNull();
     expect(queryByText("SANDBOX")).not.toBeNull();
     expect(queryByText("IMPORT")).not.toBeNull();
     expect(queryByText("BEGIN")).not.toBeNull();
@@ -236,7 +236,7 @@ describe("QueryToolbar", () => {
 
     expect(queryByText("BEGIN")).toBeNull();
     expect(queryByText("SANDBOX")).toBeNull();
-    expect(queryByText("EDIT")).toBeNull();
+    expect(queryByText("EDIT RESULTS")).toBeNull();
     expect(queryByText("IMPORT")).toBeNull();
     // The controls this shell does serve are outside the group and stay.
     expect(queryByText("RUN")).not.toBeNull();
@@ -290,7 +290,7 @@ describe("QueryToolbar", () => {
     expect(onTogglePlayground).toHaveBeenCalledTimes(1);
 
     // Click EDIT
-    fireEvent.click(getByText("EDIT").closest("button")!);
+    fireEvent.click(getByText("EDIT RESULTS").closest("button")!);
     expect(onToggleEditing).toHaveBeenCalledTimes(1);
 
     unmount();
@@ -377,7 +377,7 @@ describe("QueryToolbar", () => {
 
     expect(queryByText("BEGIN")).toBeNull();
     expect(queryByText("SANDBOX")).toBeNull();
-    expect(queryByText("EDIT")).toBeNull();
+    expect(queryByText("EDIT RESULTS")).toBeNull();
     expect(queryByText("IMPORT")).toBeNull();
   });
 
@@ -387,7 +387,7 @@ describe("QueryToolbar", () => {
 
     expect(queryByText("BEGIN")).toBeNull();
     expect(queryByText("SANDBOX")).toBeNull();
-    expect(queryByText("EDIT")).toBeNull();
+    expect(queryByText("EDIT RESULTS")).toBeNull();
     expect(queryByText("IMPORT")).toBeNull();
   });
 
@@ -408,33 +408,33 @@ describe("QueryToolbar", () => {
 
     expect(queryByText("BEGIN")).toBeNull();
     expect(queryByText("SANDBOX")).toBeNull();
-    expect(queryByText("EDIT")).toBeNull();
+    expect(queryByText("EDIT RESULTS")).toBeNull();
     expect(queryByText("IMPORT")).toBeNull();
   });
 
-  test("Query label always shown", () => {
+  test("Execution destination or missing connection prompt is shown", () => {
     // With connection
     const props1 = createDefaultProps();
     const { queryByText: q1 } = render(<QueryToolbar {...props1} />);
-    expect(q1("Query")).not.toBeNull();
+    expect(q1("Test PostgreSQL / testdb")).not.toBeNull();
     cleanup();
 
     // Without connection
     const props2 = createDefaultProps({ activeConnection: null });
     const { queryByText: q2 } = render(<QueryToolbar {...props2} />);
-    expect(q2("Query")).not.toBeNull();
+    expect(q2("Select a connection")).not.toBeNull();
     cleanup();
 
     // Without metadata
     const props3 = createDefaultProps({ metadata: null });
     const { queryByText: q3 } = render(<QueryToolbar {...props3} />);
-    expect(q3("Query")).not.toBeNull();
+    expect(q3("Test PostgreSQL / testdb")).not.toBeNull();
   });
 
   test("renders the editor toolbar in Brazilian Portuguese", () => {
     const { getByText } = render(<QueryToolbar {...createDefaultProps()} />, "pt-BR");
 
-    expect(getByText("Consulta")).toBeTruthy();
+    expect(getByText("Test PostgreSQL / testdb")).toBeTruthy();
     expect(getByText("EXECUTAR")).toBeTruthy();
     expect(getByText("Salvar")).toBeTruthy();
   });
@@ -442,8 +442,29 @@ describe("QueryToolbar", () => {
   test("renders the editor toolbar in English", () => {
     const { getByText } = render(<QueryToolbar {...createDefaultProps()} />, "en");
 
-    expect(getByText("Query")).toBeTruthy();
+    expect(getByText("Test PostgreSQL / testdb")).toBeTruthy();
     expect(getByText("RUN")).toBeTruthy();
     expect(getByText("Save")).toBeTruthy();
+  });
+
+  test("execution help, target and cancel describe existing actions without a rollback promise", () => {
+    const props = createDefaultProps();
+    const { getByRole, getByTitle, rerender } = render(<QueryToolbar {...props} />);
+    expect(getByTitle("Execution target: Test PostgreSQL / testdb")).toBeTruthy();
+    expect(getByRole("button", { name: "RUN" }).getAttribute("title")).toContain("statement at the cursor");
+    fireEvent.click(getByRole("button", { name: "RUN" }));
+    expect(props.onExecuteQuery).toHaveBeenCalledTimes(1);
+    rerender(<QueryToolbar {...props} isExecuting />);
+    const cancel = getByRole("button", { name: "CANCEL" });
+    expect(cancel.getAttribute("title")).toContain("does not guarantee rollback");
+    fireEvent.click(cancel);
+    expect(props.onCancelQuery).toHaveBeenCalledTimes(1);
+  });
+
+  test("result editing exposes its state without hiding active transaction controls", () => {
+    const { getByRole } = render(<QueryToolbar {...createDefaultProps()} editingEnabled transactionActive />, "pt-BR");
+    expect(getByRole("button", { name: "EDITAR RESULTADOS" }).getAttribute("aria-pressed")).toBe("true");
+    expect(getByRole("button", { name: "COMMIT" })).toBeTruthy();
+    expect(getByRole("button", { name: "ROLLBACK" })).toBeTruthy();
   });
 });

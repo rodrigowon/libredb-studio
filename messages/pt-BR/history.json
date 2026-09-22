@@ -46,7 +46,7 @@
     "search": "Buscar consultas salvas...",
     "empty": "Nenhuma consulta salva encontrada",
     "deleteConfirm": "Deseja realmente excluir esta consulta salva?",
-    "edit": "Editar {name}",
+    "edit": "Abrir {name} no editor",
     "delete": "Excluir {name}"
   }
 }

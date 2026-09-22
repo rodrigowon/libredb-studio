@@ -46,7 +46,7 @@
     "search": "Search saved queries...",
     "empty": "No saved queries found",
     "deleteConfirm": "Are you sure you want to delete this saved query?",
-    "edit": "Edit {name}",
+    "edit": "Open {name} in editor",
     "delete": "Delete {name}"
   }
 }

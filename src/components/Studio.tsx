@@ -532,6 +532,8 @@ export default function Studio() {
               {...transactionHandlers}
               onToggleEditing={onToggleEditing}
               onImport={() => setIsImportModalOpen(true)}
+              supportsExplainAnalyze={metadata?.capabilities.supportsExplainAnalyze}
+              queryLanguage={metadata?.capabilities.queryLanguage}
               onExplain={
                 metadata?.capabilities.supportsExplain
                   ? () => queryExec.executeQuery(undefined, undefined, true)

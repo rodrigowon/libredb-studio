@@ -10,7 +10,7 @@ import React from "react";
 let capturedBlurCb: (() => void) | null = null;
 let capturedSelectionCb: (() => void) | null = null;
 let capturedCommands: Array<{ keybinding: number; handler: () => void }> = [];
-let capturedActions: Array<{ id: string; precondition?: string; run: () => void }> = [];
+let capturedActions: Array<{ id: string; label?: string; precondition?: string; run: () => void }> = [];
 let capturedContextKeys: Record<string, boolean> = {};
 let mockSelectionReturn: { isEmpty: () => boolean } | null = null;
 let mockSelectedText = "";
@@ -367,7 +367,29 @@ describe("QueryEditor", () => {
       capabilities: defaultCapabilities,
     });
     const { queryByText } = render(React.createElement(QueryEditor, props));
-    expect(queryByText("EXPLAIN")).not.toBeNull();
+    expect(queryByText("EXPLAIN · Estimate")).not.toBeNull();
+  });
+
+  test("EXPLAIN presentation follows analyze capability, including context-menu labels", () => {
+    const onExplain = mock(() => {});
+    const props = createDefaultProps({ onExplain, capabilities: { ...defaultCapabilities, supportsExplainAnalyze: false } });
+    const { getByRole, rerender } = render(<QueryEditor {...props} />);
+    expect(getByRole("button", { name: "EXPLAIN · Estimate" }).getAttribute("title")).toContain("without executing");
+    rerender(<QueryEditor {...props} capabilities={{ ...defaultCapabilities, supportsExplainAnalyze: true }} />);
+    const analyze = getByRole("button", { name: "EXPLAIN ANALYZE" });
+    expect(analyze.getAttribute("title")).toBe("Executes the query to collect actual metrics.");
+    expect(capturedActions.filter((action) => action.id === "explain-query").at(-1)?.label).toContain("EXPLAIN ANALYZE");
+    fireEvent.click(analyze);
+    expect(onExplain).toHaveBeenCalledTimes(1);
+    rerender(<QueryEditor {...props} />);
+    expect(getByRole("button", { name: "EXPLAIN · Estimate" })).toBeTruthy();
+    expect(capturedActions.filter((action) => action.id === "explain-query").at(-1)?.label).toContain("Estimate");
+  });
+
+  test("Portuguese EXPLAIN states that ANALYZE executes the query", () => {
+    const props = createDefaultProps({ onExplain: mock(() => {}), capabilities: { ...defaultCapabilities, supportsExplainAnalyze: true } });
+    const { getByRole } = render(<QueryEditor {...props} />, "pt-BR");
+    expect(getByRole("button", { name: "EXPLAIN ANALYZE" }).getAttribute("title")).toBe("Executa a consulta para coletar métricas reais.");
   });
 
   test("Explain button hidden without onExplain", () => {
@@ -376,7 +398,7 @@ describe("QueryEditor", () => {
       capabilities: defaultCapabilities,
     });
     const { queryByText } = render(React.createElement(QueryEditor, props));
-    expect(queryByText("EXPLAIN")).toBeNull();
+    expect(queryByText("EXPLAIN · Estimate")).toBeNull();
   });
 
   test("Explain button hidden when supportsExplain is false", () => {
@@ -385,7 +407,7 @@ describe("QueryEditor", () => {
       capabilities: { ...defaultCapabilities, supportsExplain: false },
     });
     const { queryByText } = render(React.createElement(QueryEditor, props));
-    expect(queryByText("EXPLAIN")).toBeNull();
+    expect(queryByText("EXPLAIN · Estimate")).toBeNull();
   });
 
   test("Explain button hidden when no capabilities", () => {
@@ -394,7 +416,7 @@ describe("QueryEditor", () => {
       capabilities: undefined,
     });
     const { queryByText } = render(React.createElement(QueryEditor, props));
-    expect(queryByText("EXPLAIN")).toBeNull();
+    expect(queryByText("EXPLAIN · Estimate")).toBeNull();
   });
 
   test("Explain click calls onExplain handler", () => {
@@ -404,7 +426,7 @@ describe("QueryEditor", () => {
       capabilities: defaultCapabilities,
     });
     const { queryByText } = render(React.createElement(QueryEditor, props));
-    fireEvent.click(queryByText("EXPLAIN")!);
+    fireEvent.click(queryByText("EXPLAIN · Estimate")!);
     expect(onExplain).toHaveBeenCalled();
   });
 
@@ -1495,6 +1517,37 @@ describe("QueryEditor", () => {
   });
 
   // -----------------------------------------------------------------------
+  // Characterization of preexisting mount-time shortcut behavior, not desired semantics.
+  test("mount-time shortcuts retain null Monaco while the current ref resolves statements and selection", () => {
+    mockUseMonacoReturn = null;
+    const buffer = "SELECT 1;\nSELECT 2;";
+    const editorRef = React.createRef<React.ElementRef<typeof QueryEditor>>();
+    const props = createDefaultProps({ value: buffer });
+    const queries: string[] = [];
+    const listener: EventListener = (event) => {
+      queries.push((event as CustomEvent<{ query: string }>).detail.query);
+    };
+    window.addEventListener("execute-query", listener);
+    try {
+      const { rerender } = render(<QueryEditor {...props} ref={editorRef} />);
+      mockUseMonacoReturn = { Range: class {} };
+      rerender(<QueryEditor {...props} ref={editorRef} />);
+      for (const offset of [2, 12]) {
+        mockCursorOffset = offset;
+        expect(editorRef.current?.getEffectiveQuery()).toBe(offset === 2 ? "SELECT 1" : "SELECT 2");
+        act(() => capturedCommands[0].handler());
+        expect(queries.at(-1)).toBe(buffer);
+      }
+      mockSelectionReturn = { isEmpty: () => false };
+      mockSelectedText = "SELECT 2;";
+      expect(editorRef.current?.getEffectiveQuery()).toBe("SELECT 2;");
+      act(() => capturedActions.find((action) => action.id === "run-query")!.run());
+      expect(queries).toEqual([buffer, buffer, buffer]);
+    } finally {
+      window.removeEventListener("execute-query", listener);
+    }
+  });
+
   // flashHighlight — edge cases
   // -----------------------------------------------------------------------
 

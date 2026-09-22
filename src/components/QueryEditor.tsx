@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useState, useMemo, forwardRef, useImperativeHandle } from "react";
+import React, { useRef, useEffect, useState, useMemo, useCallback, forwardRef, useImperativeHandle } from "react";
 import Editor from "@monaco-editor/react";
 import type * as Monaco from "monaco-editor";
 import { Zap, LoaderCircle, TextAlignStart, Trash2, Copy, Play, Hash } from "lucide-react";
@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { splitStatements } from "@/lib/sql/statement-splitter";
 import { resolveSqlGrammar } from "@/lib/sql/grammar";
 import type { DatabaseType } from "@/lib/types";
+import { useExecutionShortcut } from "@/hooks/use-execution-shortcut";
 
 // Serve Monaco from our own origin rather than @monaco-editor/react's jsdelivr default.
 // Runs at module load so it is in place before the first <Editor> mounts.
@@ -114,6 +115,9 @@ export const QueryEditor = forwardRef<QueryEditorRef, QueryEditorProps>(
     ref,
   ) => {
     const t = useTranslations("Editor.toolbar");
+    const shortcut = useExecutionShortcut();
+    const explainLabel = t(capabilities?.supportsExplainAnalyze === true ? "explainAnalyze" : "explainEstimate");
+    const explainHint = t(capabilities?.supportsExplainAnalyze === true ? "explainAnalyzeHint" : "explainEstimateHint");
     const monaco = useMonacoInstance();
     const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
     const [hasSelection, setHasSelection] = useState(false);
@@ -130,6 +134,26 @@ export const QueryEditor = forwardRef<QueryEditorRef, QueryEditorProps>(
     // therefore read at invocation time (#200).
     const explainHandlerRef = useRef<(() => void) | undefined>(canExplain ? onExplain : undefined);
     const canExplainKeyRef = useRef<Monaco.editor.IContextKey<boolean> | null>(null);
+    const explainActionRef = useRef<Monaco.IDisposable | null>(null);
+    const registerExplainAction = useCallback((editor: Monaco.editor.IStandaloneCodeEditor) => {
+      explainActionRef.current?.dispose();
+      explainActionRef.current = editor.addAction({
+        id: "explain-query",
+        label: `${explainLabel} — ${explainHint}`,
+        precondition: CAN_EXPLAIN_CONTEXT_KEY,
+        contextMenuGroupId: "navigation",
+        contextMenuOrder: 2,
+        run: () => explainHandlerRef.current?.(),
+      });
+    }, [explainLabel, explainHint]);
+
+    useEffect(() => {
+      if (editorRef.current) registerExplainAction(editorRef.current);
+      return () => {
+        explainActionRef.current?.dispose();
+        explainActionRef.current = null;
+      };
+    }, [registerExplainAction]);
 
     useEffect(() => {
       explainHandlerRef.current = canExplain ? onExplain : undefined;
@@ -541,7 +565,7 @@ export const QueryEditor = forwardRef<QueryEditorRef, QueryEditorProps>(
     return (
       <div className="h-full w-full flex flex-col bg-canvas relative overflow-hidden group">
         {/* Dynamic Pro Toolbar - Hidden on mobile */}
-        <div className="hidden md:flex items-center gap-1 px-4 py-1.5 bg-surface border-b border-hairline overflow-x-auto no-scrollbar scroll-smooth">
+        <div className="hidden md:flex items-center gap-1 px-4 py-1 bg-canvas border-b border-hairline overflow-x-auto no-scrollbar scroll-smooth">
           {hasSelection && (
             <Button
               variant="ghost"
@@ -602,19 +626,20 @@ export const QueryEditor = forwardRef<QueryEditorRef, QueryEditorProps>(
 
           <div className="flex-1" />
 
-          <div className="flex items-center gap-2 opacity-50 hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-2 shrink-0">
             {canExplain && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-7 text-xs font-medium text-amber-500 hover:text-amber-400 gap-2"
                 onClick={onExplain}
+                title={explainHint}
               >
-                <Zap strokeWidth={1.5} className="w-3 h-3" /> {t("explain")}
+                <Zap strokeWidth={1.5} className="w-3 h-3" /> {explainLabel}
               </Button>
             )}
-            <kbd className="px-1.5 py-0.5 rounded bg-raised border border-hairline text-[0.5625rem] text-fg-subtle font-mono">
-              ⌘+Enter
+            <kbd title={t(language === "sql" ? "executionSqlHint" : "executionContentHint")} className="px-1.5 py-0.5 rounded bg-raised border border-hairline text-[0.5625rem] text-fg-subtle font-mono">
+              {shortcut}
             </kbd>
           </div>
         </div>
@@ -670,14 +695,7 @@ export const QueryEditor = forwardRef<QueryEditorRef, QueryEditorProps>(
                 CAN_EXPLAIN_CONTEXT_KEY,
                 Boolean(explainHandlerRef.current),
               );
-              editor.addAction({
-                id: "explain-query",
-                label: t("explainPlan"),
-                precondition: CAN_EXPLAIN_CONTEXT_KEY,
-                contextMenuGroupId: "navigation",
-                contextMenuOrder: 2,
-                run: () => explainHandlerRef.current?.(),
-              });
+              registerExplainAction(editor);
 
               editor.addAction({
                 id: "format-sql",

@@ -80,6 +80,8 @@ interface StudioMobileHeaderProps {
   onToggleEditing?: () => void;
   onImport: () => void;
   onExplain?: () => void;
+  supportsExplainAnalyze?: boolean;
+  queryLanguage?: string;
   /**
    * Asks the agent about what the editor is holding (#331 T3). It replaced a button
    * that toggled the in-editor AI chat through `queryEditorRef`; the chat is gone,
@@ -118,6 +120,8 @@ export function StudioMobileHeader({
   onToggleEditing,
   onImport,
   onExplain,
+  supportsExplainAnalyze = false,
+  queryLanguage,
   onAskAgent,
 }: StudioMobileHeaderProps) {
   const router = useRouter();
@@ -283,7 +287,7 @@ export function StudioMobileHeader({
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs text-fg-muted">
+                <Button variant="ghost" size="sm" aria-label={tEditor("moreActions")} className="h-7 px-2 gap-1 text-xs text-fg-muted">
                   <EllipsisVertical strokeWidth={1.5} className="w-3 h-3" />
                 </Button>
               </DropdownMenuTrigger>
@@ -316,8 +320,11 @@ export function StudioMobileHeader({
                 {onExplain && (
                   <>
                     <DropdownMenuSeparator className="bg-fill" />
-                    <DropdownMenuItem onClick={onExplain} className="cursor-pointer text-xs text-amber-400">
-                      <Zap strokeWidth={1.5} className="w-3.5 h-3.5 mr-2" /> {tEditor("explainPlan")}
+                    <DropdownMenuItem onClick={onExplain} className="cursor-pointer text-xs items-start">
+                      <Zap strokeWidth={1.5} className="w-3.5 h-3.5 mr-2 shrink-0" />
+                      <span>{tEditor(supportsExplainAnalyze ? "explainAnalyze" : "explainEstimate")}
+                        <span className="block text-fg-muted mt-1">{tEditor(supportsExplainAnalyze ? "explainAnalyzeHint" : "explainEstimateHint")}</span>
+                      </span>
                     </DropdownMenuItem>
                   </>
                 )}
@@ -388,6 +395,7 @@ export function StudioMobileHeader({
               size="sm"
               className="bg-red-600 hover:bg-red-500 text-white font-medium text-xs h-7 px-4 gap-1.5"
               onClick={onCancelQuery}
+              title={tEditor("cancelHint")}
             >
               <Square strokeWidth={1.5} className="w-3 h-3 fill-current" />
               {tEditor("cancel").toUpperCase()}
@@ -397,6 +405,7 @@ export function StudioMobileHeader({
               size="sm"
               className="bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs h-7 px-4 gap-1.5"
               onClick={onExecuteQuery}
+              title={tEditor(queryLanguage === "sql" ? "executionSqlHint" : "executionContentHint")}
               disabled={!activeConnection}
             >
               <Play strokeWidth={1.5} className="w-3 h-3 fill-current" />

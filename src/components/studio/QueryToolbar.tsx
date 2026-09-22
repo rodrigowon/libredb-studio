@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { FlaskConical, Pencil, Play, Save, Square, Terminal, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "next-intl";
+import { useExecutionShortcut } from "@/hooks/use-execution-shortcut";
 
 interface QueryToolbarProps {
   activeConnection: DatabaseConnection | null;
@@ -54,6 +55,9 @@ export function QueryToolbar({
   onImport,
 }: QueryToolbarProps) {
   const t = useTranslations("Editor.toolbar");
+  const shortcut = useExecutionShortcut();
+  const executionHint = t(metadata?.capabilities.queryLanguage === "sql" ? "executionSqlHint" : "executionContentHint");
+  const target = activeConnection ? [activeConnection.name, activeConnection.database].filter(Boolean).join(" / ") : t("noTarget");
   // Bundled so the three cannot be half-supplied: a caller offering BEGIN without
   // COMMIT would strand the user inside a transaction it cannot close.
   const transaction =
@@ -75,11 +79,11 @@ export function QueryToolbar({
       )}
 
       {/* Desktop Query Toolbar */}
-      <div className="hidden md:flex items-center justify-between px-4 py-1.5 bg-surface border-b border-hairline">
+      <div className="hidden md:flex flex-wrap items-center justify-between gap-2 px-4 py-1.5 bg-surface border-b border-hairline">
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 px-2 py-0.5 rounded bg-blue-500/5 border border-blue-500/10">
+          <div title={t("executionTarget", { target })} className="flex items-center gap-2 min-w-0 text-fg-muted">
             <Terminal strokeWidth={1.5} className="w-3 h-3 text-blue-400" />
-            <span className="text-xs font-medium text-blue-400">{t("query")}</span>
+            <span className="text-xs max-w-48 truncate">{target}</span>
           </div>
           {/* The separator is chrome for Save; with Save withheld it would be a rule
               standing alone, the same reason the control group drops its border (#427). */}
@@ -102,6 +106,7 @@ export function QueryToolbar({
             size="sm"
             className="bg-red-600 hover:bg-red-500 text-white font-medium text-xs h-7 px-4 gap-2"
             onClick={onCancelQuery}
+            title={t("cancelHint")}
           >
             <Square strokeWidth={1.5} className="w-3 h-3 fill-current" />
             {t("cancel").toUpperCase()}
@@ -111,6 +116,7 @@ export function QueryToolbar({
             size="sm"
             className="bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs h-7 px-4 gap-2"
             onClick={onExecuteQuery}
+            title={`${executionHint} (${shortcut})`}
             disabled={!activeConnection}
           >
             <Play strokeWidth={1.5} className="w-3 h-3 fill-current" />
@@ -186,6 +192,7 @@ export function QueryToolbar({
                     : "text-fg-muted hover:text-fg-bright",
                 )}
                 onClick={onToggleEditing}
+                aria-pressed={editingEnabled}
                 title={t("editTitle")}
               >
                 <Pencil strokeWidth={1.5} className="w-3 h-3" />

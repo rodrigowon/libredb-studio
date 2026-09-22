@@ -157,6 +157,14 @@ describe("StudioMobileHeader", () => {
     expect(container.textContent).toContain("Online");
   });
 
+  test("mobile EXPLAIN ANALYZE includes execution microcopy and retains its callback", () => {
+    const { getByText, getByRole } = render(<StudioMobileHeader {...defaults} onExplain={mockOnExplain} supportsExplainAnalyze />);
+    expect(getByRole("button", { name: "Query actions" })).toBeTruthy();
+    expect(getByText("Executes the query to collect actual metrics.")).toBeTruthy();
+    fireEvent.click(getByText("EXPLAIN ANALYZE"));
+    expect(mockOnExplain).toHaveBeenCalledTimes(1);
+  });
+
   test("shows RUN button when on editor tab", () => {
     const { queryByText } = render(<StudioMobileHeader {...defaults} />);
     expect(queryByText("RUN")).not.toBeNull();
@@ -213,7 +221,7 @@ describe("StudioMobileHeader", () => {
 
   test("Explain Plan click calls onExplain when provided", () => {
     const { queryByText } = render(<StudioMobileHeader {...defaults} onExplain={mockOnExplain} />);
-    const explainItem = queryByText("EXPLAIN Plan");
+    const explainItem = queryByText("EXPLAIN · Estimate");
     expect(explainItem).not.toBeNull();
     fireEvent.click(explainItem!.closest('[role="menuitem"]')!);
     expect(mockOnExplain).toHaveBeenCalledTimes(1);
@@ -221,7 +229,7 @@ describe("StudioMobileHeader", () => {
 
   test("Explain Plan not rendered when onExplain is undefined", () => {
     const { queryByText } = render(<StudioMobileHeader {...defaults} />);
-    expect(queryByText("EXPLAIN Plan")).toBeNull();
+    expect(queryByText("EXPLAIN · Estimate")).toBeNull();
   });
 
   test("BEGIN Transaction click calls onBeginTransaction", () => {
@@ -258,7 +266,7 @@ describe("StudioMobileHeader", () => {
 
   test("Enable Editing click calls onToggleEditing", () => {
     const { queryByText } = render(<StudioMobileHeader {...defaults} />);
-    const item = queryByText("Enable Editing");
+    const item = queryByText("Enable result editing");
     expect(item).not.toBeNull();
     fireEvent.click(item!.closest('[role="menuitem"]')!);
     expect(mockOnToggleEditing).toHaveBeenCalledTimes(1);
@@ -268,7 +276,7 @@ describe("StudioMobileHeader", () => {
     // Same shape as Explain Plan above: Studio withholds the callback where the
     // provider declares no single-table row-update statement.
     const { queryByText } = render(<StudioMobileHeader {...defaults} onToggleEditing={undefined} />);
-    expect(queryByText("Enable Editing")).toBeNull();
+    expect(queryByText("Enable result editing")).toBeNull();
     expect(queryByText("Enable Sandbox")).not.toBeNull();
     expect(queryByText("Import Data")).not.toBeNull();
   });

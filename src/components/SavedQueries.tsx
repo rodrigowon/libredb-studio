@@ -96,6 +96,7 @@ export function SavedQueries({ onSelectQuery, connectionType, refreshTrigger }: 
                       variant="ghost"
                       size="icon"
                       aria-label={t("edit", { name: q.name })}
+                      title={t("edit", { name: q.name })}
                       className="h-6 w-6 text-fg-muted hover:text-fg-bright"
                       onClick={() => onSelectQuery(q.query)}
                     >

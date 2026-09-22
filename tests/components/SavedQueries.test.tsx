@@ -66,10 +66,10 @@ describe("SavedQueries", () => {
     expect(onSelectQuery).toHaveBeenCalledWith("SELECT * FROM users WHERE active = true");
   });
 
-  test("edit button loads the query for editing", () => {
+  test("open in editor loads SQL without editing the saved record", () => {
     const onSelectQuery = mock(() => {});
     const { getByRole } = render(<SavedQueries onSelectQuery={onSelectQuery} />);
-    fireEvent.click(getByRole("button", { name: "Edit Active Users" }));
+    fireEvent.click(getByRole("button", { name: "Open Active Users in editor" }));
     expect(onSelectQuery).toHaveBeenCalledTimes(1);
     expect(onSelectQuery).toHaveBeenCalledWith("SELECT * FROM users WHERE active = true");
   });
