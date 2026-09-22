@@ -502,8 +502,8 @@ export function ResultsGrid({
     // not rendered in this state - so the notices are shown outright.
     const emptyWarnings = result?.warnings ?? [];
     return (
-      <div className="h-full flex flex-col items-center justify-center p-8 text-center text-fg-subtle animate-in fade-in zoom-in-95 duration-500">
-        <div className="w-16 h-16 rounded-2xl bg-panel flex items-center justify-center mb-6 border border-hairline shadow-2xl">
+      <div className="h-full flex flex-col items-center justify-center p-6 text-center text-fg-secondary">
+        <div className="w-8 h-8 flex items-center justify-center mb-3">
           <span className="text-2xl text-fg-muted">&#x2205;</span>
         </div>
         <p className="text-xs font-medium text-fg-tertiary">{t("empty.title")}</p>
@@ -517,7 +517,7 @@ export function ResultsGrid({
             </ul>
           </div>
         )}
-        <p className="text-xs text-fg-subtle mt-2 max-w-[280px] leading-relaxed">{t("empty.hint")}</p>
+        <p className="text-xs text-fg-muted mt-2 max-w-[280px] leading-relaxed">{t("empty.hint")}</p>
       </div>
     );
   }
@@ -683,6 +683,12 @@ export function ResultsGrid({
             )}
           </div>
 
+          {rows.length === 0 && (
+            <div className="p-6 text-center text-xs text-fg-secondary">
+              <p className="font-medium">{t("empty.filteredTitle")}</p>
+              <p className="mt-1 text-fg-muted">{t("empty.filteredHint")}</p>
+            </div>
+          )}
           <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: "relative" }}>
             {rowVirtualizer.getVirtualItems().map((virtualRow) => {
               const row = rows[virtualRow.index];

@@ -63,6 +63,15 @@ function createDefaultProps(overrides: Partial<Parameters<typeof QueryHistory>[0
 }
 
 describe("QueryHistory", () => {
+  test("distinguishes first use from a connection with no matching history", () => {
+    mockGetHistory.mockImplementationOnce(() => []);
+    const empty = render(<QueryHistory onSelectQuery={() => {}} />);
+    expect(empty.getByText("No executions recorded")).toBeTruthy();
+    empty.unmount();
+    const filtered = render(<QueryHistory onSelectQuery={() => {}} activeConnectionId="missing" />);
+    expect(filtered.getByText("No executions match these filters")).toBeTruthy();
+    expect(filtered.queryByText("No executions recorded")).toBeNull();
+  });
   afterEach(() => {
     cleanup();
   });
@@ -175,8 +184,8 @@ describe("QueryHistory", () => {
     const searchInput = view.getByPlaceholderText("Search by query, connection or tab...");
     await user.type(searchInput, "NONEXISTENT_QUERY_XYZ");
 
-    expect(view.queryByText("No history items found")).not.toBeNull();
-    expect(view.queryByText("Run some queries to see them here")).not.toBeNull();
+    expect(view.queryByText("No executions match these filters")).not.toBeNull();
+    expect(view.queryByText("Adjust the search, status or connection filter.")).not.toBeNull();
   });
 
   // ── Shows execution time and row count ────────────────────────────────────

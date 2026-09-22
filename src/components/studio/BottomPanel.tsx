@@ -569,10 +569,10 @@ export function BottomPanel({
                 onDiscardChanges={onDiscardChanges}
               />
             ) : (
-              <div className="h-full flex flex-col items-center justify-center opacity-20 bg-surface">
-                <Terminal strokeWidth={1.5} className="w-12 h-12 mb-4" />
-                <p className="text-xs font-medium">{t("empty")}</p>
-                <p className="text-xs mt-2">{t("ready")}</p>
+              <div className="h-full flex flex-col items-center justify-center p-6 text-center text-fg-secondary bg-surface">
+                <Terminal strokeWidth={1.5} className="w-8 h-8 mb-3 text-fg-muted" />
+                <p className="text-xs font-medium">{t(activeConnection ? "empty" : "noConnection")}</p>
+                <p className="text-xs text-fg-muted mt-2 max-w-sm">{t(activeConnection ? "ready" : "noConnectionHint")}</p>
               </div>
             )}
           </React.Suspense>

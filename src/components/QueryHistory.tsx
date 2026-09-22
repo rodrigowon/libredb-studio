@@ -254,10 +254,10 @@ export function QueryHistory({ onSelectQuery, activeConnectionId, refreshTrigger
 
       <div className="flex-1 overflow-auto custom-scrollbar">
         {filteredHistory.length === 0 && (
-          <div className="h-full flex flex-col items-center justify-center opacity-20 p-8 text-center">
-            <HistoryIcon strokeWidth={1.5} className="w-16 h-16 mb-4 text-fg-subtle" />
-            <p className="text-xs font-medium">{t("emptyTitle")}</p>
-            <p className="text-xs text-fg-muted mt-1">{t("emptyHint")}</p>
+          <div className="h-full flex flex-col items-center justify-center p-6 text-center text-fg-secondary">
+            <HistoryIcon strokeWidth={1.5} className="w-8 h-8 mb-3 text-fg-muted" />
+            <p className="text-xs font-medium">{t(history.length === 0 ? "emptyTitle" : "filteredEmptyTitle")}</p>
+            <p className="text-xs text-fg-muted mt-1">{t(history.length === 0 ? "emptyHint" : "filteredEmptyHint")}</p>
           </div>
         )}
         {filteredHistory.length > 0 && (

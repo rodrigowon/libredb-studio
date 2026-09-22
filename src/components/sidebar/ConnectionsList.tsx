@@ -31,7 +31,7 @@ export function ConnectionsList({
 
       <div className="space-y-0.5">
         {connections.length === 0 ? (
-          <div className="px-3 py-6 text-center border border-dashed border-border/50 rounded-lg mx-2">
+          <div className="px-3 py-6 text-center mx-2">
             <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
               {t("noConnections")}
             </p>
@@ -40,7 +40,9 @@ export function ConnectionsList({
             </Button>
           </div>
         ) : (
-          connections.map((conn) => (
+          <>
+          {!activeConnection && <p className="px-3 py-2 text-xs text-muted-foreground">{t("selectConnectionHint")}</p>}
+          {connections.map((conn) => (
             <ConnectionItem
               key={conn.id}
               connection={conn}
@@ -49,7 +51,8 @@ export function ConnectionsList({
               onDelete={onDeleteConnection}
               onEdit={onEditConnection}
             />
-          ))
+          ))}
+          </>
         )}
       </div>
     </section>

@@ -1,7 +1,9 @@
 {
   "empty": {
-    "title": "A consulta não retornou dados",
-    "hint": "A operação foi concluída, mas o conjunto de resultados está vazio.",
+    "filteredTitle": "Nenhuma linha corresponde aos filtros de coluna",
+    "filteredHint": "Altere ou limpe os filtros de coluna para ver as linhas retornadas.",
+    "title": "Consulta concluída — nenhuma linha retornada",
+    "hint": "Revise as condições da consulta se esperava encontrar dados.",
     "engineWarnings": "O mecanismo informou:"
   },
   "table": {

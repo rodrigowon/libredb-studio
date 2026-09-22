@@ -126,7 +126,7 @@ describe("i18n message loading", () => {
     expect(messages.Studio.navigation.results).toBe("Resultados");
     expect(messages.Connections.modal.newTitle).toBe("Nova conexão");
     expect(messages.Editor.toolbar.run).toBe("Executar");
-    expect(messages.Results.empty.title).toBe("A consulta não retornou dados");
+    expect(messages.Results.empty.title).toBe("Consulta concluída — nenhuma linha retornada");
     expect(messages.History.saved.title).toBe("Consultas salvas");
     expect(messages.DataTools.pivot.title).toBe("Tabela dinâmica");
     expect(messages.Docs.title).toBe("Documentação do banco");

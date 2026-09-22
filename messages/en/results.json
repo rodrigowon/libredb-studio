@@ -1,7 +1,9 @@
 {
   "empty": {
-    "title": "Query returned no data",
-    "hint": "The operation was successful, but the result set is currently empty.",
+    "filteredTitle": "No rows match the column filters",
+    "filteredHint": "Change or clear the column filters to see the returned rows.",
+    "title": "Query completed — no rows returned",
+    "hint": "Review the query conditions if you expected data.",
     "engineWarnings": "The engine reported:"
   },
   "table": {

@@ -1,5 +1,7 @@
 {
   "history": {
+    "filteredEmptyHint": "Ajuste a busca, o status ou o filtro de conexão.",
+    "filteredEmptyTitle": "Nenhuma execução para estes filtros",
     "title": "Histórico de consultas",
     "showing": "Exibindo {count, plural, =0 {# execuções} one {# execução} other {# execuções}}",
     "export": "Exportar",
@@ -16,8 +18,8 @@
       "success": "Sucesso",
       "error": "Erro"
     },
-    "emptyTitle": "Nenhum item encontrado no histórico",
-    "emptyHint": "Execute consultas para vê-las aqui",
+    "emptyTitle": "Nenhuma execução registrada",
+    "emptyHint": "Suas consultas executadas aparecerão aqui.",
     "columns": {
       "status": "Status",
       "executedAt": "Executada em",
@@ -42,9 +44,12 @@
     }
   },
   "saved": {
+    "filteredEmptyHint": "Ajuste a busca ou selecione uma conexão de outro tipo.",
+    "filteredEmpty": "Nenhuma consulta salva corresponde aos filtros",
+    "emptyHint": "Salve uma consulta pelo editor para reutilizá-la depois.",
     "title": "Consultas salvas",
     "search": "Buscar consultas salvas...",
-    "empty": "Nenhuma consulta salva encontrada",
+    "empty": "Nenhuma consulta salva",
     "deleteConfirm": "Deseja realmente excluir esta consulta salva?",
     "edit": "Abrir {name} no editor",
     "delete": "Excluir {name}"

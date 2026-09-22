@@ -271,5 +271,6 @@ describe("ConnectionsList", () => {
     );
 
     expect(queryByText("No database connections established yet.")).toBeNull();
+    expect(queryByText("Select a connection from the list to explore the database.")).not.toBeNull();
   });
 });

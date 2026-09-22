@@ -40,6 +40,15 @@ mock.module("date-fns", () => ({
 import { SavedQueries } from "@/components/SavedQueries";
 
 describe("SavedQueries", () => {
+  test("distinguishes no saved queries from a different connection type", () => {
+    mockGetSavedQueries.mockImplementationOnce(() => []);
+    const empty = render(<SavedQueries onSelectQuery={() => {}} />);
+    expect(empty.getByText("Save a query from the editor to reuse it later.")).toBeTruthy();
+    empty.unmount();
+    const filtered = render(<SavedQueries onSelectQuery={() => {}} connectionType="sqlite" />);
+    expect(filtered.getByText("No saved queries match the filters")).toBeTruthy();
+    expect(filtered.queryByText("No saved queries")).toBeNull();
+  });
   afterEach(() => {
     cleanup();
   });
@@ -99,7 +108,7 @@ describe("SavedQueries", () => {
       // stopPropagation keeps the card onClick from firing
       expect(onSelectQuery).not.toHaveBeenCalled();
       expect(queryByText("Active Users")).toBeNull();
-      expect(queryByText("No saved queries found")).not.toBeNull();
+      expect(queryByText("No saved queries")).not.toBeNull();
     } finally {
       globalThis.confirm = originalConfirm;
     }
@@ -123,7 +132,7 @@ describe("SavedQueries", () => {
   test("shows empty state when no queries match", () => {
     mockGetSavedQueries.mockImplementation(() => []);
     const { queryByText } = render(<SavedQueries onSelectQuery={mock(() => {})} />);
-    expect(queryByText("No saved queries found")).not.toBeNull();
+    expect(queryByText("No saved queries")).not.toBeNull();
   });
 
   // ── refreshTrigger change reloads saved queries ────────────────────

@@ -203,7 +203,7 @@ describe("ResultsGrid", () => {
   test("renders empty state when result has empty rows", () => {
     const { queryByText } = render(React.createElement(ResultsGrid, { result: mockEmptyResult }));
 
-    expect(queryByText("Query returned no data")).not.toBeNull();
+    expect(queryByText("Query completed — no rows returned")).not.toBeNull();
   });
 
   // ── 2. Renders column headers from result.fields ──────────────────────────
@@ -338,7 +338,7 @@ describe("ResultsGrid", () => {
   test("empty state contains helpful message", () => {
     const { queryByText } = render(React.createElement(ResultsGrid, { result: mockEmptyResult }));
 
-    expect(queryByText("The operation was successful, but the result set is currently empty.")).not.toBeNull();
+    expect(queryByText("Review the query conditions if you expected data.")).not.toBeNull();
   });
 
   // ── 13. Column headers are interactive (sort on click) ────────────────────
@@ -635,6 +635,8 @@ describe("ResultsGrid", () => {
       fireEvent.change(filterInput, { target: { value: "Nonexistent" } });
 
       expect(container.querySelector('[data-testid="filtered-count"]')?.textContent).toContain("0 filtered");
+      expect(container.textContent).toContain("No rows match the column filters");
+      expect(container.textContent).not.toContain("Query completed — no rows returned");
     });
   });
 
@@ -1028,19 +1030,19 @@ describe("ResultsGrid", () => {
     const { container } = render(React.createElement(ResultsGrid, { result }));
 
     const text = container.textContent ?? "";
-    expect(text).toContain("Query returned no data");
+    expect(text).toContain("Query completed — no rows returned");
     expect(text).toContain("2 segments of the queried data were unavailable.");
     // The warning has to come before the "operation was successful" reassurance -
     // a reader who stops at the reassurance is back to being told the data is absent.
     expect(text.indexOf("2 segments of the queried data were unavailable.")).toBeLessThan(
-      text.indexOf("The operation was successful"),
+      text.indexOf("Review the query conditions"),
     );
   });
 
   test("keeps the empty state unchanged when the engine reported no warnings", () => {
     const { container } = render(React.createElement(ResultsGrid, { result: mockEmptyResult }));
 
-    expect(container.textContent).toContain("Query returned no data");
+    expect(container.textContent).toContain("Query completed — no rows returned");
     expect(container.querySelector("ul")).toBeNull();
   });
 
@@ -1122,7 +1124,7 @@ describe("ResultsGrid", () => {
       React.createElement(ResultsGrid, { result: mockEmptyResult }),
       "pt-BR",
     );
-    expect(getByText("A consulta não retornou dados")).toBeTruthy();
+    expect(getByText("Consulta concluída — nenhuma linha retornada")).toBeTruthy();
 
     rerender(React.createElement(ResultsGrid, { result: mockResult }));
     expect(getAllByText("name").length).toBeGreaterThan(0);

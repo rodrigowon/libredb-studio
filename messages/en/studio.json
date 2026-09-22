@@ -18,6 +18,11 @@
     "offline": "Offline"
   },
   "sidebar": {
+    "searchEmptyHint": "Change or clear the table and column search.",
+    "searchEmpty": "No matches for this search",
+    "createTableEmpty": "Create table",
+    "schemaUnavailableHint": "Check the connection and schema read permissions.",
+    "selectConnectionHint": "Select a connection from the list to explore the database.",
     "connections": "Connections",
     "noConnections": "No database connections established yet.",
     "addConnection": "Add Connection",
@@ -29,7 +34,7 @@
     "schemaFetchFailed": "Failed to fetch schema",
     "unknownError": "Unknown error",
     "noStructures": "No structures found",
-    "noStructuresHint": "We couldn't find any tables or views in this connection.",
+    "noStructuresHint": "The schema read found no tables or views visible to this connection.",
     "maintenance": "Database Maintenance",
     "search": "Search tables or columns...",
     "createEntity": "Create {entity}",
@@ -45,6 +50,8 @@
     "selectFirst": "Select a connection first"
   },
   "navigation": {
+    "noConnectionHint": "Select a connection in the sidebar or use Add Connection.",
+    "noConnection": "No connection selected",
     "tools": "Tools",
     "schemaTools": "Schema tools",
     "erd": "ERD diagram",
@@ -57,8 +64,8 @@
     "docs": "Database documentation",
     "diff": "Compare schemas",
     "dashboard": "Saved charts",
-    "empty": "Execute a query or check history",
-    "ready": "Ready to query"
+    "empty": "Waiting for query results",
+    "ready": "Write SQL in the editor and use Run to see the results."
   },
   "commandPalette": {
     "title": "Command Palette",

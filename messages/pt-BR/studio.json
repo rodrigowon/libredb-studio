@@ -18,6 +18,11 @@
     "offline": "Offline"
   },
   "sidebar": {
+    "searchEmptyHint": "Altere ou limpe a busca por tabelas e colunas.",
+    "searchEmpty": "Nenhum resultado para esta busca",
+    "createTableEmpty": "Criar tabela",
+    "schemaUnavailableHint": "Verifique a conexão e as permissões de leitura do schema.",
+    "selectConnectionHint": "Selecione uma conexão da lista para explorar o banco.",
     "connections": "Conexões",
     "noConnections": "Nenhuma conexão com banco de dados foi criada.",
     "addConnection": "Adicionar conexão",
@@ -29,7 +34,7 @@
     "schemaFetchFailed": "Não foi possível carregar o schema",
     "unknownError": "Erro desconhecido",
     "noStructures": "Nenhuma estrutura encontrada",
-    "noStructuresHint": "Este banco pode estar vazio ou o usuário atual pode não ter permissão para inspecioná-lo.",
+    "noStructuresHint": "A leitura do schema não encontrou tabelas ou views visíveis nesta conexão.",
     "maintenance": "Manutenção do banco de dados",
     "search": "Buscar tabelas ou colunas...",
     "createEntity": "Criar {entity}",
@@ -45,6 +50,8 @@
     "selectFirst": "Selecione uma conexão primeiro"
   },
   "navigation": {
+    "noConnectionHint": "Selecione uma conexão na barra lateral ou use Adicionar conexão.",
+    "noConnection": "Nenhuma conexão selecionada",
     "tools": "Ferramentas",
     "schemaTools": "Ferramentas do schema",
     "erd": "Diagrama ERD",
@@ -57,8 +64,8 @@
     "docs": "Documentação do banco",
     "diff": "Comparar schemas",
     "dashboard": "Gráficos salvos",
-    "empty": "Execute uma consulta ou consulte o histórico",
-    "ready": "Pronto para executar consultas"
+    "empty": "Aguardando resultados da consulta",
+    "ready": "Escreva SQL no editor e use Executar para ver os resultados."
   },
   "commandPalette": {
     "title": "Paleta de comandos",

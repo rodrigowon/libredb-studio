@@ -86,6 +86,25 @@ function createDefaultProps(overrides: Partial<Parameters<typeof SchemaExplorer>
 }
 
 describe("SchemaExplorer", () => {
+  test("empty schema reuses create action only with confirmed capability and callback", async () => {
+    const props = createDefaultProps({ schema: [] });
+    const view = render(<SchemaExplorer {...props} />);
+    await userEvent.setup().click(view.getByRole("button", { name: "Create table" }));
+    expect(props.onCreateTableClick).toHaveBeenCalledTimes(1);
+    view.rerender(<SchemaExplorer {...props} metadata={null} />);
+    expect(view.queryByRole("button", { name: "Create table" })).toBeNull();
+    view.rerender(<SchemaExplorer {...props} onCreateTableClick={undefined} />);
+    expect(view.queryByRole("button", { name: "Create table" })).toBeNull();
+  });
+
+  test("search with no matches guides clearing the filter, not creating a table", async () => {
+    const view = render(<SchemaExplorer {...createDefaultProps()} />);
+    await userEvent.setup().type(view.getByRole("textbox"), "no_matching_table_7b4");
+    expect(view.getByText("No matches for this search")).toBeTruthy();
+    expect(view.queryByText("No structures found")).toBeNull();
+    await userEvent.setup().click(view.getByRole("button", { name: "Clear search" }));
+    expect(view.queryByText("No matches for this search")).toBeNull();
+  });
   afterEach(() => {
     cleanup();
   });
@@ -480,7 +499,7 @@ describe("SchemaExplorer", () => {
     const { container } = render(<SchemaExplorer {...props} />);
     const view = within(container);
 
-    expect(view.queryByText(/couldn.*find any tables/i)).not.toBeNull();
+    expect(view.queryByText("The schema read found no tables or views visible to this connection.")).not.toBeNull();
   });
 
   test("empty state does not render search input", () => {

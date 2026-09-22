@@ -64,9 +64,10 @@ export function SavedQueries({ onSelectQuery, connectionType, refreshTrigger }: 
 
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         {filteredQueries.length === 0 && (
-          <div className="h-full flex flex-col items-center justify-center opacity-20 p-8 text-center">
-            <Bookmark strokeWidth={1.5} className="w-12 h-12 mb-4" />
-            <p className="text-xs italic">{t("empty")}</p>
+          <div className="h-full flex flex-col items-center justify-center p-6 text-center text-fg-secondary">
+            <Bookmark strokeWidth={1.5} className="w-8 h-8 mb-3 text-fg-muted" />
+            <p className="text-xs font-medium">{t(queries.length === 0 ? "empty" : "filteredEmpty")}</p>
+            <p className="text-xs text-fg-muted mt-1">{t(queries.length === 0 ? "emptyHint" : "filteredEmptyHint")}</p>
           </div>
         )}
         {filteredQueries.length > 0 && (

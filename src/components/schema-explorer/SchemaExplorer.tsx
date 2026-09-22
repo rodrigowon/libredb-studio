@@ -100,6 +100,7 @@ export function SchemaExplorer({
           <CircleAlert strokeWidth={1.5} className="w-6 h-6 text-amber-400" />
         </div>
         <h3 className="text-foreground text-xs font-medium mb-1">{t("schemaUnavailable")}</h3>
+        <p className="text-xs text-muted-foreground mb-2">{t("schemaUnavailableHint")}</p>
         <p className="text-xs text-muted-foreground leading-relaxed break-words">{schemaError}</p>
       </div>
     );
@@ -109,12 +110,17 @@ export function SchemaExplorer({
     return (
       <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
         <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4 border border-border">
-          <CircleAlert strokeWidth={1.5} className="w-6 h-6 text-muted-foreground" />
+          <Database strokeWidth={1.5} className="w-6 h-6 text-muted-foreground" />
         </div>
         <h3 className="text-foreground text-xs font-medium mb-1">{t("noStructures")}</h3>
         <p className="text-xs text-muted-foreground leading-relaxed">
           {t("noStructuresHint")}
         </p>
+        {capabilities?.supportsCreateTable === true && onCreateTableClick && (
+          <Button variant="outline" size="sm" className="mt-3 h-8 text-xs" onClick={onCreateTableClick}>
+            {t("createTableEmpty")}
+          </Button>
+        )}
       </div>
     );
   }
@@ -176,6 +182,12 @@ export function SchemaExplorer({
       </div>
 
       <div className="px-2 space-y-1">
+        {filteredSchema.length === 0 && (
+          <div className="px-3 py-6 text-center">
+            <p className="text-xs font-medium text-foreground">{t("searchEmpty")}</p>
+            <p className="text-xs text-muted-foreground mt-1">{t("searchEmptyHint")}</p>
+          </div>
+        )}
         <AnimatePresence mode="popLayout">
           {filteredSchema.map((table) => (
             <TableItem

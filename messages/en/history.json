@@ -1,5 +1,7 @@
 {
   "history": {
+    "filteredEmptyHint": "Adjust the search, status or connection filter.",
+    "filteredEmptyTitle": "No executions match these filters",
     "title": "Query History",
     "showing": "Showing {count, plural, one {# execution} other {# executions}}",
     "export": "Export",
@@ -16,8 +18,8 @@
       "success": "Success",
       "error": "Error"
     },
-    "emptyTitle": "No history items found",
-    "emptyHint": "Run some queries to see them here",
+    "emptyTitle": "No executions recorded",
+    "emptyHint": "Your executed queries will appear here.",
     "columns": {
       "status": "Status",
       "executedAt": "Executed At",
@@ -42,9 +44,12 @@
     }
   },
   "saved": {
+    "filteredEmptyHint": "Adjust the search or select a connection of another type.",
+    "filteredEmpty": "No saved queries match the filters",
+    "emptyHint": "Save a query from the editor to reuse it later.",
     "title": "Saved Queries",
     "search": "Search saved queries...",
-    "empty": "No saved queries found",
+    "empty": "No saved queries",
     "deleteConfirm": "Are you sure you want to delete this saved query?",
     "edit": "Open {name} in editor",
     "delete": "Delete {name}"

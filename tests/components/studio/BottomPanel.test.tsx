@@ -292,12 +292,20 @@ describe("BottomPanel", () => {
   });
 
   test("shows empty state placeholder when currentTab.result is null", () => {
-    const props = createDefaultProps({ mode: "results" });
+    const props = createDefaultProps({ mode: "results", activeConnection: { id: "sample", type: "sqlite", name: "Sample" } });
     const { getByText } = render(<BottomPanel {...(props as React.ComponentProps<typeof BottomPanel>)} />);
 
-    // The empty state shows "Execute a query or check history"
-    const emptyText = getByText("Execute a query or check history");
+    // No result is available yet; this does not assert that execution never occurred.
+    const emptyText = getByText("Waiting for query results");
     expect(emptyText).not.toBeNull();
+  });
+
+  test("without a connection the empty panel explains how to choose one", () => {
+    const props = createDefaultProps({ activeConnection: null });
+    const view = render(<BottomPanel {...(props as React.ComponentProps<typeof BottomPanel>)} />);
+    expect(view.getByText("No connection selected")).toBeTruthy();
+    expect(view.getByText("Select a connection in the sidebar or use Add Connection.")).toBeTruthy();
+    expect(view.queryByText("Waiting for query results")).toBeNull();
   });
 
   test("tab click fires onSetMode with correct mode", () => {
