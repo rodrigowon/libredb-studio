@@ -174,7 +174,7 @@ describe("StudioDesktopHeader", () => {
 
     test('renders healthy pulse with "Online" text and green dot', () => {
       const { container } = render(<StudioDesktopHeader {...defaultProps} connectionPulse="healthy" />);
-      const pulseContainer = container.querySelector('[title="Connection: healthy"]');
+      const pulseContainer = container.querySelector('[title="Connection: Online"]');
       expect(pulseContainer).toBeTruthy();
 
       const dot = pulseContainer!.querySelector(".rounded-full");
@@ -187,7 +187,7 @@ describe("StudioDesktopHeader", () => {
 
     test('renders degraded pulse with "Slow" text and amber dot', () => {
       const { container } = render(<StudioDesktopHeader {...defaultProps} connectionPulse="degraded" />);
-      const pulseContainer = container.querySelector('[title="Connection: degraded"]');
+      const pulseContainer = container.querySelector('[title="Connection: Slow"]');
       expect(pulseContainer).toBeTruthy();
 
       const dot = pulseContainer!.querySelector(".rounded-full");
@@ -199,7 +199,7 @@ describe("StudioDesktopHeader", () => {
 
     test('renders error pulse with "Error" text and red dot', () => {
       const { container } = render(<StudioDesktopHeader {...defaultProps} connectionPulse="error" />);
-      const pulseContainer = container.querySelector('[title="Connection: error"]');
+      const pulseContainer = container.querySelector('[title="Connection: Error"]');
       expect(pulseContainer).toBeTruthy();
 
       const dot = pulseContainer!.querySelector(".rounded-full");
@@ -370,7 +370,7 @@ describe("StudioDesktopHeader", () => {
       expect(getByText("prod-db")).toBeTruthy();
       expect(container.textContent).toContain("mysql");
       expect(container.textContent).toContain("production");
-      expect(container.querySelector('[title="Connection: healthy"]')).toBeTruthy();
+      expect(container.querySelector('[title="Connection: Online"]')).toBeTruthy();
       expect(getByText("Admin Dashboard")).toBeTruthy();
     });
 
@@ -404,5 +404,17 @@ describe("StudioDesktopHeader", () => {
     expect(getAllByText("Monitoramento").length).toBeGreaterThanOrEqual(1);
     expect(getAllByText("Sair").length).toBeGreaterThan(0);
     expect((getByLabelText("Idioma") as HTMLSelectElement).value).toBe("pt-BR");
+  });
+
+  test("keeps the full connection name available and localizes the pulse description", () => {
+    const name = "Inventory — warehouse integration and reporting database";
+    const { getByRole, getByTitle } = render(
+      <StudioDesktopHeader {...defaultProps} activeConnection={{ ...connectionWithEnv, name }} connectionPulse="degraded" />,
+      "pt-BR",
+    );
+    expect(getByRole("heading", { name }).getAttribute("title")).toBe(name);
+    expect(getByTitle("Conexão: Lenta")).toBeTruthy();
+    expect(getByRole("button", { name: "Monitoramento" })).toBeTruthy();
+    expect(getByRole("button", { name: "Menu do usuário" })).toBeTruthy();
   });
 });

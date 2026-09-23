@@ -61,6 +61,13 @@ describe("LoginPage", () => {
     expect(getByText("Sign In")).not.toBeNull();
   });
 
+  test("keeps login fields associated with their visible labels", () => {
+    const { getByLabelText, emailInput, passwordInput, getByRole } = renderLogin("pt-BR");
+    expect(getByLabelText("Email")).toBe(emailInput);
+    expect(getByLabelText("Senha")).toBe(passwordInput);
+    expect(getByRole("button", { name: "Entrar" })).toBeTruthy();
+  });
+
   test("renders the complete login form in Brazilian Portuguese", () => {
     const { getAllByText, getByPlaceholderText, getByLabelText } = renderLogin("pt-BR");
     expect(getAllByText("Entrar").length).toBeGreaterThanOrEqual(1);

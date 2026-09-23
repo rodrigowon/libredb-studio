@@ -46,8 +46,8 @@ describe("LoginPage (OIDC mode)", () => {
 
   test("shows error message when error param is present", () => {
     setMockSearchParams(new URLSearchParams("error=oidc_failed"));
-    const { getByText } = renderWithIntl(<LoginForm authProvider="oidc" />);
-    expect(getByText("Authentication failed. Please try again.")).not.toBeNull();
+    const { getByRole } = renderWithIntl(<LoginForm authProvider="oidc" />);
+    expect(getByRole("alert").textContent).toBe("Authentication failed. Please try again.");
   });
 
   test("does not show error message when no error param", () => {

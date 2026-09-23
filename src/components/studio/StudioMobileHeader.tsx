@@ -137,19 +137,20 @@ export function StudioMobileHeader({
       : null;
 
   return (
-    <header className="md:hidden border-b border-hairline bg-surface/95 backdrop-blur-xl sticky top-0 z-30">
+    <header className="md:hidden shrink-0 border-b border-hairline bg-surface sticky top-0 z-30">
       {/* Row 1: DB Selector + Connection Info + User */}
-      <div className="h-12 flex items-center justify-between px-3">
+      <div className="h-12 flex items-center justify-between gap-2 px-3">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 px-2 gap-1 bg-overlay border-hairline-strong hover:bg-fill text-fg-secondary max-w-[160px]"
+                className="h-8 px-2 gap-1 bg-surface border-hairline-strong hover:bg-fill text-fg-secondary min-w-0 shrink max-w-full"
+                title={activeConnection ? activeConnection.name : tConnection("selectDatabase")}
               >
-                <Database strokeWidth={1.5} className="w-3 h-3 text-blue-400 shrink-0" />
-                <span className="truncate text-xs font-medium">
+                <Database strokeWidth={1.5} className="w-3 h-3 text-fg-tertiary shrink-0" />
+                <span className="truncate min-w-0 text-xs font-medium">
                   {activeConnection ? activeConnection.name : tConnection("selectDatabase")}
                 </span>
                 <ChevronDown strokeWidth={1.5} className="w-3 h-3 text-fg-muted shrink-0" />
@@ -187,26 +188,29 @@ export function StudioMobileHeader({
           </DropdownMenu>
 
           {activeConnection && (
-            <span className="text-xs text-emerald-500 font-medium px-1.5 py-0.5 rounded bg-emerald-500/10">{t("online")}</span>
+            <span className="text-xs text-emerald-500 font-medium shrink-0">{t("online")}</span>
           )}
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0 border-l border-hairline pl-2">
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 w-8 p-0 text-fg-muted hover:text-purple-400"
+            className="h-8 w-8 p-0 text-fg-tertiary hover:text-fg hover:bg-fill"
+            aria-label={t("monitoring")}
+            title={t("monitoring")}
             onClick={() => router.push("/monitoring")}
           >
             <Gauge strokeWidth={1.5} className="w-3.5 h-3.5" />
           </Button>
           {/* Sized as the icon buttons beside it (h-8 w-8), not as the desktop's inline icon. */}
-          <GitHubRepoLink className="h-8 w-8 shrink-0 text-fg-tertiary hover:text-fg-bright" />
+          <GitHubRepoLink className="h-8 w-8 shrink-0 rounded-md text-fg-tertiary hover:text-fg-bright hover:bg-fill focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
           {connectionPulse && (
             <div
               className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-fill"
-              title={t("connectionStatus", { status: connectionPulse })}
+              title={t("connectionStatus", { status: t(connectionPulse === "healthy" ? "online" : connectionPulse === "degraded" ? "slow" : "error") })}
             >
+              <span className="sr-only">{t("connectionStatus", { status: t(connectionPulse === "healthy" ? "online" : connectionPulse === "degraded" ? "slow" : "error") })}</span>
               <div
                 className={cn(
                   "w-1.5 h-1.5 rounded-full",
@@ -220,7 +224,7 @@ export function StudioMobileHeader({
           {user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={t("userMenu")} title={t("userMenu")}>
                   <User strokeWidth={1.5} className="w-3.5 h-3.5 text-fg-tertiary" />
                 </Button>
               </DropdownMenuTrigger>

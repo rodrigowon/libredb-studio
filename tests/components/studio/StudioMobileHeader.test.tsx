@@ -157,6 +157,18 @@ describe("StudioMobileHeader", () => {
     expect(container.textContent).toContain("Online");
   });
 
+  test("names the global icon controls and pulse in Portuguese without shortening connection content", () => {
+    const name = "Inventory — warehouse integration and reporting database";
+    const { getByRole, getByText } = render(
+      <StudioMobileHeader {...defaults} activeConnection={{ ...conn, name }} connectionPulse="error" />,
+      "pt-BR",
+    );
+    expect(getByRole("button", { name }).getAttribute("title")).toBe(name);
+    expect(getByRole("button", { name: "Monitoramento" })).toBeTruthy();
+    expect(getByRole("button", { name: "Menu do usuário" })).toBeTruthy();
+    expect(getByText("Conexão: Erro")).toBeTruthy();
+  });
+
   test("mobile EXPLAIN ANALYZE includes execution microcopy and retains its callback", () => {
     const { getByText, getByRole } = render(<StudioMobileHeader {...defaults} onExplain={mockOnExplain} supportsExplainAnalyze />);
     expect(getByRole("button", { name: "Query actions" })).toBeTruthy();

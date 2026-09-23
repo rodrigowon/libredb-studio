@@ -80,46 +80,24 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
       <div className="absolute right-4 top-4 z-20">
         <LocaleSwitcher />
       </div>
-      {/*
-        Left Panel - Branding (hidden on mobile).
-
-        Pinned dark with a nested `dark` class, which re-declares the token
-        variables for this subtree only: the panel is a designed dark hero — a
-        deep gradient, a dot grid at 4% white, a glow, and a heading that is
-        literally `text-white` — and following the theme would put white type on a
-        white ground. The sign-in half beside it follows the theme normally.
-      */}
-      <div className="dark hidden lg:flex lg:w-1/2 xl:w-[55%] relative overflow-hidden">
+      {/* The existing product panel stays dark; the form follows the viewer's theme. */}
+      <div className="dark hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div className="absolute inset-0 bg-surface" />
-        <div className="absolute inset-0 bg-gradient-to-b from-blue-950/20 via-transparent to-cyan-950/10" />
-
-        {/* Dot grid pattern */}
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
-            backgroundSize: "32px 32px",
-          }}
-        />
-
-        {/* Ambient glow orbs — blue accent family */}
-        <div className="absolute top-1/4 -left-20 w-80 h-80 bg-blue-500/[0.07] rounded-full blur-3xl" />
-        <div className="absolute bottom-1/3 right-10 w-64 h-64 bg-cyan-500/[0.05] rounded-full blur-3xl" />
 
         {/* Right edge separator */}
         <div className="absolute right-0 top-0 bottom-0 w-px bg-fill-strong" />
 
         {/* Content */}
-        <div className="relative z-10 flex flex-col p-12 xl:p-16 w-full overflow-y-auto">
+        <div className="relative z-10 flex flex-col gap-8 p-8 xl:p-12 w-full overflow-y-auto">
           {/* Top: Logo */}
           <a
             href="https://libredb.org"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 group w-fit"
+            className="flex items-center gap-3 group w-fit rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-fill-strong border border-hairline-strong group-hover:bg-fill-strong group-hover:border-hairline-strong transition-all duration-200">
-              <LibreDBLogo className="h-9 w-9 text-blue-400" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-fill border border-hairline-strong">
+              <LibreDBLogo className="h-6 w-6 text-blue-400" />
             </div>
             <span className="text-xl font-semibold text-white tracking-tight group-hover:text-blue-400 transition-colors duration-200">
               LibreDB Studio
@@ -137,12 +115,12 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
             pushed the sign-in card itself below the fold). The content now ends with the
             community row, so one auto margin above it is the whole layout.
           */}
-          <div className="space-y-8 mt-auto">
+          <div className="space-y-6 mt-auto">
             <div className="space-y-4 max-w-xl">
-              <h1 className="text-4xl font-bold text-white tracking-tight leading-[1.1]">
+              <h1 className="text-3xl font-semibold text-white tracking-tight leading-tight">
                 {t.rich("hero.title", {
                   accent: (chunks) => (
-                    <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                    <span className="text-fg-secondary">
                       {chunks}
                     </span>
                   ),
@@ -154,7 +132,7 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
                 so the old line was both an undercount and a contradiction of the deb, rpm,
                 Snap, winget, Homebrew and AppImage packages this project ships.
               */}
-              <p className="text-base text-fg-tertiary leading-relaxed">{t("hero.description")}</p>
+              <p className="text-sm text-fg-tertiary leading-relaxed">{t("hero.description")}</p>
             </div>
 
             <ConnectionSignature />
@@ -176,41 +154,40 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
             <HeroProof claims={heroClaims} />
           </div>
 
-          <div className="mt-8">
+          <div>
             <CommunitySection variant="desktop" />
           </div>
         </div>
       </div>
 
       {/* Right Panel - Login Form */}
-      <div className="flex w-full lg:w-1/2 xl:w-[45%] items-center justify-center p-4 sm:p-6 lg:p-8">
-        <div className="w-full max-w-md space-y-8">
+      <div className="flex w-full lg:w-1/2 items-center justify-center px-4 pb-8 pt-20 sm:px-6 lg:px-8">
+        <div className="w-full max-w-sm space-y-6">
           {/* Mobile branding (visible only on mobile) */}
           <a
             href="https://libredb.org"
             target="_blank"
             rel="noopener noreferrer"
             aria-label={t("brand.websiteAriaLabel")}
-            className="flex flex-col items-center gap-4 lg:hidden group"
+            className="flex items-center gap-3 lg:hidden group rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <div className="relative">
-              <div className="absolute -inset-2 rounded-full bg-blue-500/20 blur-lg" />
-              <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-raised border border-hairline-strong shadow-lg shadow-blue-500/10 group-hover:border-blue-500/20 transition-all duration-200">
-                <LibreDBLogo className="h-12 w-12 text-blue-400" />
+            <div className="shrink-0">
+              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-raised border border-hairline-strong">
+                <LibreDBLogo className="h-6 w-6 text-blue-400" />
               </div>
             </div>
-            <div className="text-center space-y-1">
-              <h2 className="text-2xl font-bold tracking-tight group-hover:text-blue-400 transition-colors duration-200">
+            <div className="space-y-1 min-w-0">
+              <h2 className="text-lg font-semibold tracking-tight group-hover:text-blue-400 transition-colors duration-200">
                 LibreDB Studio
               </h2>
-              <p className="text-sm text-muted-foreground">{t("brand.tagline")}</p>
+              <p className="text-xs text-muted-foreground">{t("brand.tagline")}</p>
             </div>
           </a>
 
-          <Card className="border-muted-foreground/10 shadow-2xl transition-all duration-300 hover:shadow-primary/5">
+          <Card className="rounded-md border-hairline-strong bg-surface gap-5 py-6 shadow-none">
             {/* Desktop header inside card */}
-            <CardHeader className="space-y-1 text-center pb-6 lg:pt-8">
-              <CardTitle className="text-2xl font-bold tracking-tight">
+            <CardHeader className="space-y-1 text-left">
+              <CardTitle className="text-xl font-semibold tracking-tight">
                 <span className="hidden lg:inline">{t("header.desktopTitle")}</span>
                 <span className="lg:hidden">{t("header.mobileTitle")}</span>
               </CardTitle>
@@ -220,11 +197,11 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
               </CardDescription>
             </CardHeader>
 
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-5">
               {isOIDC ? (
                 <>
                   {oidcError && (
-                    <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                    <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
                       {t("oidc.error")}
                     </div>
                   )}
@@ -240,7 +217,7 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
                   </div>
 
                   <Button
-                    className="w-full h-11 text-base font-medium shadow-lg shadow-primary/20 active:scale-[0.98] transition-all gap-2"
+                    className="w-full h-10 text-sm font-medium gap-2"
                     onClick={() => {
                       setIsLoading(true);
                       window.location.href = "/api/auth/oidc/login";
@@ -277,7 +254,7 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
                           id="email"
                           type="email"
                           placeholder={t("form.emailPlaceholder")}
-                          className="pl-10 h-11 transition-all focus:ring-2 focus:ring-primary/20"
+                          className="pl-10 h-10 shadow-none"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           required
@@ -292,7 +269,7 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
                           id="password"
                           type="password"
                           placeholder={t("form.passwordPlaceholder")}
-                          className="pl-10 h-11 transition-all focus:ring-2 focus:ring-primary/20"
+                          className="pl-10 h-10 shadow-none"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           required
@@ -300,7 +277,7 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
                       </div>
                     </div>
                     <Button
-                      className="w-full h-11 text-base font-medium shadow-lg shadow-primary/20 active:scale-[0.98] transition-all"
+                      className="w-full h-10 text-sm font-medium"
                       type="submit"
                       disabled={isLoading}
                     >
@@ -311,11 +288,11 @@ function LoginFormInner({ authProvider }: { authProvider: string }) {
               )}
             </CardContent>
 
-            <CardFooter className="pt-0 pb-6 flex flex-col items-center gap-2">
-              <p className="text-xs text-muted-foreground font-medium text-center max-w-[240px]">
+            <CardFooter className="border-t border-hairline flex flex-col items-start gap-2">
+              <p className="text-xs text-muted-foreground leading-relaxed">
                 {t("footer.security")}
               </p>
-              <span className="text-[10px] text-muted-foreground/60 font-mono">
+              <span className="text-xs text-muted-foreground font-mono">
                 v{process.env.NEXT_PUBLIC_APP_VERSION}
               </span>
             </CardFooter>
