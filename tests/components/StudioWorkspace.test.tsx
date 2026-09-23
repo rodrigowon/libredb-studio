@@ -271,8 +271,8 @@ mock.module("@/components/ui/resizable", () => {
   return {
     ResizablePanelGroup: ({ children }: Record<string, unknown>) =>
       React.createElement("div", { "data-testid": "resizable-group" }, children),
-    ResizablePanel: ({ children }: Record<string, unknown>) =>
-      React.createElement("div", { "data-testid": "resizable-panel" }, children),
+    ResizablePanel: ({ children, id, defaultSize, minSize, maxSize }: Record<string, unknown>) =>
+      React.createElement("div", { "data-testid": "resizable-panel", id, "data-default": defaultSize, "data-min": minSize, "data-max": maxSize }, children),
     ResizableHandle: () => React.createElement("div", { "data-testid": "resizable-handle" }),
   };
 });
@@ -1066,5 +1066,10 @@ describe("StudioWorkspace", () => {
     setViewportMobile(false);
     const { queryByTestId } = renderWorkspace();
     expect(queryByTestId("sidebar")).not.toBeNull();
+    const panel = document.getElementById("workspace-sidebar")!;
+    expect(panel.getAttribute("data-default")).toBe("20");
+    expect(panel.getAttribute("data-min")).toBe("15");
+    expect(panel.getAttribute("data-max")).toBe("35");
+    expect(capturedSidebarProps.showRepositoryInfo).toBeUndefined();
   });
 });

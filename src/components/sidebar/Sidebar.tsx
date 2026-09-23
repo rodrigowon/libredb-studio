@@ -10,10 +10,10 @@ import { SchemaExplorer } from "@/components/schema-explorer";
 import { GitHubRepoLink } from "@/components/github-repo-link";
 import { getAppVersion } from "@/lib/app-version";
 import { ConnectionsList } from "./ConnectionsList";
-import { SchemaTools } from "./SchemaTools";
 import { useTranslations } from "next-intl";
 
 interface SidebarProps {
+  showRepositoryInfo?: boolean;
   connections: DatabaseConnection[];
   activeConnection: DatabaseConnection | null;
   schema: TableSchema[];
@@ -40,6 +40,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({
+  showRepositoryInfo = true,
   connections,
   activeConnection,
   schema,
@@ -89,7 +90,7 @@ export function Sidebar({
         </div>
       </div>
 
-      <ScrollArea className="flex-1 min-h-0 px-2 py-4">
+      <ScrollArea className="flex-1 min-h-0 px-2 py-4 [&_[data-slot=scroll-area-viewport]>div]:!block">
         <div className="space-y-6">
           <ConnectionsList
             connections={connections}
@@ -102,8 +103,10 @@ export function Sidebar({
 
           {activeConnection && (
             <div className="space-y-1">
-              <SchemaTools onShowDiagram={onShowDiagram} onShowDocs={onShowDocs} onCompareSchemas={onCompareSchemas} />
             <SchemaExplorer
+              onShowDiagram={onShowDiagram}
+              onShowDocs={onShowDocs}
+              onCompareSchemas={onCompareSchemas}
               schema={schema}
               isLoadingSchema={isLoadingSchema}
               schemaError={schemaError}
@@ -129,16 +132,11 @@ export function Sidebar({
             <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
             <span className="text-xs font-medium text-muted-foreground">{tStatus("connected")}</span>
           </div>
-          <div className="flex items-center gap-2">
-            {/*
-              The sidebar is the one piece of chrome BOTH modes render - the
-              standalone app and the embedded workspace, which supplies its own
-              header - so the invitation to the repository lives here to reach
-              every user rather than only the standalone ones.
-            */}
+          {showRepositoryInfo && <div className="flex items-center gap-2">
+            {/* Embedded workspaces do not supply the standalone repository header. */}
             <GitHubRepoLink className="text-muted-foreground/70 hover:text-foreground" />
             {appVersion && <span className="text-xs font-mono text-muted-foreground/70">v{appVersion}</span>}
-          </div>
+          </div>}
         </div>
       </div>
     </div>

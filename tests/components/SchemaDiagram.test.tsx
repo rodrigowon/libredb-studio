@@ -162,7 +162,7 @@ mock.module("@zumer/snapdom", () => ({
 }));
 
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { fireEvent, within, cleanup, act } from "@testing-library/react";
+import { fireEvent, within, cleanup, act, waitFor } from "@testing-library/react";
 import { IntlTestProvider, renderWithIntl as render } from "../helpers/render-with-intl";
 import React from "react";
 
@@ -426,6 +426,10 @@ describe("SchemaDiagram", () => {
     const { container } = render(<SchemaDiagram {...props} />);
 
     expect(container.querySelector('[data-testid="mock-react-flow"]')).not.toBeNull();
+    expect(lastReactFlowProps.style).toEqual({
+      backgroundImage: expect.stringContaining("radial-gradient(circle,"),
+      backgroundSize: "20px 20px",
+    });
   });
 
   test("shows top-right panel with buttons", () => {
@@ -1183,8 +1187,9 @@ describe("SchemaDiagram", () => {
       const pngButton = view.getByText("PNG").closest("button")!;
       await act(async () => {
         fireEvent.click(pngButton);
-        await new Promise((r) => setTimeout(r, 20));
       });
+
+      await waitFor(() => expect(mockToBlob).toHaveBeenCalledTimes(1));
 
       expect(mockSnapdom).toHaveBeenCalledTimes(1);
       const [capturedEl, options] = mockSnapdom.mock.calls[0] as unknown as [HTMLElement, Record<string, unknown>];
@@ -1270,8 +1275,9 @@ describe("SchemaDiagram", () => {
         const pngButton = view.getByText("PNG").closest("button")!;
         await act(async () => {
           fireEvent.click(pngButton);
-          await new Promise((r) => setTimeout(r, 20));
         });
+
+        await waitFor(() => expect(mockToBlob).toHaveBeenCalledTimes(1));
 
         const [, options] = mockSnapdom.mock.calls[0] as unknown as [HTMLElement, Record<string, unknown>];
         expect(options.backgroundColor).toBe("#050505");

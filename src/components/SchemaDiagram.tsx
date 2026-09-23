@@ -2,7 +2,6 @@
 
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Background,
   Controls,
   MiniMap,
   Panel,
@@ -76,7 +75,7 @@ interface SchemaDiagramProps {
 const DIAGRAM_THEME = {
   dark: {
     /** Dot grid. Recessive: it gives the eye a scale, it is not a feature. */
-    background: "#1a1a1a",
+    background: "rgba(255, 255, 255, 0.12)",
     minimapNode: "#3987e5",
     minimapMask: "rgba(0,0,0,0.7)",
     minimapSurface: "#0d0d0d",
@@ -379,6 +378,10 @@ function SchemaDiagramInner({ schema, onClose }: SchemaDiagramProps) {
       <HighlightStoreProvider value={highlightStore}>
         <DiagramActionsContext.Provider value={diagramActions}>
           <ReactFlow
+            style={{
+              backgroundImage: `radial-gradient(circle, ${diagram.background} 1px, transparent 1px)`,
+              backgroundSize: "20px 20px",
+            }}
             ariaLabelConfig={{
               "node.a11yDescription.default": t("a11y.node"),
               "node.a11yDescription.keyboardDisabled": t("a11y.nodeKeyboard"),
@@ -408,7 +411,6 @@ function SchemaDiagramInner({ schema, onClose }: SchemaDiagramProps) {
             // Drives @xyflow's OWN chrome (handles, attribution, control glyphs).
             colorMode={mode}
           >
-            <Background color={diagram.background} gap={20} />
             {/* `fill-fg` rather than `fill-white`: the control glyphs are ink. */}
             <Controls showInteractive={false} className="bg-raised border-hairline-strong fill-fg" />
             {nodes.length <= MINIMAP_THRESHOLD && (

@@ -12,6 +12,7 @@ import { TestDataGenerator } from "@/components/TestDataGenerator";
 import { SaveQueryModal } from "@/components/SaveQueryModal";
 import { StudioTabBar, QueryToolbar, BottomPanel } from "@/components/studio/index";
 import { SchemaTools } from "@/components/sidebar/SchemaTools";
+import { SIDEBAR_DEFAULT_SIZE, SIDEBAR_MIN_SIZE } from "@/components/sidebar/layout";
 import type { MaskingConfig } from "@/lib/data-masking";
 import { useToast } from "@/hooks/use-toast";
 import { useTabManager } from "@/hooks/use-tab-manager";
@@ -314,7 +315,7 @@ export function StudioWorkspace({
         */}
         {!isMobile && (
           <>
-            <ResizablePanel id="workspace-sidebar" defaultSize="22" minSize="15" maxSize="35">
+            <ResizablePanel id="workspace-sidebar" defaultSize={SIDEBAR_DEFAULT_SIZE} minSize={SIDEBAR_MIN_SIZE} maxSize="35">
               <Sidebar
                 connections={conn.connections}
                 activeConnection={conn.activeConnection}
@@ -342,7 +343,7 @@ export function StudioWorkspace({
             <ResizableHandle className="w-1 bg-transparent hover:bg-blue-500/30 transition-colors" />
           </>
         )}
-        <ResizablePanel id="workspace-body" defaultSize="78">
+        <ResizablePanel id="workspace-body" defaultSize={String(100 - Number(SIDEBAR_DEFAULT_SIZE))}>
           <div className="flex-1 flex flex-col min-w-0 h-full bg-surface">
             {/* No desktop/mobile headers — platform provides its own */}
             {isMobile && conn.activeConnection && (

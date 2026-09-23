@@ -7,10 +7,14 @@ import { Search, Hash, LoaderCircle, CircleAlert, Database, Plus, Settings } fro
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AnimatePresence } from "framer-motion";
+import { SchemaTools } from "@/components/sidebar/SchemaTools";
 import { TableItem } from "./TableItem";
 import { useTranslations } from "next-intl";
 
 interface SchemaExplorerProps {
+  onShowDiagram?: () => void;
+  onShowDocs?: () => void;
+  onCompareSchemas?: () => void;
   schema: TableSchema[];
   isLoadingSchema: boolean;
   /**
@@ -32,6 +36,9 @@ interface SchemaExplorerProps {
 }
 
 export function SchemaExplorer({
+  onShowDiagram,
+  onShowDocs,
+  onCompareSchemas,
   schema,
   isLoadingSchema,
   schemaError = null,
@@ -74,14 +81,52 @@ export function SchemaExplorer({
     });
   }, [schema, searchQuery]);
 
+  const explorerBar = (
+    <fieldset className="min-w-0" aria-label={t("explorer")}>
+      <div className="flex flex-wrap items-center justify-between gap-y-1">
+        <div className="flex items-center gap-2">
+          <Database strokeWidth={1.5} className="w-3.5 h-3.5 text-blue-500/50" />
+          <span className="text-xs font-medium text-muted-foreground">{t("explorer")}</span>
+        </div>
+        <div className="ml-auto flex items-center gap-1">
+          {!isLoadingSchema && schema.length > 0 && isAdmin && (
+            <button
+              className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-amber-400 transition-colors"
+              onClick={() => onOpenMaintenance?.("global")}
+              title={t("maintenance")}
+            >
+              <Settings strokeWidth={1.5} className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {!isLoadingSchema && schema.length > 0 && capabilities?.supportsCreateTable !== false && (
+            <button
+              className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-blue-400 transition-colors"
+              onClick={onCreateTableClick}
+              title={t("createEntity", { entity: labels?.entityName || "Table" })}
+            >
+              <Plus strokeWidth={1.5} className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <span className="text-[0.625rem] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded-full font-mono border border-blue-500/10">
+            {schema.length}
+          </span>
+          <SchemaTools onShowDiagram={onShowDiagram} onShowDocs={onShowDocs} onCompareSchemas={onCompareSchemas} />
+        </div>
+      </div>
+    </fieldset>
+  );
+
   if (isLoadingSchema) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-        <div className="relative mb-4">
-          <LoaderCircle strokeWidth={1.5} className="w-8 h-8 animate-spin text-blue-500/20" />
-          <Database strokeWidth={1.5} className="w-3.5 h-3.5 absolute inset-0 m-auto text-blue-500 animate-pulse" />
+      <div className="flex flex-col">
+        {explorerBar}
+        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+          <div className="relative mb-4">
+            <LoaderCircle strokeWidth={1.5} className="w-8 h-8 animate-spin text-blue-500/20" />
+            <Database strokeWidth={1.5} className="w-3.5 h-3.5 absolute inset-0 m-auto text-blue-500 animate-pulse" />
+          </div>
+          <span className="text-xs font-medium animate-pulse">{t("scanningSchema")}</span>
         </div>
-        <span className="text-xs font-medium animate-pulse">{t("scanningSchema")}</span>
       </div>
     );
   }
@@ -92,71 +137,49 @@ export function SchemaExplorer({
   // an absence to the database that was never measured.
   if (schemaError !== null && schema.length === 0) {
     return (
-      <div
-        data-testid="schema-read-failed"
-        className="flex flex-col items-center justify-center py-12 px-6 text-center"
-      >
-        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4 border border-border">
-          <CircleAlert strokeWidth={1.5} className="w-6 h-6 text-amber-400" />
+      <div className="flex flex-col">
+        {explorerBar}
+        <div
+          data-testid="schema-read-failed"
+          className="flex flex-col items-center justify-center py-12 px-6 text-center"
+        >
+          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4 border border-border">
+            <CircleAlert strokeWidth={1.5} className="w-6 h-6 text-amber-400" />
+          </div>
+          <h3 className="text-foreground text-xs font-medium mb-1">{t("schemaUnavailable")}</h3>
+          <p className="text-xs text-muted-foreground mb-2">{t("schemaUnavailableHint")}</p>
+          <p className="text-xs text-muted-foreground leading-relaxed break-words">{schemaError}</p>
         </div>
-        <h3 className="text-foreground text-xs font-medium mb-1">{t("schemaUnavailable")}</h3>
-        <p className="text-xs text-muted-foreground mb-2">{t("schemaUnavailableHint")}</p>
-        <p className="text-xs text-muted-foreground leading-relaxed break-words">{schemaError}</p>
       </div>
     );
   }
 
   if (schema.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
-        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4 border border-border">
-          <Database strokeWidth={1.5} className="w-6 h-6 text-muted-foreground" />
+      <div className="flex flex-col">
+        {explorerBar}
+        <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4 border border-border">
+            <Database strokeWidth={1.5} className="w-6 h-6 text-muted-foreground" />
+          </div>
+          <h3 className="text-foreground text-xs font-medium mb-1">{t("noStructures")}</h3>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {t("noStructuresHint")}
+          </p>
+          {capabilities?.supportsCreateTable === true && onCreateTableClick && (
+            <Button variant="outline" size="sm" className="mt-3 h-8 text-xs" onClick={onCreateTableClick}>
+              {t("createTableEmpty")}
+            </Button>
+          )}
         </div>
-        <h3 className="text-foreground text-xs font-medium mb-1">{t("noStructures")}</h3>
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          {t("noStructuresHint")}
-        </p>
-        {capabilities?.supportsCreateTable === true && onCreateTableClick && (
-          <Button variant="outline" size="sm" className="mt-3 h-8 text-xs" onClick={onCreateTableClick}>
-            {t("createTableEmpty")}
-          </Button>
-        )}
       </div>
     );
   }
 
   return (
     <div className="flex flex-col">
-      <div className="sticky top-0 z-10 px-3 pb-3 pt-1 space-y-3 bg-background">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Database strokeWidth={1.5} className="w-3.5 h-3.5 text-blue-500/50" />
-            <span className="text-xs font-medium text-muted-foreground">{t("explorer")}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            {isAdmin && (
-              <button
-                className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-amber-400 transition-colors"
-                onClick={() => onOpenMaintenance?.("global")}
-                title={t("maintenance")}
-              >
-                <Settings strokeWidth={1.5} className="w-3.5 h-3.5" />
-              </button>
-            )}
-            {capabilities?.supportsCreateTable !== false && (
-              <button
-                className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-blue-400 transition-colors"
-                onClick={onCreateTableClick}
-                title={t("createEntity", { entity: labels?.entityName || "Table" })}
-              >
-                <Plus strokeWidth={1.5} className="w-3.5 h-3.5" />
-              </button>
-            )}
-            <span className="text-[0.625rem] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded-full font-mono border border-blue-500/10">
-              {schema.length}
-            </span>
-          </div>
-        </div>
+      <div className="sticky top-0 z-10 px-1 pb-3 pt-1 space-y-3 bg-background">
+        {explorerBar}
 
         <div className="relative group">
           <Search

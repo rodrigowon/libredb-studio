@@ -86,6 +86,32 @@ function createDefaultProps(overrides: Partial<Parameters<typeof SchemaExplorer>
 }
 
 describe("SchemaExplorer", () => {
+  for (const state of [
+    { name: "normal", schema: mockSchema, isLoadingSchema: false },
+    { name: "loading", schema: [], isLoadingSchema: true },
+    { name: "empty", schema: [], isLoadingSchema: false },
+    { name: "error", schema: [], isLoadingSchema: false, schemaError: "read failed" },
+  ]) {
+    test(`Explorer Bar keeps existing tools available when ${state.name}`, async () => {
+      const onShowDocs = mock(() => {});
+      const view = render(<SchemaExplorer {...createDefaultProps({ ...state, onShowDocs })} />);
+      const bar = within(view.getByRole("group", { name: "Explorer" }));
+      expect(bar.getByText(String(state.schema.length))).toBeTruthy();
+      await userEvent.click(bar.getByRole("button", { name: "Schema tools" }));
+      expect(view.queryByRole("menuitem", { name: "ERD diagram" })).toBeNull();
+      await userEvent.click(view.getByRole("menuitem", { name: "Database documentation" }));
+      expect(onShowDocs).toHaveBeenCalledTimes(1);
+    });
+  }
+
+  test("search without matches preserves the count and schema tools", async () => {
+    const view = render(<SchemaExplorer {...createDefaultProps({ onShowDocs: () => {} })} />);
+    await userEvent.type(view.getByRole("textbox"), "does-not-exist");
+    const bar = within(view.getByRole("group", { name: "Explorer" }));
+    expect(bar.getByText(String(mockSchema.length))).toBeTruthy();
+    expect(bar.getByRole("button", { name: "Schema tools" })).toBeTruthy();
+  });
+
   test("empty schema reuses create action only with confirmed capability and callback", async () => {
     const props = createDefaultProps({ schema: [] });
     const view = render(<SchemaExplorer {...props} />);

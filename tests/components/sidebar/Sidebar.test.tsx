@@ -23,8 +23,10 @@ mock.module("@/components/sidebar/ConnectionsList", () => ({
   },
 }));
 
+let explorerProps: Record<string, unknown>;
 mock.module("@/components/schema-explorer", () => ({
   SchemaExplorer: (props: Record<string, unknown>) => {
+    explorerProps = props;
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const React = require("react");
     const schema = props.schema as Array<unknown> | undefined;
@@ -80,7 +82,6 @@ mock.module("@radix-ui/react-scroll-area", () => {
 
 import { describe, test, expect, afterEach } from "bun:test";
 import { cleanup } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import React from "react";
 import { renderWithIntl as render } from "../../helpers/render-with-intl";
 
@@ -172,14 +173,14 @@ describe("Sidebar", () => {
 
   test("schema tools only appear when activeConnection exists", () => {
     const propsWithConn = createDefaultProps({ activeConnection: mockPostgresConnection });
-    const { unmount, getByRole } = render(<Sidebar {...propsWithConn} />);
-    expect(getByRole("button", { name: "Schema tools" })).not.toBeNull();
+    const { unmount, getByTestId } = render(<Sidebar {...propsWithConn} />);
+    expect(getByTestId("schema-explorer")).not.toBeNull();
     unmount();
 
     // Without active connection — no ERD button
     const propsNoConn = createDefaultProps({ activeConnection: null });
-    const { queryByRole } = render(<Sidebar {...propsNoConn} />);
-    expect(queryByRole("button", { name: "Schema tools" })).toBeNull();
+    const { queryByTestId } = render(<Sidebar {...propsNoConn} />);
+    expect(queryByTestId("schema-explorer")).toBeNull();
   });
 
   test("passes correct props to ConnectionsList", () => {
@@ -232,7 +233,7 @@ describe("Sidebar", () => {
    * supplies its own header, so a link mounted only in the studio headers would
    * never reach a platform tenant.
    */
-  test("footer links to the repository, in both standalone and embedded chrome", () => {
+  test("footer preserves the repository link by default for embedded chrome", () => {
     const props = createDefaultProps();
     const { container } = render(<Sidebar {...props} />);
     const link = container.querySelector('a[aria-label="LibreDB Studio on GitHub"]');
@@ -249,16 +250,28 @@ describe("Sidebar", () => {
     expect(queryByText("Connected")).not.toBeNull();
   });
 
-  test("schema tools menu opens ERD", async () => {
+  test("standalone can hide repository duplication without hiding status", () => {
+    process.env.NEXT_PUBLIC_APP_VERSION = "9.8.7";
+    const { queryByRole, queryByText } = render(<Sidebar {...createDefaultProps()} showRepositoryInfo={false} />);
+    expect(queryByRole("link", { name: "LibreDB Studio on GitHub" })).toBeNull();
+    expect(queryByText("v9.8.7")).toBeNull();
+    expect(queryByText("Connected")).not.toBeNull();
+  });
+
+  test("passes existing schema tools to the Explorer instead of a separate menu", () => {
     const onShowDiagram = mock(() => {});
+    const onShowDocs = mock(() => {});
+    const onCompareSchemas = mock(() => {});
     const props = createDefaultProps({
       activeConnection: mockPostgresConnection,
       onShowDiagram,
+      onShowDocs,
+      onCompareSchemas,
     });
-    const { getByRole } = render(<Sidebar {...props} />);
-    await userEvent.click(getByRole("button", { name: "Schema tools" }));
-    await userEvent.click(getByRole("menuitem", { name: "ERD diagram" }));
-
-    expect(onShowDiagram).toHaveBeenCalledTimes(1);
+    const { queryByRole } = render(<Sidebar {...props} />);
+    expect(explorerProps.onShowDiagram).toBe(onShowDiagram);
+    expect(explorerProps.onShowDocs).toBe(onShowDocs);
+    expect(explorerProps.onCompareSchemas).toBe(onCompareSchemas);
+    expect(queryByRole("button", { name: "Schema tools" })).toBeNull();
   });
 });

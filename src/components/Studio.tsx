@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Sidebar, ConnectionsList } from "@/components/sidebar";
-import { SchemaTools } from "@/components/sidebar/SchemaTools";
+import { SIDEBAR_DEFAULT_SIZE, SIDEBAR_MIN_SIZE } from "@/components/sidebar/layout";
 import { MobileNav } from "@/components/MobileNav";
 import { SchemaExplorer } from "@/components/schema-explorer";
 import { ConnectionModal } from "@/components/ConnectionModal";
@@ -475,8 +475,9 @@ export default function Studio() {
         */}
         {!isMobile && (
           <>
-            <ResizablePanel id="studio-sidebar" defaultSize="22" minSize="15" maxSize="35">
+            <ResizablePanel id="studio-sidebar" defaultSize={SIDEBAR_DEFAULT_SIZE} minSize={SIDEBAR_MIN_SIZE} maxSize="35">
               <Sidebar
+                showRepositoryInfo={false}
                 connections={conn.connections}
                 activeConnection={conn.activeConnection}
                 schema={conn.schema}
@@ -507,7 +508,7 @@ export default function Studio() {
             <ResizableHandle className="w-1 bg-transparent hover:bg-blue-500/30 transition-colors" />
           </>
         )}
-        <ResizablePanel id="studio-body" defaultSize={agentEnabled ? "54" : "78"}>
+        <ResizablePanel id="studio-body" defaultSize={String(100 - Number(SIDEBAR_DEFAULT_SIZE) - (agentEnabled ? 24 : 0))}>
           <div className="flex-1 flex flex-col min-w-0 h-full bg-surface pb-16 md:pb-0">
             <StudioMobileHeader
               connections={conn.connections}
@@ -616,12 +617,10 @@ export default function Studio() {
                 <div className="md:hidden h-full bg-sunken overflow-auto p-4">
                   {conn.activeConnection ? (
                     <>
-                    <SchemaTools
+                    <SchemaExplorer
                       onShowDiagram={() => setShowDiagram(true)}
                       onShowDocs={() => { queryExec.setBottomPanelMode("docs"); setActiveMobileTab("editor"); }}
                       onCompareSchemas={() => { queryExec.setBottomPanelMode("schemadiff"); setActiveMobileTab("editor"); }}
-                    />
-                    <SchemaExplorer
                       schema={conn.schema}
                       isLoadingSchema={conn.isLoadingSchema}
                       schemaError={conn.schemaError}
