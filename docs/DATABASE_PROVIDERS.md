@@ -9,7 +9,42 @@ This document describes the modular database provider architecture implemented u
 
 ## Overview
 
-The database abstraction layer (`src/lib/db/`) provides a unified interface for multiple database types while maintaining type safety, connection pooling, and consistent error handling. Each database type is a self-contained provider class. Adding a new one requires **no changes** to routes, components, or existing providers.
+The database abstraction layer (`src/lib/db/`) provides a unified interface for multiple database types while maintaining type safety, connection pooling, and consistent error handling. Provider logic is encapsulated; registering a new type still requires the integration steps in [Adding a Provider](ADDING_A_PROVIDER.md).
+
+## Provider visibility in this fork
+
+Implemented types remain defined by `DatabaseType`, the shipped-type inventory and the
+provider factory. The V1 **presentation** policy is separate and centralized in
+[`src/lib/database-visibility.ts`](../src/lib/database-visibility.ts).
+Its default is exactly `postgres,mysql,sqlite` (PostgreSQL, MySQL, SQLite).
+
+`NEXT_PUBLIC_ENABLED_DATABASE_TYPES` overrides that default with comma-separated shipped
+type ids, for example `postgres,mysql,sqlite,oracle`. Values are trimmed, lowercased,
+deduplicated and checked against the shipped inventory. Unknown ids are ignored;
+an absent/blank value or a list with no valid ids falls back to the default. An empty
+value therefore does **not** hide every provider.
+
+Set it before building the Next.js application and keep the build/server configuration
+consistent: `NEXT_PUBLIC_` values are compiled into browser bundles. A runtime-only
+change cannot reliably reconfigure an already-built UI. This does not add providers
+that are absent from the source or configure database credentials.
+
+Reusable filters drive connection pickers/forms, presentation of saved and managed
+connections (including samples), the login showcase, metadata description and the
+admin provider count. An edit context can retain its existing type via
+`getEnabledDatabaseTypes(additionalTypes)`. Filtering returns presentation lists;
+it does not delete or rewrite hidden persisted connections. Samples may still be
+seeded on disk even when their provider is hidden from the managed list.
+
+The factory, provider contracts, capabilities and dependencies are not removed or
+disabled by this setting. It is **not authorization or a server-side database-access
+allowlist**: execution and provider metadata routes still resolve implemented types
+under their existing authentication/connection rules. A provider's capability determines
+what it can do; visibility determines whether the normal UI offers it.
+
+The [provider index](providers/README.md) consequently continues to list all implemented
+types. Tests for defaults, parsing and non-mutating filtering live in
+[`database-visibility.test.ts`](../tests/unit/lib/database-visibility.test.ts).
 
 ## Architecture
 

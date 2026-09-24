@@ -198,13 +198,13 @@ prepared protocol** — measured 2026-08-24 on `mysql:latest`, `ER_UNSUPPORTED_P
 `query`, while the other statements above worked either way. So one of this provider's own three
 maintenance actions was unavailable on the engine it is named for.
 
-**The Explain panel is NOT one of the recovered surfaces, and the row above is why.** `EXPLAIN
-FORMAT=JSON` is a parse error on SingleStore on BOTH protocols — re-measured 2026-08-24 on the same
-image — because SingleStore's grammar is `EXPLAIN JSON <select>`. The protocol was never what stopped
-it there. (An earlier note recorded `EXPLAIN FORMAT=JSON` as succeeding on the text protocol; the
-statement that succeeds is plain `EXPLAIN`.) Reaching a JSON plan on that engine needs a different
-statement, not a different protocol, and [`mysql-json.ts`](../../src/lib/explain/mysql-json.ts) builds
-one statement for every engine on this type id.
+**Historical protocol probe, before the fork's EXPLAIN fallback:** on 2026-08-24,
+`EXPLAIN FORMAT=JSON` failed on SingleStore on both protocols; plain `EXPLAIN` succeeded.
+Its JSON grammar was `EXPLAIN JSON <select>`, not the form built by
+[`mysql-json.ts`](../../src/lib/explain/mysql-json.ts). The protocol change alone therefore
+did not recover that panel. The current fork instead probes JSON then plain EXPLAIN
+and can select `mysql-text`; see [Connected EXPLAIN selection](#connected-explain-selection).
+That implementation change is not a new live measurement of every compatible engine.
 
 **The read path is safe to move because the two protocols decode to the same JS shapes.** mysql2
 decodes text and binary rows on different code paths, so this was measured rather than assumed:
@@ -222,7 +222,7 @@ covering `TINYINT(1)`, `INT`, `BIGINT` past 2^53, `BIGINT UNSIGNED`, `DECIMAL(20
 - a statement with no result set answers the same `ResultSetHeader` object, which is what the envelope
   below reads.
 
-**Measured after the change, through this provider.** 2026-08-24, `MySQLProvider` driven directly
+**Historical measurements after the protocol change, before the fork's EXPLAIN fallback.** 2026-08-24, `MySQLProvider` driven directly
 against three live servers:
 
 | Surface | MySQL 26.7.0 | SingleStore 9.1.1 | StarRocks 3.3 |
@@ -809,13 +809,14 @@ gated on the literal `vacuum`, so MySQL's own wording was written and never show
 
 ## 10. Capabilities & labels
 
-### `getCapabilities()` ([mysql.ts:52](../../src/lib/db/providers/sql/mysql.ts))
+### `getCapabilities()` ([mysql.ts](../../src/lib/db/providers/sql/mysql.ts))
 
 | Capability | Value |
 |------------|-------|
 | `queryLanguage` | `sql` |
-| `supportsExplain` | `true` |
-| `explainFormat` | `mysql-json` |
+| `supportsExplain` | Initially `true`; after connect, true only if an estimate probe succeeds |
+| `explainFormat` | Initially `mysql-json`; connected value can be `mysql-json`, `mysql-text`, or absent |
+| `supportsExplainAnalyze` | `false` — analyze is not enabled by this provider |
 | `supportsExternalQueryLimiting` | `true` (from base) |
 | `supportsCreateTable` | `true` (from base) |
 | `supportsInlineRowEdit` | `true` — `UPDATE t SET c = v WHERE pk = v` is core MySQL DML |
@@ -826,6 +827,26 @@ gated on the literal `vacuum`, so MySQL's own wording was written and never show
 | `supportsConnectionString` | `true` |
 | `defaultPort` | `3306` |
 | `schemaRefreshPattern` | `(CREATE\|DROP\|ALTER\|TRUNCATE)\b` (from base) |
+
+### Connected EXPLAIN selection
+
+During `connect()`, fixed parameterless probes use the existing text-protocol path:
+first `EXPLAIN FORMAT=JSON SELECT 1`, then `EXPLAIN SELECT 1` only if JSON fails.
+The first success selects `mysql-json` or `mysql-text`; if both fail, EXPLAIN becomes
+unavailable without making that grammar refusal a connection failure.
+
+Both background and explicit editor requests use estimate for this provider.
+`supportsExplainAnalyze` remains false even if a particular server implements an
+executing EXPLAIN variant. The connected query route refuses analyze rather than
+guessing a variant or executing the original SQL. Plain EXPLAIN plans render as a
+generic tree; the existing `mysql-json` render adapter is still a legacy passthrough,
+not a new full MySQL `query_block` parser.
+
+Initial provider metadata is obtained without connecting and may still advertise JSON.
+The query response's `explainFormat` identifies what the server actually selected.
+See the [EXPLAIN API contract](../API_DOCS.md#structured-explain-requests) for the
+request shape, single-statement limits and errors. Protocol/compatibility measurements
+elsewhere in this document remain dated observations, not fresh fallback validation.
 
 ### Labels
 

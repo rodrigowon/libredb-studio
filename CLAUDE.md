@@ -2,13 +2,48 @@
 
 Guidance for Claude Code in this repo — conventions, rules, and gotchas only. Read the code and `docs/` for anything derivable from them.
 
-> **This repo is published as the npm package `@libredb/studio`** — a CLI (`npx @libredb/studio`) plus an embeddable library surface built by `build:lib`. It is **not** embedded in `libredb-platform`: separate products since 2026-08-14, so "platform consumes this" is never a reason to keep or avoid anything (`.claude/rules/platform-integration.md` was deleted with that decision).
+> **This is a custom fork of LibreDB Studio.** The inherited package metadata names
+> `@libredb/studio`, the upstream CLI and embeddable library built by `build:lib`;
+> it is not evidence that this fork has published that package or any container/release.
+> Studio and `libredb-platform` are separate products; do not infer a current consumer
+> or integration requirement from older platform references.
+
+## Stable fork rules
+
+- Inspect current implementation and tests before changing architecture. Prefer small,
+  scoped changes; historical plans and checkpoint reports are evidence, not current specifications.
+- Keep implemented providers, their contracts, capabilities and dependencies separate from
+  presentation. The default visible set is `postgres,mysql,sqlite`; use
+  `src/lib/database-visibility.ts`, not component-specific engine lists. Never remove a
+  provider or persisted connection merely because it is hidden. Details:
+  [Provider visibility](docs/DATABASE_PROVIDERS.md#provider-visibility-in-this-fork).
+- Translatable UI text uses `next-intl` keys in `messages/en/` and `messages/pt-BR/`.
+  Preserve both locales, the English reference/fallback and the pt-BR default. Do not
+  translate SQL, identifiers, user content or raw database messages. Technical docs stay
+  in English. Locale behavior is documented in [Architecture](docs/ARCHITECTURE.md#410-localization).
+- The browser is not an authorization authority. Query Safety and confirmation UI do
+  not enforce Production Safe Mode. The classifier and pure policy in `src/lib/safe-mode/`
+  are preparatory and not connected to execution as enforcement. Agent read-only profiles
+  and provider capabilities are separate mechanisms; do not generalize their guarantees.
+- EXPLAIN SQL is selected on the server. Background requests use estimate; an explicit
+  analyze request can execute the statement. Preserve the
+  [API contract and limits](docs/API_DOCS.md#structured-explain-requests).
 
 ## Project Overview
 
-Web-based SQL IDE for cloud-native teams: 17 engines — the `DatabaseType` union in [`src/lib/types.ts`](src/lib/types.ts) is the list, never a prose enumeration — plus AI query assistance. It runs **two ways** — standalone Next.js app and published npm package — and the two render different chrome, so a UI change verified in one is not verified in the other.
+Web-based SQL IDE with database providers and AI query assistance. The `DatabaseType`
+union in [`src/lib/types.ts`](src/lib/types.ts) inventories implemented types, not the
+visible V1 product surface. The source has **two shells** — standalone Next.js Studio
+and embeddable StudioWorkspace — with different chrome and ownership boundaries, so
+a UI change verified in one is not verified in the other.
 
 ## Branching & PRs
+
+Work on the user-designated branch (the fork's customization line is
+`feat/dbstudio-custom`). Inspect status first and preserve unrelated changes. Commit,
+publish, merge, rebase or release only within the user's explicit task scope. The
+workflow and release conventions below describe upstream; they do not establish
+branch protection or a publication policy for this fork.
 
 > **Trunk-based: feature branch → `main` → tag.** Open every PR with `gh pr create --base main`; there is no `dev` branch and no long-lived `release/*` branches. `main` is protected: PRs required, and `Lint, Typecheck and Build`, `Unit & Integration Tests` and `Secret Scan` must pass (SonarCloud runs but is not required — fork PRs cannot produce it).
 >
@@ -18,9 +53,10 @@ Web-based SQL IDE for cloud-native teams: 17 engines — the `DatabaseType` unio
 
 ## GitHub
 
-* Repo: https://github.com/libredb/libredb-studio
-* Image (canonical): `ghcr.io/libredb/libredb-studio:latest` — use GHCR in every copy-paste example (Docker Hub `libredb/libredb-studio` is a mirror only)
-* Helm: repo `https://libredb.org/libredb-studio/` · OCI `oci://ghcr.io/libredb/charts/libredb-studio` · [ArtifactHub](https://artifacthub.io/packages/helm/libredb-studio/libredb-studio)
+* Fork: https://github.com/rodrigowon/libredb-studio — verify local remotes before any authorized remote operation.
+* Upstream: https://github.com/libredb/libredb-studio
+* Upstream image: `ghcr.io/libredb/libredb-studio:latest` (Docker Hub `libredb/libredb-studio` is its mirror). Neither is a declared fork image.
+* Upstream Helm: repo `https://libredb.org/libredb-studio/` · OCI `oci://ghcr.io/libredb/charts/libredb-studio` · [ArtifactHub](https://artifacthub.io/packages/helm/libredb-studio/libredb-studio)
 
 ## Development Commands
 

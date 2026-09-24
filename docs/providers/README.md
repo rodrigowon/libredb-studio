@@ -4,6 +4,11 @@ This folder holds the **prime (canonical) reference for each database provider**
 There is exactly one document per provider, named by the provider's canonical **type-id** and kept
 in lockstep with the code (see the tri-sync rule in [`../../CLAUDE.md`](../../CLAUDE.md)).
 
+This is an index of **implemented providers**, not the V1 connection picker. This fork
+shows PostgreSQL, MySQL and SQLite by default; the other providers and their references
+remain available internally. See [Provider visibility](../DATABASE_PROVIDERS.md#provider-visibility-in-this-fork)
+for the override and its non-destructive, presentation-only boundary.
+
 | Provider | type-id | Family | Driver | Query language | Reference |
 |----------|---------|--------|--------|----------------|-----------|
 | PostgreSQL | `postgres` | SQL | `pg` | SQL | [postgres.md](./postgres.md) |
@@ -43,14 +48,20 @@ in lockstep with the code (see the tri-sync rule in [`../../CLAUDE.md`](../../CL
 ## Wire-compatible engines
 
 These engines have **no provider of their own**. Each one speaks the wire protocol of a driver
-above, so it connects through that driver unchanged — pick the driver's button in the connection
-dialog and the engine works. The connection dialog says so too, from the same data
+above, so it connects through that driver unchanged — when that provider is enabled in the
+UI, pick its button in the connection dialog. The connection dialog uses the same data
 ([`src/lib/db/compatibility.ts`](../../src/lib/db/compatibility.ts)).
 
 A name appears here **only after a live probe** ran against a real instance of it through the real
 provider ([issue #424](https://github.com/libredb/libredb-studio/issues/424), Phase 0). The version
 column is what that server reported; it is not a supported range. "Connects" is not "supported", so
 the support column records how much of the product actually worked:
+
+These are inherited, dated upstream observations, not fresh validation of this fork.
+In particular, historical EXPLAIN failures below predate the fork's connected-provider
+format selection; use the [current EXPLAIN contract](../API_DOCS.md#structured-explain-requests)
+and the PostgreSQL/MySQL provider references for that path. Do not infer new compatibility
+measurements from the presence of a fallback.
 
 - **Full** — every introspection surface answered. Caveats may still note data that is present but
   inaccurate.

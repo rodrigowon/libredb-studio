@@ -346,6 +346,87 @@ Each element must be a string, number, boolean or `null`; anything else is rejec
 }
 ```
 
+##### Structured EXPLAIN requests
+
+Standalone Studio requests a plan through `POST /api/db/query`, sending the original
+SQL and parameters rather than client-built EXPLAIN SQL:
+
+```json
+{
+  "connectionId": "seed:example-postgres",
+  "sql": "SELECT id FROM orders WHERE customer_id = $1",
+  "params": [7],
+  "explain": { "mode": "estimate" }
+}
+```
+
+The id is illustrative: use an authorized configured seed id or the usual `connection`
+payload. `explain` must contain **only** `mode`, with value `estimate` or `analyze`.
+Omitting it keeps the ordinary query path, not an implicit estimate. The
+[query route](../src/app/api/db/query/route.ts) validates the intent, acquires the
+provider and selects a [strategy](../src/lib/explain/index.ts) from its connected
+`getCapabilities()` result. The built SQL goes through `prepareQuery()` and the normal
+provider query method; bound parameters retain their positions.
+
+| Provider/path | `estimate` | `analyze` |
+|---|---|---|
+| PostgreSQL JSON | `EXPLAIN (FORMAT JSON)` | `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` when supported |
+| PostgreSQL text | `EXPLAIN` | `EXPLAIN ANALYZE` only with measured analyze support |
+| MySQL JSON | `EXPLAIN FORMAT=JSON` | Not enabled by this provider |
+| MySQL text | `EXPLAIN` | Not enabled by this provider |
+| SQLite | `EXPLAIN QUERY PLAN` | Not supported |
+
+PostgreSQL/MySQL probe fixed statements on ordinary connection setup to choose a
+format; unsupported EXPLAIN can leave the connection usable. PostgreSQL tests estimate
+before analyze, and its analyze probe executes only the fixed `SELECT 1`, not caller
+SQL. Agent read-only PostgreSQL profiles skip these probes. Provider details:
+[PostgreSQL](providers/postgres.md#10-capabilities--labels),
+[MySQL](providers/mysql.md#10-capabilities--labels).
+
+**Refusals and limits:** the structured path accepts one statement with a `SELECT` or
+`WITH` prefix under the connection's SQL grammar. It rejects direct DML/DDL,
+already-prefixed EXPLAIN and multiple executable statements. A trailing semicolon
+alone is not a second statement. Analyze requests screen `WITH` input for writing
+keywords; PostgreSQL strategies apply that conservative screen in both modes. This
+can refuse harmless keyword occurrences. It is not a complete SQL parser or proof of
+absence of effects: functions called by a SELECT may have side effects, and analyze
+**executes** the accepted statement.
+
+There is no split-and-explain batch mode or fallback to executing the original SQL
+when a structured request is refused. The ordinary query, multi-query and transaction
+paths do not gain this contract automatically. Manually typed `EXPLAIN ...` sent
+**without** the `explain` field remains ordinary SQL execution.
+
+Success returns the normal result envelope (`rows`, `fields`, `pagination`, etc.) plus
+top-level **`explainFormat`**, such as `postgres-json`, `postgres-text`,
+`postgres-text-analyze`, `mysql-json` or `mysql-text`. Clients use that returned value,
+not a type-id guess, to parse/render the engine-specific plan rows. It identifies the
+strategy, not the executed mode: `postgres-text-analyze` can also carry an estimate.
+The route does not return a normalized plan tree.
+
+| HTTP 400 code | Meaning |
+|---|---|
+| `EXPLAIN_INVALID_REQUEST` | Invalid `explain` shape or mode |
+| `EXPLAIN_STATEMENT_UNSUPPORTED` | Preflight or selected strategy refuses the statement |
+| `EXPLAIN_UNSUPPORTED` | No supported strategy or requested analyze capability |
+
+These refusals return `{ "code": "...", "error": "..." }`. Connection/database failures
+use shared error handling. `EXPLAIN_FORMAT_UNSUPPORTED` is a client diagnostic for an
+absent/unrecognized response format, not a refusal emitted by this route.
+
+**Metadata handshake:** internal `POST /api/db/provider-meta` returns
+`explainRequestVersion: 1`, `capabilities` and `labels` without connecting. These are
+initial capabilities, not live measurements. The standalone hook requires that
+version before sending intent, preventing an older server from ignoring the field
+and running raw SQL. The connected query route can still refuse a mode metadata
+advertised. Background requests use estimate; the explicit editor action requests
+analyze when metadata advertises it, otherwise estimate.
+
+**Security boundary:** existing session, connection and rate-limit checks still apply.
+This preflight is separate from Query Safety confirmation and the preparatory Safe
+Mode classifier/policy; it does not add Production Safe Mode enforcement. See
+[Architecture](ARCHITECTURE.md#412-preparatory-safe-mode-components).
+
 ##### MongoDB Query Format
 
 For MongoDB connections, the `sql` field should contain a JSON query:
@@ -1282,7 +1363,7 @@ interface QueryResult {
   fields: string[];        // Column names
   rowCount: number;        // Number of rows returned
   executionTime: number;   // Execution time in ms
-  explainPlan?: any;       // Query execution plan (if requested)
+  explainPlan?: any;       // Optional UI/legacy field, not the structured EXPLAIN response
   warnings?: QueryWarning[];             // Notices the engine attached; ABSENT when it reported none
   columnTypes?: Record<string, string>;  // Declared type per column, keyed by its name in `fields`
 }
@@ -1293,7 +1374,10 @@ interface QueryWarning {
 }
 ```
 
-Both optional channels are filled only by providers whose source declares them, and **absence is the
+Structured EXPLAIN returns plan rows plus `explainFormat` at the route boundary, not
+this optional `explainPlan` field; see [Structured EXPLAIN requests](#structured-explain-requests).
+
+The `warnings` and `columnTypes` channels are filled only by providers whose source declares them, and **absence is the
 signal**: a run that produced no warnings omits the field rather than sending `[]`, so a client can
 decide what to render from the field's presence alone. `columnTypes` is the declared type of *this*
 result, which is the only source for a computed column or an ad-hoc projection — the schema has no

@@ -616,15 +616,16 @@ really means `vacuum` here, so `vacuumActionOperation` stays absent.
 
 ## 10. Capabilities & labels
 
-### `getCapabilities()` ([postgres.ts:250](../../src/lib/db/providers/sql/postgres.ts))
+### `getCapabilities()` ([postgres.ts](../../src/lib/db/providers/sql/postgres.ts))
 
 Overrides the SQL base defaults:
 
 | Capability | Value |
 |------------|-------|
 | `queryLanguage` | `sql` |
-| `supportsExplain` | `true` |
-| `explainFormat` | `postgres-json` |
+| `supportsExplain` | Initially `true`; after ordinary connect, true only if an estimate probe succeeds |
+| `explainFormat` | Initially `postgres-json`; connected value can be `postgres-json`, `postgres-text`, `postgres-text-analyze`, or absent |
+| `supportsExplainAnalyze` | Initially `true`; ordinary connect measures it separately from estimate support |
 | `supportsExternalQueryLimiting` | `true` |
 | `supportsCreateTable` | `true` |
 | `supportsInlineRowEdit` | `true` — `UPDATE t SET c = v WHERE pk = v` is core PostgreSQL DML |
@@ -635,6 +636,27 @@ Overrides the SQL base defaults:
 | `supportsConnectionString` | `true` |
 | `defaultPort` | `5432` |
 | `schemaRefreshPattern` | `(CREATE\|DROP\|ALTER\|TRUNCATE)\b` (from base) |
+
+### Connected EXPLAIN selection
+
+On ordinary `connect()`, the provider probes `EXPLAIN (FORMAT JSON) SELECT 1` first.
+If accepted, it separately probes `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) SELECT 1`.
+Only failure of the JSON estimate advances to plain `EXPLAIN SELECT 1`, followed by
+`EXPLAIN ANALYZE SELECT 1`. Failure of analyze preserves the successful estimate
+format; failure of both estimate forms disables EXPLAIN without failing the connection.
+These fixed analyze probes execute `SELECT 1`, not user SQL. Agent read-only profiles
+skip this measurement and retain their existing capability envelope.
+
+Background editor requests use estimate: `EXPLAIN (FORMAT JSON)` or plain `EXPLAIN`,
+never automatic ANALYZE of the user's query. The explicit action can request analyze;
+the server checks the connected capabilities before building the executing form.
+Both PostgreSQL strategies refuse multiple statements and conservatively screen
+writing keywords in a `WITH` statement in both modes. This is not general SQL safety
+or a guarantee that SELECT functions have no effects.
+
+The [EXPLAIN API contract](../API_DOCS.md#structured-explain-requests) defines intent,
+refusals and the returned format. Initial metadata is obtained without connecting,
+so it is not evidence of measured support on a particular PostgreSQL-compatible server.
 
 ### Labels
 
@@ -857,9 +879,10 @@ Four things about the PostgreSQL side of that layer are worth knowing here:
   to anything. All three are subject to the same row cap and are
   **refused, not truncated**, when a schema is wider than `maxResultRows`; the run then continues with
   no snapshot and is told to narrow `inspect_schema` itself.
-- **Plan inspection uses `EXPLAIN (FORMAT JSON)`, never `EXPLAIN (ANALYZE, …)`.** The editor's
-  Explain button emits the ANALYZE form deliberately (a user asked for real timings) and that form
-  EXECUTES the statement, which on this engine performs a data-modifying CTE. The agent path is
+- **Agent plan inspection uses `EXPLAIN (FORMAT JSON)`, never `EXPLAIN (ANALYZE, …)`.** The editor's
+  explicit Explain action can request analyze, subject to connected-provider support; its
+  background plan requests estimate only. Analyze EXECUTES an accepted statement, which is why
+  the editor's structured PostgreSQL path screens data-modifying CTEs. The agent path is
   served by [`composed-sql.ts`](../../src/lib/agent/composed-sql.ts) instead, and the executing
   variant stays behind the approval-gated `sql.explain.analyze` descriptor that no tool reaches.
 - **The statement timeout is clamped to the run's remaining wall clock** before it reaches

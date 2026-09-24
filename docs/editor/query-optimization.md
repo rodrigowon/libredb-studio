@@ -625,59 +625,65 @@ for renders exactly as it did before.
 
 ### Automatic EXPLAIN
 
-Every SELECT query automatically runs EXPLAIN in the background (parallel execution). This provides instant performance insights without user action.
+In standalone Studio, `useQueryExecution` can request an estimated plan alongside a
+normal query. This requires EXPLAIN metadata, a registered strategy and
+`explainRequestVersion: 1`; the SQL must pass the single-statement SELECT/CTE preflight.
+Load More and explicit EXPLAIN runs do not start another background request. A failed
+background plan does not replace the main query result.
+
+The hook sends original SQL and bound parameters with `explain: { mode: "estimate" }`
+to `POST /api/db/query`. The server builds EXPLAIN SQL using the connected provider's
+capabilities. The client uses the returned `explainFormat` to extract/store the plan.
+See the [canonical API contract](../API_DOCS.md#structured-explain-requests).
 
 ### Supported Databases
 
-| Database | EXPLAIN Format |
-|----------|---------------|
-| PostgreSQL | `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` |
-| MySQL | `EXPLAIN FORMAT=JSON` |
-| SQLite | `EXPLAIN QUERY PLAN` (tree, no cost/timing metrics) |
+For the default visible engines:
+
+| Database | Background estimate | Explicit EXPLAIN action |
+|----------|---------------------|-------------------------|
+| PostgreSQL | JSON estimate without ANALYZE, or text fallback | Requests analyze when metadata advertises support; the server revalidates live capabilities |
+| MySQL | JSON estimate, or plain EXPLAIN fallback | Estimate only; this provider does not enable analyze |
+| SQLite | `EXPLAIN QUERY PLAN` (tree, no cost/timing metrics) | Estimate only |
+
+An explicit action chooses `analyze` when metadata's `supportsExplainAnalyze` is true,
+otherwise `estimate`. Analyze **executes the accepted statement** to collect actual
+timings; it is not started automatically alongside an ordinary query. Live support can
+differ from initial metadata: the server refuses unsupported analyze instead of
+silently downgrading or running the unwrapped statement. Other implemented providers
+remain in the registry even when hidden from the default UI.
 
 ### Non-SELECT Statements
 
-EXPLAIN is built for SELECT statements only. Clicking **Explain** with anything else
-(`UPDATE`, `INSERT`, DDL, …) executes nothing and reports "Only SELECT statements can
-be explained" — an explain run never falls back to running the original statement,
-because it deliberately bypasses the dangerous-query confirmation dialog.
+The structured path rejects direct DML/DDL and multiple executable statements instead
+of explaining fragments or running the original input. Preflight uses the connection's
+SQL grammar, including PostgreSQL's nested comments. PostgreSQL strategies
+conservatively refuse writing keywords in a `WITH` statement in both modes.
 
-Because it bypasses that dialog, the classification is the *only* screen on this path, and on
-PostgreSQL the wrapper is `EXPLAIN (ANALYZE, …)` — which **runs** what it explains. So the PostgreSQL
-and ClickHouse strategies read the statement under their own dialect's grammar rather than the shared
-default (#300): block comments nest in both, and a flat reading of
-`/* a /* b */ SELECT 1 */ DELETE FROM users` reports `SELECT` as the leading keyword while PostgreSQL
-reads the whole run as one comment and executes the `DELETE`. Verified on PostgreSQL 18: explaining
-that statement against a three-row table left zero rows. Under PostgreSQL's grammar the statement
-leads with `DELETE`, so nothing is built and the button reports that it cannot be explained. The other
-four strategies stay dialect-blind: their engines' comment rules are the flat one the default already
-applies (MySQL, SQLite) or were never established (Druid, Couchbase), and their EXPLAIN describes
-without running, so the worst a misread comment costs there is a refused button.
+These checks do not prove that functions called by a SELECT are side-effect-free.
+EXPLAIN skips the ordinary dangerous-query confirmation path and does not
+automatically use an editor transaction or playground transaction.
+It is **not Production Safe Mode enforcement**. Query Safety/confirmation, Agent
+read-only restrictions and the preparatory classifier/policy are separate mechanisms;
+see [Architecture](../ARCHITECTURE.md#412-preparatory-safe-mode-components).
+Manually typed EXPLAIN submitted without structured intent remains ordinary execution.
 
 ### How It Works
 
-```
-User executes: SELECT * FROM orders WHERE status = 'pending'
-
-┌─────────────────────────────────────────────────────────────┐
-│                    Parallel Execution                        │
-│                                                              │
-│  ┌──────────────────┐      ┌──────────────────────────────┐ │
-│  │   Main Query     │      │   Background EXPLAIN          │ │
-│  │   (with LIMIT)   │      │   (no LIMIT, ANALYZE)         │ │
-│  └────────┬─────────┘      └────────────┬─────────────────┘ │
-│           │                              │                   │
-│           ▼                              ▼                   │
-│     Results Tab                    Explain Tab               │
-└─────────────────────────────────────────────────────────────┘
-```
+For an eligible single statement, the hook starts the main query and background plan
+request in parallel. The main query follows its normal limiting/execution path; the
+background request asks the server for an estimate of the original statement, without
+ANALYZE. Main results and the returned plan are stored separately.
 
 ### Accessing EXPLAIN Data
 
-Click the "Explain" tab in the results panel to view:
-- Performance Insights
-- Execution Plan Tree
-- Raw JSON
+The EXPLAIN panel renders the visualization/raw plan supported by the returned format,
+with insights where the plan supplies the necessary metrics. Estimated plans do not
+contain actual execution timings. A plan or the absence of a warning is not a safety
+guarantee.
+
+These hook details describe standalone Studio. Embedded StudioWorkspace delegates
+query execution to its host adapter.
 
 ---
 
@@ -840,14 +846,9 @@ interface QueryTab {
 
 ## Configuration
 
-Currently, limits are hardcoded. Future versions may support configuration:
-
-```typescript
-// Future: .env configuration
-QUERY_DEFAULT_LIMIT=500
-QUERY_MAX_UNLIMITED=100000
-EXPLAIN_AUTO_RUN=true
-```
+Pagination defaults are defined in `src/lib/db/utils/query-limiter.ts`; per-request
+options use the query API. No environment switch for background EXPLAIN is implemented.
+Its eligibility is determined by the hook and provider metadata described above.
 
 ---
 

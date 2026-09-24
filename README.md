@@ -1,3 +1,22 @@
+> **Custom fork:** this repository develops a customized version of
+> [LibreDB Studio](https://github.com/libredb/libredb-studio), preserving its upstream
+> implementation and credits. The V1 interface shows **PostgreSQL, MySQL and SQLite**
+> by default; other shipped providers remain implemented. This is a
+> [presentation policy](docs/DATABASE_PROVIDERS.md#provider-visibility-in-this-fork), not
+> a database-access restriction or a destructive storage migration.
+>
+> The interface supports **pt-BR (default)** and **en (fallback)**. Technical documentation
+> is maintained in English. See the [fork architecture](docs/ARCHITECTURE.md#410-localization)
+> for locale resolution. The conservative SQL classifier and deterministic Safe Mode
+> policy are **preparatory, not wired into execution as Production Safe Mode enforcement**;
+> see the [security boundaries](docs/ARCHITECTURE.md#412-preparatory-safe-mode-components).
+>
+> **Distribution scope:** badges, demos, published packages/images, install channels,
+> marketplace listings and support references below describe the **upstream project**.
+> They do not establish published artifacts or support commitments for this fork.
+> To run these customizations, use this checkout's source (`bun install`, then `bun dev`);
+> the upstream `npx` package, container images and one-click templates do not select it.
+
 <p align="center">
   <img src="public/logo.svg" width="200" alt="LibreDB Studio Logo" />
 </p>
@@ -64,6 +83,8 @@
 ---
 
 ## Quick Start
+
+These commands install **upstream artifacts**, not this fork's source changes.
 
 Run a full Database Editor in one command, no clone, no build:
 
@@ -252,6 +273,12 @@ Standalone application only: the embedded `@libredb/studio` package carries no a
 ---
 
 ## Supported Databases
+
+This table inventories implemented providers, not the fork's default visible set.
+For V1 visibility and its override, see [Provider visibility](docs/DATABASE_PROVIDERS.md#provider-visibility-in-this-fork).
+Compatibility measurements below are inherited upstream observations, not new validation
+of this fork. For its current EXPLAIN selection and fallback, see the
+[EXPLAIN API contract](docs/API_DOCS.md#structured-explain-requests).
 
 | Database | Driver | Features |
 | :--- | :--- | :--- |
@@ -607,11 +634,9 @@ Deploy your own instance of LibreDB Studio with a single click on DigitalOcean, 
 
 ### Environment Variables
 
-This fork shows PostgreSQL, MySQL, and SQLite by default. Set
-`NEXT_PUBLIC_ENABLED_DATABASE_TYPES` to a comma-separated list of shipped `DatabaseType`
-ids before building to change the providers presented in the UI. The setting is
-non-destructive: hidden providers remain registered and existing persisted connections
-are retained.
+The fork's provider allowlist is a build-time UI setting. See
+[Provider visibility](docs/DATABASE_PROVIDERS.md#provider-visibility-in-this-fork)
+for parsing, defaults, deployment limits and preservation of hidden connections.
 
 | Variable | Required | Description |
 |----------|----------|-------------|
