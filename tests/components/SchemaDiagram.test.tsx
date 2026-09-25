@@ -67,6 +67,8 @@ mock.module("@xyflow/react", () => {
         {
           "data-testid": "mock-react-flow",
           className: "react-flow",
+          onPointerMove: props.onPointerMove,
+          onPointerLeave: props.onPointerLeave,
           onClick: (e: React.MouseEvent) => {
             if (e.target === e.currentTarget) onPaneClick?.();
           },
@@ -393,6 +395,23 @@ function createDefaultProps(overrides: Partial<Parameters<typeof SchemaDiagram>[
 // =============================================================================
 
 describe("SchemaDiagram", () => {
+  test("pointer highlight is local, leaves cleanly, and does not update the graph", () => {
+    const { container } = render(<SchemaDiagram {...createDefaultProps()} />);
+    const canvas = container.querySelector<HTMLElement>(".react-flow")!;
+    const renderedProps = lastReactFlowProps;
+    const move = lastReactFlowProps.onPointerMove as (event: unknown) => void;
+    const leave = lastReactFlowProps.onPointerLeave as (event: unknown) => void;
+    move({ currentTarget: canvas, clientX: 80, clientY: 60, pointerType: "mouse" });
+    expect(canvas.style.getPropertyValue("--erd-pointer-visible")).toBe("1");
+    expect(canvas.style.getPropertyValue("--erd-pointer-x")).toBe("80px");
+    expect(lastReactFlowProps).toBe(renderedProps);
+    leave({ currentTarget: canvas });
+    expect(canvas.style.getPropertyValue("--erd-pointer-visible")).toBe("0");
+    move({ currentTarget: canvas, clientX: 20, clientY: 30, pointerType: "touch" });
+    expect(canvas.style.getPropertyValue("--erd-pointer-visible")).toBe("0");
+    // Pointer styles stay on the canvas, outside the exported pane.
+    expect(canvas.querySelector(".react-flow__viewport")?.getAttribute("style")).toBeNull();
+  });
   afterEach(() => {
     cleanup();
   });

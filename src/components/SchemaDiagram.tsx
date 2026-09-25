@@ -378,6 +378,18 @@ function SchemaDiagramInner({ schema, onClose }: SchemaDiagramProps) {
       <HighlightStoreProvider value={highlightStore}>
         <DiagramActionsContext.Provider value={diagramActions}>
           <ReactFlow
+            className="erd-pointer-canvas"
+            onPointerMove={(event) => {
+              if (event.pointerType === "touch") return;
+              const canvas = event.currentTarget;
+              const bounds = canvas.getBoundingClientRect();
+              canvas.style.setProperty("--erd-pointer-x", `${event.clientX - bounds.left}px`);
+              canvas.style.setProperty("--erd-pointer-y", `${event.clientY - bounds.top}px`);
+              canvas.style.setProperty("--erd-pointer-visible", "1");
+            }}
+            onPointerLeave={(event) => {
+              event.currentTarget.style.setProperty("--erd-pointer-visible", "0");
+            }}
             style={{
               backgroundImage: `radial-gradient(circle, ${diagram.background} 1px, transparent 1px)`,
               backgroundSize: "20px 20px",
