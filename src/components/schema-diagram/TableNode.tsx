@@ -9,6 +9,15 @@ import { useDiagramActions } from "./diagram-context";
 import { useTableHighlighted } from "./highlight-store";
 import { useTranslations } from "next-intl";
 
+const endpointStyle: React.CSSProperties = {
+  width: 7,
+  height: 7,
+  borderRadius: "50%",
+  background: "var(--studio-fg-muted)",
+  border: "1px solid var(--studio-raised)",
+  pointerEvents: "none",
+};
+
 interface ColumnRowProps {
   column: ColumnSchema;
   isFk: boolean;
@@ -39,7 +48,7 @@ const ColumnRow = memo(function ColumnRow({ column, isFk, hasSourceHandle, hasTa
           position={Position.Right}
           id={`${column.name}-right`}
           isConnectable={false}
-          style={{ opacity: 0, right: -5 }}
+          style={{ ...endpointStyle, right: -5 }}
         />
       )}
       {hasTargetHandle && (
@@ -48,7 +57,7 @@ const ColumnRow = memo(function ColumnRow({ column, isFk, hasSourceHandle, hasTa
           position={Position.Left}
           id={`${column.name}-left`}
           isConnectable={false}
-          style={{ opacity: 0, left: -5 }}
+          style={{ ...endpointStyle, left: -5 }}
         />
       )}
 
@@ -105,24 +114,24 @@ export const TableNode = memo(function TableNode({ id, data }: NodeProps<TableFl
 
   return (
     <div
-      className={`bg-raised border rounded-lg overflow-hidden min-w-[200px] shadow-2xl transition-all ${
+      className={`bg-raised border rounded-lg min-w-[200px] shadow-2xl transition-all ${
         highlighted ? "border-blue-500/60 ring-1 ring-blue-500/30" : "border-hairline-strong"
       }`}
     >
-      <div className="relative bg-blue-600/10 px-3 py-2 border-b border-hairline flex items-center gap-2">
+      <div className="relative rounded-t-lg bg-blue-600/10 px-3 py-2 border-b border-hairline flex items-center gap-2">
         <Handle
           type="target"
           position={Position.Left}
           id={TABLE_TARGET_HANDLE}
           isConnectable={false}
-          style={{ opacity: 0, left: -5 }}
+          style={{ ...endpointStyle, left: -5 }}
         />
         <Handle
           type="source"
           position={Position.Right}
           id={TABLE_SOURCE_HANDLE}
           isConnectable={false}
-          style={{ opacity: 0, right: -5 }}
+          style={{ ...endpointStyle, right: -5 }}
         />
         <Database strokeWidth={1.5} className="w-3.5 h-3.5 text-blue-400" />
         <span className="text-xs font-medium text-fg">{table.name}</span>

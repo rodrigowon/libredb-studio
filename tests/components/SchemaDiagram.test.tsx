@@ -3,6 +3,7 @@ import "../helpers/mock-sonner";
 import "../helpers/mock-navigation";
 
 import { mock } from "bun:test";
+import { getBezierPath, getSmoothStepPath, Position } from "@xyflow/system";
 import { setupFramerMotionMock } from "../helpers/mock-monaco";
 
 // Module-scope handles so tests can assert on mock internals
@@ -91,7 +92,8 @@ mock.module("@xyflow/react", () => {
     BaseEdge: ({ id, path, style }: Record<string, unknown>) =>
       React.createElement("path", { "data-testid": "mock-base-edge", "data-edge-id": id, d: path, style }),
     EdgeLabelRenderer: ({ children }: { children: unknown }) => children,
-    getSmoothStepPath: () => ["M0 0 L10 10", 5, 5],
+    getBezierPath,
+    getSmoothStepPath,
     getNodesBounds: mockGetNodesBounds,
     getViewportForBounds: () => ({ x: 32, y: 32, zoom: 1 }),
     applyNodeChanges: (_changes: unknown, nodes: unknown[]) => nodes,
@@ -1499,6 +1501,30 @@ describe("SchemaDiagram", () => {
   // ═══════════════════════════════════════════════════════════════════════
 
   describe("FkEdge", () => {
+    test("paths adapt to handle geometry without changing relationship identity", () => {
+      const store = createHighlightStore();
+      const geometry = { sourceX: 200, sourceY: 200, sourcePosition: Position.Right, targetPosition: Position.Left };
+      const positions = [[500, 300], [0, 200], [200, 0], [200, 500], [500, 201], [210, 205], [2000, 1200]];
+      const edge = (targetX: number, targetY: number) => (
+        <HighlightStoreProvider value={store}>
+          <svg>{React.createElement(FkEdge as unknown as React.ComponentType<Record<string, unknown>>, {
+            id: "orders.user_id->users.id", source: "orders", target: "users", ...geometry, targetX, targetY,
+          })}</svg>
+        </HighlightStoreProvider>
+      );
+      const view = render(edge(500, 300));
+      for (const [targetX, targetY] of positions) {
+        view.rerender(edge(targetX, targetY));
+        const params = { ...geometry, targetX, targetY };
+        const [expected] = targetX > geometry.sourceX
+          ? getBezierPath(params)
+          : getSmoothStepPath({ ...params, borderRadius: 24 });
+        const path = view.container.querySelector('[data-testid="mock-base-edge"]')!;
+        expect(path.getAttribute("d")).toBe(expected);
+        expect(path.getAttribute("data-edge-id")).toBe("orders.user_id->users.id");
+        expect(expected).not.toMatch(/NaN|Infinity/);
+      }
+    });
     const edgeProps = {
       id: "orders.user_id->users.id",
       source: "orders",
@@ -1520,12 +1546,14 @@ describe("SchemaDiagram", () => {
       );
     }
 
-    test("real FK edge renders solid blue at rest with no label", () => {
+    test("real FK edge renders solid neutral at rest with no label", () => {
       const store = createHighlightStore();
       const { container } = renderEdge(store, false);
       const path = container.querySelector('[data-testid="mock-base-edge"]') as HTMLElement;
       expect(path).not.toBeNull();
-      expect(path.style.stroke).toBe("#3b82f6");
+      expect(path.style.stroke).toBe("var(--studio-fg-muted)");
+      expect(path.style.strokeWidth).toBe("2");
+      expect(path.style.strokeLinecap).toBe("round");
       expect(path.style.strokeDasharray).toBe("");
       expect(within(container).queryByText("1:N")).toBeNull();
     });
@@ -1534,7 +1562,8 @@ describe("SchemaDiagram", () => {
       const store = createHighlightStore();
       const { container } = renderEdge(store, true);
       const path = container.querySelector('[data-testid="mock-base-edge"]') as HTMLElement;
-      expect(path.style.stroke).toBe("#6b7280");
+      expect(path.style.stroke).toBe("var(--studio-fg-muted)");
+      expect(path.style.strokeWidth).toBe("1.5");
       expect(path.style.strokeDasharray).toBe("4 2");
     });
 
@@ -1544,7 +1573,8 @@ describe("SchemaDiagram", () => {
       const { container } = renderEdge(store, false);
       const path = container.querySelector('[data-testid="mock-base-edge"]') as HTMLElement;
       expect(path.style.opacity).toBe("1");
-      expect(path.style.strokeWidth).toBe("2");
+      expect(path.style.strokeWidth).toBe("2.5");
+      expect(path.style.stroke).toBe("var(--studio-fg-tertiary)");
       expect(within(container).queryByText("1:N")).not.toBeNull();
     });
 
