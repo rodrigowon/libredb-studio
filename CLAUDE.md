@@ -1,138 +1,14 @@
-# CLAUDE.md
+# Claude Code entrypoint
 
-Guidance for Claude Code in this repo — conventions, rules, and gotchas only. Read the code and `docs/` for anything derivable from them.
+Read [AGENTS.md](AGENTS.md) first and follow its canonical reading order and working rules.
+[Current state](docs/CURRENT_STATE.md), [Decisions](docs/DECISIONS.md) and
+[Upstream strategy](docs/UPSTREAM_STRATEGY.md) apply to all agents and tools.
+This file is a compatibility entrypoint, not a second project state or policy document.
 
-> **This is a custom fork of LibreDB Studio.** The inherited package metadata names
-> `@libredb/studio`, the upstream CLI and embeddable library built by `build:lib`;
-> it is not evidence that this fork has published that package or any container/release.
-> Studio and `libredb-platform` are separate products; do not infer a current consumer
-> or integration requirement from older platform references.
+The existing `.claude/agents`, `.claude/skills` and settings are tool-specific upstream assets.
+Their presence does not authorize delegation, release operations or upstream integration.
 
-## Stable fork rules
-
-- Inspect current implementation and tests before changing architecture. Prefer small,
-  scoped changes; historical plans and checkpoint reports are evidence, not current specifications.
-- Keep implemented providers, their contracts, capabilities and dependencies separate from
-  presentation. The default visible set is `postgres,mysql,sqlite`; use
-  `src/lib/database-visibility.ts`, not component-specific engine lists. Never remove a
-  provider or persisted connection merely because it is hidden. Details:
-  [Provider visibility](docs/DATABASE_PROVIDERS.md#provider-visibility-in-this-fork).
-- Translatable UI text uses `next-intl` keys in `messages/en/` and `messages/pt-BR/`.
-  Preserve both locales, the English reference/fallback and the pt-BR default. Do not
-  translate SQL, identifiers, user content or raw database messages. Technical docs stay
-  in English. Locale behavior is documented in [Architecture](docs/ARCHITECTURE.md#410-localization).
-- The browser is not an authorization authority. Query Safety and confirmation UI do
-  not enforce Production Safe Mode. The classifier and pure policy in `src/lib/safe-mode/`
-  are preparatory and not connected to execution as enforcement. Agent read-only profiles
-  and provider capabilities are separate mechanisms; do not generalize their guarantees.
-- EXPLAIN SQL is selected on the server. Background requests use estimate; an explicit
-  analyze request can execute the statement. Preserve the
-  [API contract and limits](docs/API_DOCS.md#structured-explain-requests).
-
-## Project Overview
-
-Web-based SQL IDE with database providers and AI query assistance. The `DatabaseType`
-union in [`src/lib/types.ts`](src/lib/types.ts) inventories implemented types, not the
-visible V1 product surface. The source has **two shells** — standalone Next.js Studio
-and embeddable StudioWorkspace — with different chrome and ownership boundaries, so
-a UI change verified in one is not verified in the other.
-
-## Branching & PRs
-
-Work on the user-designated branch (the fork's customization line is
-`feat/dbstudio-custom`). Inspect status first and preserve unrelated changes. Commit,
-publish, merge, rebase or release only within the user's explicit task scope. The
-workflow and release conventions below describe upstream; they do not establish
-branch protection or a publication policy for this fork.
-
-> **Trunk-based: feature branch → `main` → tag.** Open every PR with `gh pr create --base main`; there is no `dev` branch and no long-lived `release/*` branches. `main` is protected: PRs required, and `Lint, Typecheck and Build`, `Unit & Integration Tests` and `Secret Scan` must pass (SonarCloud runs but is not required — fork PRs cannot produce it).
->
-> **Tag namespace.** Product releases are bare semver tags on `main` — **no `v` prefix**; the `v`-prefixed tags below 0.9.28 are frozen history, and chart releases use a separate `libredb-studio-<chart version>` namespace. So `git tag | tail` is not "the latest release". Cutting one is the user-invoked `/cut-release` skill ([`.claude/skills/cut-release/SKILL.md`](.claude/skills/cut-release/SKILL.md)) — ask for it, never improvise.
->
-> **Two version gates, both enforced by the required check.** A PR bumping the `package.json` version must also run `bun run chart:bump` **and `make -C operator bundle`** and commit both (#138; the OLM CSV takes its version and controller image tag from `package.json`) — tag only once both are on `main`, since the tag ref is what the operator image and bundle build from. A PR changing any packaged file under `charts/libredb-studio/` must ALSO bump `Chart.yaml version` **by hand** when the current chart version is already released (#167) — `chart:bump` skips it while `appVersion` is in sync — plus the README `--version` examples.
-
-## GitHub
-
-* Fork: https://github.com/rodrigowon/libredb-studio — verify local remotes before any authorized remote operation.
-* Upstream: https://github.com/libredb/libredb-studio
-* Upstream image: `ghcr.io/libredb/libredb-studio:latest` (Docker Hub `libredb/libredb-studio` is its mirror). Neither is a declared fork image.
-* Upstream Helm: repo `https://libredb.org/libredb-studio/` · OCI `oci://ghcr.io/libredb/charts/libredb-studio` · [ArtifactHub](https://artifacthub.io/packages/helm/libredb-studio/libredb-studio)
-
-## Development Commands
-
-```bash
-bun install              # deps (Bun preferred)
-bun dev                  # dev server (Turbopack)
-bun run build            # production build
-bun run format           # Biome formatter check (format:fix to write); CSS/JSON excluded
-bun run lint             # oxlint (fast, syntactic) then ESLint 9
-bun run lint:oxc         # oxlint only
-bun run typecheck        # TypeScript strict
-bun run test             # all layers: unit + api + integration + hooks + security + evals + components
-bun run test:e2e         # Playwright (builds and starts its own servers; see playwright.config.ts)
-bun run test:coverage    # coverage report (merged lcov)
-bun run coverage:check   # enforce 100% line coverage on the merged lcov
-bun run build:lib        # tsup → @libredb/studio package dist (see rule below)
-bun run attw             # type-resolution check against the packed tarball (run build:lib first)
-# drift guards — all four run inside the required "Lint, Typecheck and Build" check:
-bun run chart:check              # chart version sync guard (#138; CI sets CHART_SYNC_STRICT=1 and fetches origin/main)
-bun run channels:showcase:check  # login channel showcase drift guard (#425)
-bun run readme:check             # localized README drift guard (#317)
-bun run security:check           # security posture drift guard
-```
-
-> **Toolchain rationale (Biome formatter-only, oxlint in front of ESLint, the narrow type-aware layer, attw) lives in [`docs/TOOLCHAIN.md`](docs/TOOLCHAIN.md).** Read it before changing any lint, format or packaging config.
-
-> **Run `build:lib` after changing anything reachable from `src/exports/`** (workspace, providers, components, security, …) — `bun run build` (Next.js) does NOT update the package dist.
-
-> **Tests — always `bun run test`, never bare `bun test`.** Component tests need isolated execution groups (`tests/run-components.sh`) to avoid `mock.module()` cross-contamination.
-
-> **Coverage isolation:** `bun`'s `mock.module()` is process-wide, so `test:coverage:core` runs each core test file in its own process (`tests/run-core.sh`) and `test:coverage` merges the per-file lcov. Do NOT collapse it into one `bun test` invocation. Rationale: [`docs/TOOLCHAIN.md`](docs/TOOLCHAIN.md).
-
-## Pre-Commit Verification (MANDATORY)
-
-Run the required-check gate set locally before claiming done. [`.github/workflows/ci.yml`](.github/workflows/ci.yml) is the authority — this list mirrors it and can fall behind it:
-
-```bash
-bun run format && bun run lint && bun run typecheck && bun run knip \
-  && bun run chart:check && bun run channels:showcase:check \
-  && bun run readme:check && bun run security:check \
-  && bun run test && bun run build
-```
-
-A clean local pass is still not a guarantee: the same job also runs `build:lib` + `attw` and `gofmt`/`go vet`/`go test` over `packaging/windows/launcher`, and the coverage gate below lives in a separate required job.
-
-> **100% line coverage is a hard CI gate — work TDD, always.** `scripts/check-coverage.mjs` fails the required `Unit & Integration Tests` job below 100%, so every change that adds or alters executable lines lands with its tests **in the same PR** — write the failing test first, even unasked. `bun run test:coverage && bun run coverage:check` prints the exact uncovered file:line ranges. Measurement rationale: [`docs/TOOLCHAIN.md`](docs/TOOLCHAIN.md).
-
-## Architecture
-
-- **DB drivers:** `pg`, `mysql2`, `cassandra-driver`, `oracledb`, `mssql`, `mongodb`, `ioredis` — all external in both build configs. Two traps: SQLite is **`bun:sqlite`/`node:sqlite`** for the DB provider (runtime-selected, `LIBREDB_SQLITE_DRIVER` overrides) but `better-sqlite3` for the storage layer; `@duckdb/node-api` is a native N-API addon (~68 MB of bindings per libc variant), external too.
-- **Layout:** tree + data flow in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Key dirs: `src/lib/db` (providers), `src/lib/llm`, `src/lib/storage`, `src/workspace` + `src/exports` (the npm-package library surface), `src/proxy.ts` (RBAC middleware).
-
-### Rules & patterns
-
-> **⚠️ Providers are the lifeblood of this project — keep the triad in lockstep: code ↔ docs ↔ tests**, 1:1 per canonical type-id — the type-id set is the `DatabaseType` union in [`src/lib/types.ts`](src/lib/types.ts), which is the only list:
-> - Code: `src/lib/db/providers/<family>/<type-id>.ts`, or `.../<type-id>/index.ts` when the provider is split across modules · Docs: `docs/providers/<type-id>.md` · Tests: `tests/integration/db/<type-id>-provider.test.ts`
-> - **One directory may serve two type-ids** — `sql/search/` is both `elasticsearch` and `opensearch` (#424). Docs and tests stay 1:1 anyway: the invariant is per type-id.
-> - Any change to one side MUST sync the others **in the same PR**. The doc mirrors the code and the code mirrors the doc — never let them drift.
-
-- **DB abstraction:** Strategy Pattern. SQL-dialect providers extend `SQLBaseProvider`; the non-SQL ones (`mongodb`, `redis`, `couchbase`, `libredb`) extend `BaseDatabaseProvider` directly, and `SQLBaseProvider` itself extends it. Inside `src/lib/db`, never branch on the type id — drive behaviour through capabilities/labels. Three `=== "mongodb"` branches survive in the UI layer as known debt (`src/hooks/use-connection-form.ts`, `src/lib/editor/tab-language.ts`, `src/components/ConnectionModal.tsx`); do not add a fourth.
-- **Auth:** `NEXT_PUBLIC_AUTH_PROVIDER` = `local` (email/password) or `oidc` (PKCE → the same JWT cookie); `src/proxy.ts` enforces RBAC (admin vs user). [`docs/OIDC.md`](docs/OIDC.md).
-- **Storage:** write-through cache — localStorage serves reads, `useStorageSync` pushes mutations to the server (debounced). `STORAGE_PROVIDER` (server-side only) = `local` | `sqlite` | `postgres`. [`docs/STORAGE.md`](docs/STORAGE.md).
-- **API routes:** all backend in `src/app/api/`; JWT-protected except the public set in [`src/proxy.ts`](src/proxy.ts) — `/login`, `/api/auth/*`, `/api/db/health`, `/api/storage/config`, `/_next`, `/favicon.ico` and static assets — plus an agent-drive path gated by a bearer token instead of the JWT. `src/proxy.ts` is the authority; do not restate the list elsewhere.
-
-## Configuration
-
-Every env var is documented with an example in [`.env.example`](.env.example). The one thing that file cannot show you: `STORAGE_PROVIDER` / `STORAGE_SQLITE_PATH` / `STORAGE_POSTGRES_URL` are **server-side only** (not `NEXT_PUBLIC_`) and are discovered at runtime via `/api/storage/config`.
-
-## Database Connections
-
-Connections are typed by `type`; per-provider fields, query formats and measured behaviours live in [`docs/providers/<type-id>.md`](docs/providers/) and [`docs/API_DOCS.md`](docs/API_DOCS.md). The non-SQL providers map onto the SQL-oriented interface by convention (Redis `getSchema()` uses a non-blocking `SCAN`, never `KEYS *`) — read the provider doc before assuming a surface exists.
-
-## Docker & Helm
-
-- **Docker:** multi-stage Bun build, standalone Next.js output; build args `JWT_SECRET_BUILD`, `ADMIN_PASSWORD_BUILD`, `USER_PASSWORD_BUILD`. The Dockerfile declares no `HEALTHCHECK` — `GET /api/db/health` is wired in `docker-compose.example.yml` and the chart probes.
-- **Helm:** lint with `helm lint charts/libredb-studio --strict`. Values: `charts/libredb-studio/README.md`; rationale: [`docs/HELM_CHART.md`](docs/HELM_CHART.md).
+The framework-managed block below is retained because `next dev` regenerates it.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
