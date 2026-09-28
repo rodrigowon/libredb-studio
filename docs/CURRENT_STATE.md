@@ -1,24 +1,23 @@
 # Current state of the custom fork
 
-Snapshot captured on **2026-09-25**, before Agent Context Foundation documentation edits.
+Snapshot refreshed on **2026-09-28**, after the reviewed Results on Demand (Phase 7B.6C)
+feature commit and before its documentation checkpoint.
 This is a handoff snapshot, not a live status page or changelog. Refresh it after reviewed
 checkpoints; verify Git and code on arrival. Git stores the history.
-HEAD, branch divergence and preservation of the local historical files were rechecked on
-**2026-09-27** while completing this documentation phase.
 
 ## Git snapshot
 
 | Item | Observed value |
 | --- | --- |
 | Working branch | `feat/dbstudio-custom` |
-| HEAD / latest closed checkpoint | `00306ea51adaf8248251b534acb496db3517a95e` — `feat: refine erd relationship styling` |
+| HEAD / latest closed feature checkpoint | `cdfcaeab6d94a724ad2dd19fe00cfc2aa4719a17` — `feat: collapse results panel until needed` |
 | Tracking branch | `origin/feat/dbstudio-custom` |
-| Divergence from local tracking ref | ahead 2 / behind 0 |
+| Divergence from local tracking ref | ahead 4 / behind 0 (before this documentation commit) |
 | `origin` | `https://github.com/rodrigowon/libredb-studio.git` |
 | `upstream` | `https://github.com/libredb/libredb-studio.git` |
 | Local `main`, `origin/main`, `upstream/main` | `8266a9f1c4938d14d87c1472fada16c4ade86ab6` |
 | Merge-base of HEAD and `upstream/main` | `04fd78a4dfc828f636294ec33889c00b4abc774b` |
-| Initial working tree | No tracked or staged edits; only the two protected local historical documents were untracked |
+| Working tree after the feature commit | No tracked or staged edits; only the two protected local historical documents were untracked |
 
 No fetch was performed for this audit: remote-tracking refs above are local observations, not a
 claim about GitHub's current tip. The custom branch has selective adaptations after its baseline;
@@ -64,6 +63,7 @@ Their presence does not imply every inherited feature has been audited or transl
 | Localization | `next-intl`, two catalogs, server/client integration, locale persistence and switchers. Catalogs cover login/metadata, Studio/Connections/Editor, Results/History/data tools, schema docs/diff, Monitoring/Admin/Operations/Security/Audit, ERD/Explain, Query Safety and Agent. [Catalogs](../messages/en/), [i18n tests](../tests/unit/i18n/), [architecture](ARCHITECTURE.md#410-localization). |
 | Navigation and connection workflow | Simplified primary navigation/tabs; engines and essential fields first in ConnectionModal, optional advanced fields collapsed. [Studio components](../src/components/studio/), [ConnectionModal](../src/components/ConnectionModal.tsx). |
 | Execution controls and empty states | Clearer Execute/EXPLAIN controls and guidance in the main workflow. This did not resolve the shortcut limitation below. [Editor](../src/components/QueryEditor.tsx), [execution hook](../src/hooks/use-query-execution.ts), [BottomPanel](../src/components/studio/BottomPanel.tsx). |
+| Results on Demand (Phase 7B.6C) | Implemented in Studio and StudioWorkspace; compact initial panel with explicit expansion. [Central controller](../src/hooks/use-bottom-panel.ts), [controller tests](../tests/hooks/use-bottom-panel.test.ts). |
 | Login and header | Refined login and desktop/mobile top chrome, without new branding or auth semantics. [Login](../src/app/login/page.tsx), [desktop header](../src/components/studio/StudioDesktopHeader.tsx), [mobile header](../src/components/studio/StudioMobileHeader.tsx). |
 | Explorer sidebar | Initial width 20%, minimum 15%, manual resize retained; duplicate Studio footer GitHub/version removed. Schema tools live in the Explorer bar's vertical ellipsis menu. [Layout constants](../src/components/sidebar/layout.ts), [Sidebar](../src/components/sidebar/Sidebar.tsx), [SchemaTools](../src/components/sidebar/SchemaTools.tsx). |
 | ERD | Fork-specific canvas and relationship styling; details in the next section. |
@@ -76,9 +76,22 @@ Their presence does not imply every inherited feature has been audited or transl
 These refinements sit on the inherited Next.js Studio and embeddable workspace architecture.
 Do not assume standalone UI validation also validates [StudioWorkspace](../src/workspace/).
 
+### Results on Demand
+
+The Bottom Panel starts in a compact **36 px** state with its navigation bar available.
+Query execution expands Results after existing preflight checks; History, Saved and tools
+can explicitly expand their surfaces. Accepted EXPLAIN requests use the same centralized
+controller. Execution completion does not reopen a panel the user manually collapsed.
+
+The expanded default is **60%**, with the existing **20%** minimum expanded size. The last
+useful expanded size is retained in memory; no new persistence was introduced. Manual
+resize/splitter behavior is preserved. Editing or clearing SQL does not automatically
+expand or collapse the panel, and previous results remain available. Existing error
+presentation is unchanged, including toasts for single-query execution failures.
+
 ## Current ERD state
 
-The latest closed checkpoint is the HEAD shown in the Git snapshot. React Flow resolves to
+The ERD styling checkpoint is `00306ea51adaf8248251b534acb496db3517a95e`. React Flow resolves to
 **12.11.5** in [bun.lock](../bun.lock). The custom visual layer comprises
 [SchemaDiagram](../src/components/SchemaDiagram.tsx), [FkEdge](../src/components/schema-diagram/FkEdge.tsx),
 [TableNode](../src/components/schema-diagram/TableNode.tsx) and [theme styles](../src/styles/theme.css).
@@ -122,7 +135,6 @@ These are accepted directions or investigations, not authorization to implement 
 The inherited [BACKLOG](BACKLOG.md) remains the detailed defect inventory; it is not this fork's
 delivery sequence.
 
-- Results panel collapsed until first execution (Results on demand).
 - Explorer table context menu: neutral upstream-like treatment; some actions remain colorful and
   English under pt-BR. This is separate from the completed schema-tools ellipsis menu.
 - Restrained purple UI accents in place of blue; editor syntax theme later. Refine the light theme.
@@ -137,12 +149,10 @@ delivery sequence.
 
 Update this sequence as checkpoints are approved; do not treat it as permanent scheduling.
 
-1. Agent Context Foundation (this documentation phase; local review pending).
-2. Results on demand.
-3. Railway Deployment Readiness Audit.
-4. Railway lab deployment, subject to the audit.
-5. PostgreSQL + Apple Store test dataset.
-6. Dogfooding / self-hosted daily usage.
+1. Railway Deployment Readiness Audit.
+2. Railway lab deployment, subject to the audit.
+3. PostgreSQL + Apple Store test dataset.
+4. Dogfooding / self-hosted daily usage.
 
 ## Local test data
 
