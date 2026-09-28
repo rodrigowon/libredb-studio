@@ -1,7 +1,7 @@
 # Current state of the custom fork
 
-Snapshot refreshed on **2026-09-28**, after the reviewed Results on Demand (Phase 7B.6C)
-feature commit and before its documentation checkpoint.
+Snapshot refreshed on **2026-09-28**, after the reviewed Apple Store PostgreSQL lab fixture
+commit and before its documentation checkpoint.
 This is a handoff snapshot, not a live status page or changelog. Refresh it after reviewed
 checkpoints; verify Git and code on arrival. Git stores the history.
 
@@ -10,14 +10,14 @@ checkpoints; verify Git and code on arrival. Git stores the history.
 | Item | Observed value |
 | --- | --- |
 | Working branch | `feat/dbstudio-custom` |
-| HEAD / latest closed feature checkpoint | `cdfcaeab6d94a724ad2dd19fe00cfc2aa4719a17` — `feat: collapse results panel until needed` |
+| HEAD / latest closed implementation checkpoint | `277fa1fd53e01af04e5c72307d91ca908eca0ce9` — `test: add deterministic postgres apple store fixture` |
 | Tracking branch | `origin/feat/dbstudio-custom` |
-| Divergence from local tracking ref | ahead 4 / behind 0 (before this documentation commit) |
+| Divergence from local tracking ref | ahead 6 / behind 0 (before this documentation commit) |
 | `origin` | `https://github.com/rodrigowon/libredb-studio.git` |
 | `upstream` | `https://github.com/libredb/libredb-studio.git` |
 | Local `main`, `origin/main`, `upstream/main` | `8266a9f1c4938d14d87c1472fada16c4ade86ab6` |
 | Merge-base of HEAD and `upstream/main` | `04fd78a4dfc828f636294ec33889c00b4abc774b` |
-| Working tree after the feature commit | No tracked or staged edits; only the two protected local historical documents were untracked |
+| Working tree after the fixture commit | No tracked or staged edits; only the two protected local historical documents were untracked |
 
 No fetch was performed for this audit: remote-tracking refs above are local observations, not a
 claim about GitHub's current tip. The custom branch has selective adaptations after its baseline;
@@ -149,19 +149,34 @@ delivery sequence.
 
 Update this sequence as checkpoints are approved; do not treat it as permanent scheduling.
 
-1. Railway Deployment Readiness Audit.
-2. Railway lab deployment, subject to the audit.
-3. PostgreSQL + Apple Store test dataset.
-4. Dogfooding / self-hosted daily usage.
+1. Review and publish the approved custom branch.
+2. Create the Railway lab project.
+3. Provision private PostgreSQL.
+4. Deploy DB Studio Custom.
+5. Seed the Apple Store PostgreSQL fixture.
+6. Run the Railway smoke test.
+7. Begin self-hosted dogfooding.
+
+Railway provisioning and deployment have not started.
 
 ## Local test data
 
 The audited workspace contains ignored `data/Apple.db` and `data/estoque_loja_apple_teste.sqlite`,
 alongside the project sample database. They are local fixtures, not tracked repository assets;
 future clones must not assume they exist. Their presence was checked without reading user rows.
-The supplied dataset concept includes roughly 2,000 synthetic clients, an Apple-style product
-catalog, inventory, sales, sale items and movements. The row count of either local file was not
-verified, and a PostgreSQL fixture is a future checkpoint. Do not commit generated/local databases.
+The row count of either local file was not verified. Do not commit generated/local databases.
+
+The versioned, PostgreSQL-native [Apple Store fixture](../scripts/lab/apple-store/README.md)
+now lives in `scripts/lab/apple-store/`, independently of those SQLite files. Version **1.0.0**
+uses seed **20260925** for deterministic generation of **2,000 synthetic clients**, **3,500 sales**
+and **5,600 sale items**. CPF values are synthetic and mathematically invalid; no real personal
+data is included. Intended use is development, lab testing and dogfooding only.
+
+Validation against real **PostgreSQL 17.10** confirmed the schema, constraints, views and indexes,
+as well as real transaction rollback after a controlled seed failure. The fixture lives in
+schema `apple_store_lab`; the observed default PostgreSQL `search_path` (`"$user", public`)
+does not include it. Unqualified table names therefore do not resolve unless the connection/role
+search path is configured to include that schema. No decision has been made to change this behavior.
 
 ## Documentation map and audit limits
 
