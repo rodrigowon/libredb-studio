@@ -131,6 +131,52 @@ function createDefaultParams(overrides?: Record<string, unknown>) {
 let addToHistorySpy: ReturnType<typeof spyOn>;
 
 describe("useQueryExecution", () => {
+  for (const response of [
+    { json: mockQueryResult },
+    { json: { ...mockQueryResult, rows: [], rowCount: 0 } },
+    { status: 400, json: { error: "invalid SQL" } },
+  ]) {
+    test(`opens once at execution start, not at resolution (${response.status ?? response.json.rowCount})`, async () => {
+      let resolve!: (value: MockFetchResponse) => void;
+      mockGlobalFetch({ "/api/db/query": () => new Promise<MockFetchResponse>((done) => { resolve = done; }) });
+      const { result, rerender } = renderHook(() => useQueryExecution(createDefaultParams({ metadata: null })));
+      let collapsed = true;
+      const resize = mock(() => { collapsed = false; });
+      result.current.bottomPanelProps.panelRef.current = {
+        isCollapsed: () => collapsed, resize, collapse: () => {}, expand: () => {},
+        getSize: () => ({ inPixels: 36, asPercentage: 5 }),
+      };
+      let pending!: Promise<void>;
+      act(() => { pending = result.current.executeQuery("SELECT 1"); });
+      expect(resize).toHaveBeenCalledTimes(1);
+      expect(result.current.bottomPanelMode).toBe("results");
+      collapsed = true;
+      act(() => result.current.bottomPanelProps.onResize({ inPixels: 36, asPercentage: 5 }));
+      await act(async () => { resolve(response); await pending; });
+      rerender();
+      expect(resize).toHaveBeenCalledTimes(1);
+      expect(result.current.isBottomPanelCollapsed).toBe(true);
+      act(() => { pending = result.current.executeQuery("SELECT 2"); });
+      expect(resize).toHaveBeenCalledTimes(2);
+      await act(async () => { resolve(response); await pending; });
+    });
+  }
+
+  test("no connection and safety confirmation do not expand", async () => {
+    const { result, rerender } = renderHook(({ activeConnection }) => useQueryExecution(createDefaultParams({ activeConnection })), {
+      initialProps: { activeConnection: null as DatabaseConnection | null },
+    });
+    const resize = mock(() => {});
+    result.current.bottomPanelProps.panelRef.current = {
+      isCollapsed: () => true, resize, collapse: () => {}, expand: () => {},
+      getSize: () => ({ inPixels: 36, asPercentage: 5 }),
+    };
+    await act(async () => { await result.current.executeQuery("SELECT 1"); });
+    rerender({ activeConnection: mockConnection });
+    await act(async () => { await result.current.executeQuery("DROP TABLE test"); });
+    expect(resize).not.toHaveBeenCalled();
+  });
+
   beforeEach(() => {
     mockToastSuccess.mockClear();
     mockToastError.mockClear();

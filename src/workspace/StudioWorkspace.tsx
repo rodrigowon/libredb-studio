@@ -391,7 +391,7 @@ export function StudioWorkspace({
               <div className="h-full">
                 <div className="h-full">
                   <ResizablePanelGroup id="workspace-editor" orientation="vertical">
-                    <ResizablePanel id="workspace-editor-top" defaultSize="40" minSize="20">
+                    <ResizablePanel id="workspace-editor-top" minSize="20">
                       <div className="h-full flex flex-col">
                         <QueryToolbar
                           activeConnection={conn.activeConnection}
@@ -437,8 +437,9 @@ export function StudioWorkspace({
                       </div>
                     </ResizablePanel>
                     <ResizableHandle className="h-1 bg-fill hover:bg-blue-500/20" />
-                    <ResizablePanel id="workspace-editor-bottom" defaultSize="60" minSize="20">
+                    <ResizablePanel id="workspace-editor-bottom" {...queryExec.bottomPanelProps}>
                       <BottomPanel
+                        collapsed={queryExec.isBottomPanelCollapsed}
                         mode={queryExec.bottomPanelMode}
                         onSetMode={queryExec.setBottomPanelMode}
                         currentTab={tabMgr.currentTab}

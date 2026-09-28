@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, type Dispatch, type SetStateAction } from "react";
 import type { DatabaseConnection, QueryTab } from "@/lib/types";
 import type { WorkspaceQueryResult, WorkspaceFeatures } from "@/workspace/types";
-import type { BottomPanelMode } from "@/components/studio/BottomPanel";
+import { useBottomPanel } from "@/hooks/use-bottom-panel";
 import { useToast } from "@/hooks/use-toast";
 import { isDangerousQuery } from "@/components/QuerySafetyDialog";
 import { maybeInviteToStar } from "@/lib/community/star-prompt-toast";
@@ -77,7 +77,7 @@ export function useQueryAdapter({
     tabId: string;
   } | null>(null);
   const [historyKey, setHistoryKey] = useState(0);
-  const [bottomPanelMode, setBottomPanelMode] = useState<BottomPanelMode>("results");
+  const { bottomPanelMode, setBottomPanelMode, bottomPanelProps, isBottomPanelCollapsed } = useBottomPanel();
 
   const { toast } = useToast();
 
@@ -186,7 +186,7 @@ export function useQueryAdapter({
         toast({ title: t("queryError"), description: errorMessage, variant: "destructive" });
       }
     },
-    [activeConnection, tabs, currentTab, activeTabId, toast, onQueryExecute, setTabs, t],
+    [activeConnection, tabs, currentTab, activeTabId, toast, onQueryExecute, setTabs, t, setBottomPanelMode],
   );
 
   // Force execute (bypass safety check)
@@ -270,7 +270,7 @@ export function useQueryAdapter({
           toast({ title: t("queryError"), description: errorMessage, variant: "destructive" });
         });
     },
-    [activeConnection, activeTabId, toast, onQueryExecute, setTabs, t],
+    [activeConnection, activeTabId, toast, onQueryExecute, setTabs, t, setBottomPanelMode],
   );
 
   // Cancel running query (best-effort via ref flag)
@@ -368,6 +368,8 @@ export function useQueryAdapter({
 
     const { query, tabId } = pendingUnlimitedQuery;
 
+    setBottomPanelMode("results");
+
     cancelledRef.current = false;
 
     setTabs((prev) =>
@@ -430,7 +432,7 @@ export function useQueryAdapter({
 
     setUnlimitedWarningOpen(false);
     setPendingUnlimitedQuery(null);
-  }, [pendingUnlimitedQuery, activeConnection, onQueryExecute, setTabs, toast, t]);
+  }, [pendingUnlimitedQuery, activeConnection, onQueryExecute, setTabs, toast, t, setBottomPanelMode]);
 
   return {
     executeQuery,
@@ -447,5 +449,7 @@ export function useQueryAdapter({
     historyKey,
     bottomPanelMode,
     setBottomPanelMode,
+    bottomPanelProps,
+    isBottomPanelCollapsed,
   };
 }

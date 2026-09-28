@@ -20,6 +20,7 @@ import { isExplainErrorCode } from "@/lib/explain/request";
 import { maybeInviteToStar } from "@/lib/community/star-prompt-toast";
 import { buildConnectionPayload } from "./use-connection-payload";
 import { useTranslations } from "next-intl";
+import { useBottomPanel } from "./use-bottom-panel";
 
 export interface QueryExecutionOptions {
   limit?: number;
@@ -162,9 +163,7 @@ export function useQueryExecution({
     tabId: string;
   } | null>(null);
   const [historyKey, setHistoryKey] = useState(0);
-  const [bottomPanelMode, setBottomPanelMode] = useState<
-    "results" | "explain" | "history" | "saved" | "charts" | "pivot" | "docs" | "schemadiff" | "dashboard"
-  >("results");
+  const { bottomPanelMode, setBottomPanelMode, selectMode, bottomPanelProps, isBottomPanelCollapsed } = useBottomPanel();
 
   // Capability honesty: if the active provider has no explainFormat (e.g. the
   // user switched connections), never leave the panel stuck on a hidden tab.
@@ -177,7 +176,7 @@ export function useQueryExecution({
   // stale plan when the user returns to a provider that can explain. The
   // condition is self-extinguishing, which is what keeps this out of a loop.
   if (bottomPanelMode === "explain" && metadata && !metadata.capabilities.explainFormat) {
-    setBottomPanelMode("results");
+    selectMode("results");
   }
 
   const { toast } = useToast();
@@ -240,7 +239,6 @@ export function useQueryExecution({
             : t,
         ),
       );
-      setBottomPanelMode(isExplain ? "explain" : "results");
 
       const explainStrategy = getExplainStrategy(metadata?.capabilities.explainFormat);
 
@@ -269,6 +267,7 @@ export function useQueryExecution({
         return;
       }
 
+      setBottomPanelMode(isExplain ? "explain" : "results");
       const startTime = Date.now();
       // Set up abort controller for query cancellation.
       //
@@ -645,7 +644,7 @@ export function useQueryExecution({
         }
       }
     },
-    [activeConnection, toast, fetchSchema, metadata, transactionActive, playgroundMode, setTabs, queryEditorRef, t, te],
+    [activeConnection, toast, fetchSchema, metadata, transactionActive, playgroundMode, setTabs, queryEditorRef, t, te, setBottomPanelMode],
   );
 
   // Force execute (bypass safety check) — unified via skipSafety flag
@@ -743,7 +742,7 @@ export function useQueryExecution({
         toast({ title: t("queryError"), description: errorMessage, variant: "destructive" });
       }
     },
-    [activeConnection, activeTabId, tabs, currentTab, setTabs, toast, t],
+    [activeConnection, activeTabId, tabs, currentTab, setTabs, toast, t, setBottomPanelMode],
   );
 
   /**
@@ -835,5 +834,7 @@ export function useQueryExecution({
     historyKey,
     bottomPanelMode,
     setBottomPanelMode,
+    bottomPanelProps,
+    isBottomPanelCollapsed,
   };
 }

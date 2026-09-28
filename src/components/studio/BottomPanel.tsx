@@ -158,6 +158,7 @@ function ChartDashboard({ result }: { result: QueryResult | null }) {
 }
 
 interface BottomPanelProps {
+  collapsed?: boolean;
   mode: BottomPanelMode;
   onSetMode: (mode: BottomPanelMode) => void;
   currentTab: QueryTab;
@@ -199,6 +200,7 @@ interface BottomPanelProps {
 }
 
 export function BottomPanel({
+  collapsed = false,
   mode,
   onSetMode,
   currentTab,
@@ -344,7 +346,7 @@ export function BottomPanel({
       about — the agent rail opening, the sidebar staying open, a narrowed window.
     */
     <div className="h-full flex flex-col bg-sunken @container/panel">
-      <div className="h-9 bg-surface border-b border-hairline flex items-center justify-between gap-2 px-2">
+      <div className="h-9 shrink-0 bg-surface border-b border-hairline flex items-center justify-between gap-2 px-2">
         {/*
           The tab strip is the part that yields. It scrolls (without a visible bar in
           a 36px-tall row) rather than pushing the export group out of the header:
@@ -358,6 +360,7 @@ export function BottomPanel({
               data-testid={tab.key === "explain" ? "bottom-panel-tab-explain" : undefined}
               onClick={() => onSetMode(tab.key)}
               aria-pressed={mode === tab.key}
+              aria-expanded={!collapsed && mode === tab.key}
               className={cn(
                 "h-full px-3 text-xs font-medium transition-all border-b-2 flex items-center gap-2",
                 mode === tab.key ? "text-blue-400 border-blue-500 bg-fill" : "text-fg-muted border-transparent hover:text-fg-secondary",
@@ -494,7 +497,7 @@ export function BottomPanel({
         </div>
       )}
 
-      <div className="flex-1 overflow-hidden relative">
+      <div hidden={collapsed} className="flex-1 min-h-0 overflow-hidden relative">
         {/* One pair of boundaries for the whole switch: only one view is ever mounted,
             so the fallback is what the user sees while a split chunk is in flight and
             the error boundary is what they see when it never arrives. */}

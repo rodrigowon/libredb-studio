@@ -217,6 +217,17 @@ function createDefaultProps(overrides: Partial<Record<string, unknown>> = {}) {
 }
 
 describe("BottomPanel", () => {
+  test("compact state retains navigation and hides, rather than discards, content", () => {
+    const props = createDefaultProps({ collapsed: true });
+    const { getByRole, container, rerender } = render(<BottomPanel {...(props as React.ComponentProps<typeof BottomPanel>)} />);
+    for (const name of ["Results", "History", "Saved"]) {
+      expect(getByRole("button", { name }).getAttribute("aria-expanded")).toBe("false");
+    }
+    expect(getByRole("button", { name: "Tools" })).toBeDefined();
+    expect(container.querySelector("[hidden]")).not.toBeNull();
+    rerender(<BottomPanel {...(props as React.ComponentProps<typeof BottomPanel>)} collapsed={false} />);
+    expect(getByRole("button", { name: "Results" }).getAttribute("aria-expanded")).toBe("true");
+  });
   /*
     The panel's heavy views are code-split (`React.lazy` in BottomPanel.tsx), so the
     FIRST render of each one suspends while its dynamic import resolves. `React.lazy`

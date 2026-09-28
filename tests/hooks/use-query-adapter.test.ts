@@ -88,6 +88,26 @@ function makeHookParams(overrides: Record<string, unknown> = {}) {
 // useQueryAdapter Tests
 // =============================================================================
 describe("useQueryAdapter", () => {
+  test("typing and clearing retain previous results without expanding; execution opens once", async () => {
+    const params = makeHookParams();
+    params.currentTab.result = makeQueryResult();
+    const previousResult = params.currentTab.result;
+    const { result, rerender } = renderHook(({ query }) => useQueryAdapter({
+      ...params, currentTab: { ...params.currentTab, query },
+    }), { initialProps: { query: "SELECT 1" } });
+    const resize = mock(() => {});
+    result.current.bottomPanelProps.panelRef.current = {
+      isCollapsed: () => true, resize, collapse: () => {}, expand: () => {},
+      getSize: () => ({ inPixels: 36, asPercentage: 5 }),
+    };
+    rerender({ query: "SELECT 2" });
+    rerender({ query: "" });
+    expect(resize).not.toHaveBeenCalled();
+    expect(params.currentTab.result).toBe(previousResult);
+    await act(async () => { await result.current.executeQuery("SELECT 1"); });
+    expect(resize).toHaveBeenCalledTimes(1);
+    expect(result.current.bottomPanelMode).toBe("results");
+  });
   beforeEach(() => {
     mockToastSuccess.mockClear();
     mockToastError.mockClear();
