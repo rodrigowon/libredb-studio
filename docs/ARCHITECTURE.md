@@ -362,4 +362,4 @@ not establish published artifacts or supported deployments for this custom fork.
   configuration (see §4.9); changing that backend does not make every other subsystem
   replica-independent. Storage, routing and deployment constraints must be evaluated
   together before adding replicas.
-- **Environment**: Configured via `.env.local` (see CLAUDE.md for full variable list). Missing auth secrets are generated on first standalone boot — see [§4.7](#47-standalone-boot-flow-srcinstrumentationts).
+- **Environment**: Configure `.env.local` for local development or environment variables in deployment; [`.env.example`](../.env.example) documents runtime, auth and storage variables with examples. Missing auth secrets are generated on first standalone boot — see [§4.7](#47-standalone-boot-flow-srcinstrumentationts).
