@@ -1,7 +1,7 @@
 # Current state of the custom fork
 
-Snapshot refreshed on **2026-09-28**, after the reviewed Apple Store PostgreSQL lab fixture
-commit and before its documentation checkpoint.
+Snapshot refreshed on **2026-09-30**, after the reviewed Railway personal lab validation
+and before its documentation checkpoint.
 This is a handoff snapshot, not a live status page or changelog. Refresh it after reviewed
 checkpoints; verify Git and code on arrival. Git stores the history.
 
@@ -10,14 +10,14 @@ checkpoints; verify Git and code on arrival. Git stores the history.
 | Item | Observed value |
 | --- | --- |
 | Working branch | `feat/dbstudio-custom` |
-| HEAD / latest closed implementation checkpoint | `277fa1fd53e01af04e5c72307d91ca908eca0ce9` — `test: add deterministic postgres apple store fixture` |
+| HEAD before this documentation checkpoint / validated deployment commit | `439ae5b8d4fdc54ec8d32eb09c3ce4a92beae631` — `docs: align railway readiness state` |
 | Tracking branch | `origin/feat/dbstudio-custom` |
-| Divergence from local tracking ref | ahead 6 / behind 0 (before this documentation commit) |
+| Divergence from local tracking ref | ahead 0 / behind 0 (before this documentation commit) |
 | `origin` | `https://github.com/rodrigowon/libredb-studio.git` |
 | `upstream` | `https://github.com/libredb/libredb-studio.git` |
 | Local `main`, `origin/main`, `upstream/main` | `8266a9f1c4938d14d87c1472fada16c4ade86ab6` |
 | Merge-base of HEAD and `upstream/main` | `04fd78a4dfc828f636294ec33889c00b4abc774b` |
-| Working tree after the fixture commit | No tracked or staged edits; only the two protected local historical documents were untracked |
+| Working tree before this documentation checkpoint | No tracked or staged edits; only the two protected local historical documents were untracked |
 
 No fetch was performed for this audit: remote-tracking refs above are local observations, not a
 claim about GitHub's current tip. The custom branch has selective adaptations after its baseline;
@@ -111,6 +111,41 @@ The ERD styling checkpoint is `00306ea51adaf8248251b534acb496db3517a95e`. React 
   curves and Handles; the checked SVG did not contain the PNG's selected `1:N` labels. Selection
   state matters when comparing exports. No independent agent visual approval of SVG is claimed.
 
+## Railway personal lab
+
+**VALIDATED FOR PERSONAL DOGFOODING**, with known warnings. The custom fork from
+`rodrigowon/libredb-studio`, branch `feat/dbstudio-custom`, was deployed and validated at
+the commit recorded in the Git snapshot above. The root Dockerfile build and standalone
+runtime succeeded; `GET /api/db/health` returned **200**, the public HTTPS Studio endpoint
+worked, and local admin authentication succeeded. No Railway-specific product code was required.
+
+Internal storage uses SQLite at `/app/data/libredb-storage.db`, with a Railway volume mounted
+at `/app/data`. Direct server-side storage inspection and the authenticated storage API
+confirmed persistence before and after one controlled Studio restart, independently of
+browser localStorage. PostgreSQL is private-only within Railway networking; Studio connects
+through that private network. The observed runtime was **PostgreSQL 18.6**, with the Apple
+Store fixture loaded in `apple_store_lab`: **18 validation checks / 0 violations**.
+
+Explorer, Monaco, read-only queries, Results on Demand, History, Saved Queries, ERD and
+EXPLAIN were exercised successfully. PNG/SVG exports were confirmed by the maintainer;
+the browser automation could not access the downloaded files for independent inspection.
+
+This is ready for **personal dogfooding**, not production-ready, multi-user SaaS ready,
+production-hardened or Safe Mode complete. The [safety gaps below](#incomplete-and-unsafe-areas)
+remain, including full server-authoritative Safe Mode enforcement and the pending Editable
+Results Safety Audit. Additional known limitations are not blockers for personal dogfooding:
+
+- Connection credentials can still exist in browser localStorage in plaintext by current design.
+- The fixture's default `search_path` limitation remains as recorded under [Local test data](#local-test-data).
+- Explorer row counts may be approximate; views are not currently enumerated alongside base
+  tables in Explorer introspection. EXPLAIN estimate presentation has minor UI inconsistencies.
+- Remote SQLite paths refer to the server filesystem, not the browser's local files;
+  a SQLite upload/import flow remains future work.
+- Long-running/load validation has not been performed.
+
+Credential rotation remains an operational task; the maintainer deferred it for now.
+No credentials were rotated during validation or this documentation checkpoint.
+
 ## Incomplete and unsafe areas
 
 Status meanings: **IMPLEMENTED** = present in source; **PARTIAL** = some mechanism exists but the
@@ -123,7 +158,6 @@ required guarantee is incomplete; **DEFERRED** = deliberately postponed; **NOT I
 | Editable results — feature IMPLEMENTED, safety review PARTIAL | The maintainer reports primary-key values can be edited. [Inline editing](../src/hooks/use-inline-editing.ts) heuristically chooses `id`/`*_id` and a table name, and generates updates. Parameter binding already exists for supported dialects, but row identity, actual PK/unique metadata, joins/views, composite keys, binding coverage and affected-row guarantees need an end-to-end audit. Do not infer production safety from feature availability. |
 | Ctrl/Cmd+Enter — known limitation, fix DEFERRED | [QueryEditor tests](../tests/components/QueryEditor.test.tsx) characterize mount-time handlers retaining null Monaco: the shortcut dispatches the full buffer while the current editor ref resolves a statement/selection. Toolbar and shortcut can differ. Extend characterization before changing semantics; the execution-controls checkpoint did not fix it. |
 | Transactions — PARTIAL review | [Transaction API](../src/app/api/db/transaction/route.ts) and [multi-query API](../src/app/api/db/multi-query/route.ts) exist. Shared provider transaction state, ownership and batch/rollback behavior need further review. An upstream ownership change is a candidate, not integrated protection. |
-| Railway — readiness audit COMPLETED / custom deployment NOT IMPLEMENTED | The read-only audit verdict is **READY AFTER CONFIGURATION** for a personal lab; no mandatory code change was identified for that first lab. Actual Railway deployment has not been executed or validated: build-in-Railway, volume permissions, private PostgreSQL connectivity, persistence and smoke tests remain pending runtime validation. Scope is lab/personal testing only, not production, SaaS, multi-user production or commercial hosting. [Railway docs](../deploy/railway/README.md) describe an upstream image/template, not a validated deployment of this fork. |
 
 Current intended suitability is development, local/self-hosted testing and staging/lab use.
 Do not describe the fork as fully production-hardened. [Security](SECURITY.md) documents individual
@@ -143,21 +177,16 @@ delivery sequence.
 - Settings only when real settings exist; a future AI Side Panel shell (the inherited Agent rail
   already exists, so this is a UX follow-up, not a claim that Agent is absent).
 - Custom public README: English canonical `README.md`, future `README.pt-BR.md` translation.
-- Railway readiness and lab deployment, gated as below.
+- Personal Railway dogfooding and review of remaining product/safety gaps, sequenced below.
 
 ## Immediate next sequence
 
 Update this sequence as checkpoints are approved; do not treat it as permanent scheduling.
 
-1. Review and publish the approved custom branch.
-2. Create the Railway lab project.
-3. Provision private PostgreSQL.
-4. Deploy DB Studio Custom.
-5. Seed the Apple Store PostgreSQL fixture.
-6. Run the Railway smoke test.
-7. Begin self-hosted dogfooding.
-
-Railway provisioning and deployment have not started.
+1. Personal dogfooding on Railway.
+2. Review remaining product/safety gaps locally.
+3. Continue local development through explicitly approved checkpoints.
+4. Publish approved checkpoints as needed.
 
 ## Local test data
 
