@@ -96,3 +96,17 @@ specialized documents own technical details. Update a record explicitly when a d
   Preserve the internal implementation; do not re-enable only by restoring the toolbar toggle.
   Reactivation requires dedicated safety design and the
   [hardening work](CURRENT_STATE.md#editable-results-containment-and-hardening).
+
+## ADR-012 — Explorer relation identity foundation
+
+- **Status:** Accepted on 2026-09-30; foundation implemented, runtime migration pending.
+- **Decision:** Represent relation identity as structured namespace + name, with object kind
+  separate from identity. Preserve legacy `TableSchema.name` and make `TableSchema.ref` optional.
+  Explicit, structurally valid refs are authoritative; ambiguous legacy names are not parsed
+  to reconstruct namespaces. A null namespace means explicit absence, not search_path inference.
+- **Rationale:** Existing names conflate display, identity and SQL targeting. Parsing qualified
+  names loses correctness for literal dots and quoted names. An additive migration avoids
+  breaking ERD, Schema Diff, snapshots and embedded hosts.
+- **Consequences:** New structured paths can adopt `RelationRef` incrementally; legacy consumers
+  remain unchanged until separately migrated. Providers do not populate ref yet and the
+  helpers have no runtime consumers. [Rollout state](CURRENT_STATE.md#explorer-v1-identity-foundation).

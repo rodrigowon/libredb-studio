@@ -1,6 +1,6 @@
 # Current state of the custom fork
 
-Snapshot refreshed on **2026-09-30**, after the approved Editable Results containment
+Snapshot refreshed on **2026-09-30**, after the approved Explorer V1 Phase 1 foundation
 implementation and before its documentation checkpoint. Railway personal lab validation remains current.
 This is a handoff snapshot, not a live status page or changelog. Refresh it after reviewed
 checkpoints; verify Git and code on arrival. Git stores the history.
@@ -10,13 +10,13 @@ checkpoints; verify Git and code on arrival. Git stores the history.
 | Item | Observed value |
 | --- | --- |
 | Working branch | `feat/dbstudio-custom` |
-| HEAD before this documentation checkpoint | `6dd79546cc6adcf1db1c134e922e38cbbbc74112` — `fix: temporarily disable editable results` |
+| HEAD before this documentation checkpoint | `39289f863435ce3de28fc76bcc244076f4b18936` — `feat: add structured relation identity foundation` |
 | Validated Railway deployment commit | `439ae5b8d4fdc54ec8d32eb09c3ce4a92beae631` — `docs: align railway readiness state` |
 | Tracking branch | `origin/feat/dbstudio-custom` |
 | Divergence from local tracking ref | ahead 1 / behind 0 (before this documentation commit) |
 | `origin` | `https://github.com/rodrigowon/libredb-studio.git` |
 | `upstream` | `https://github.com/libredb/libredb-studio.git` |
-| Local `main`, `origin/main`, `upstream/main` | `8266a9f1c4938d14d87c1472fada16c4ade86ab6` |
+| Local `main`, `origin/main`, `upstream/main` | `fb38950d1c4b851073b6dfdf5919ffed6f1c30ee` |
 | Merge-base of HEAD and `upstream/main` | `04fd78a4dfc828f636294ec33889c00b4abc774b` |
 | Working tree before this documentation checkpoint | No tracked or staged edits; only the two protected local historical documents were untracked |
 
@@ -67,6 +67,7 @@ Their presence does not imply every inherited feature has been audited or transl
 | Results on Demand (Phase 7B.6C) | Implemented in Studio and StudioWorkspace; compact initial panel with explicit expansion. [Central controller](../src/hooks/use-bottom-panel.ts), [controller tests](../tests/hooks/use-bottom-panel.test.ts). |
 | Login and header | Refined login and desktop/mobile top chrome, without new branding or auth semantics. [Login](../src/app/login/page.tsx), [desktop header](../src/components/studio/StudioDesktopHeader.tsx), [mobile header](../src/components/studio/StudioMobileHeader.tsx). |
 | Explorer sidebar | Initial width 20%, minimum 15%, manual resize retained; duplicate Studio footer GitHub/version removed. Schema tools live in the Explorer bar's vertical ellipsis menu. [Layout constants](../src/components/sidebar/layout.ts), [Sidebar](../src/components/sidebar/Sidebar.tsx), [SchemaTools](../src/components/sidebar/SchemaTools.tsx). |
+| Explorer V1 Phase 1 | Structured relation identity foundation completed; runtime integration remains pending. [Contract](../src/lib/types.ts), [normalization](../src/lib/relation-ref.ts), [tests](../tests/unit/relation-ref.test.ts), [decision](DECISIONS.md#adr-012--explorer-relation-identity-foundation). |
 | ERD | Fork-specific canvas and relationship styling; details in the next section. |
 | Server-side EXPLAIN | Server chooses the strategy from connected provider capabilities; estimate and explicit analyze are distinct. [API contract](API_DOCS.md#structured-explain-requests), [checkpoint detail](EXPLAIN_SERVER_SIDE.md). |
 | Dialect-aware Schema Diff | Migration SQL generation adapted by engine; a reviewable artifact, not an automatic migration runner. [Reference](SCHEMA_DIFF.md), [tests](../tests/unit/schema-diff/). |
@@ -89,6 +90,19 @@ useful expanded size is retained in memory; no new persistence was introduced. M
 resize/splitter behavior is preserved. Editing or clearing SQL does not automatically
 expand or collapse the panel, and previous results remain available. Existing error
 presentation is unchanged, including toasts for single-query execution failures.
+
+### Explorer V1 identity foundation
+
+**Foundation only — Explorer V1 is not implemented as a complete product feature.**
+`RelationRef` is an additive `namespace: string | null` + `name: string` contract;
+`TableSchema.ref` remains optional for backward compatibility. Normalization explicitly
+distinguishes resolved from legacy identity, without heuristically parsing legacy names.
+A deterministic tuple-key helper exists, and `RelationRef` is publicly exported through
+the existing type barrels; the helpers are not public package exports.
+
+Runtime behavior is unchanged: providers do not populate ref and Explorer UI does not
+consume it yet. ERD, Schema Diff, persistence and StudioWorkspace behavior remain unchanged.
+Product-wide schema identity is not resolved by this foundation.
 
 ## Current ERD state
 
@@ -160,6 +174,9 @@ required guarantee is incomplete; **DEFERRED** = deliberately postponed; **NOT I
 | Editable Results — containment IMPLEMENTED; hardening NOT IMPLEMENTED | Visual editing is temporarily disabled in the primary Studio; internal implementation is preserved. [Containment and reactivation requirements](#editable-results-containment-and-hardening). |
 | Ctrl/Cmd+Enter — known limitation, fix DEFERRED | [QueryEditor tests](../tests/components/QueryEditor.test.tsx) characterize mount-time handlers retaining null Monaco: the shortcut dispatches the full buffer while the current editor ref resolves a statement/selection. Toolbar and shortcut can differ. Extend characterization before changing semantics; the execution-controls checkpoint did not fix it. |
 | Transactions — PARTIAL review | [Transaction API](../src/app/api/db/transaction/route.ts) and [multi-query API](../src/app/api/db/multi-query/route.ts) exist. Shared provider transaction state, ownership and batch/rollback behavior need further review. An upstream ownership change is a candidate, not integrated protection. |
+| SQLite metadata SQL hardening — DEFERRED | Metadata introspection contains unsafe identifier/name interpolation. A dedicated hardening checkpoint is required before expanding SQLite view introspection. |
+| Schema-loading generation protection — DEFERRED | Standalone loading, PostgreSQL enrichment and embedded schema loading have stale-response race risks requiring generation/invalidation protection. |
+| Generate Test Data review — DEFERRED | This remains a separate write path requiring review before Explorer menu migration. |
 
 Current intended suitability is development, local/self-hosted testing and staging/lab use.
 Do not describe the fork as fully production-hardened. [Security](SECURITY.md) documents individual
@@ -218,10 +235,20 @@ delivery sequence.
 Update this sequence as checkpoints are approved; do not treat it as permanent scheduling.
 
 1. Continue personal dogfooding on Railway.
-2. Selectively adapt upstream Explorer improvements through an approved checkpoint.
+2. Continue the [pending Explorer sequence](#pending-explorer-sequence) through separately approved checkpoints.
 3. Review/update the upstream reference branch through an approved checkpoint.
 4. Continue local product development through explicitly approved checkpoints.
 5. Return to Editable Results hardening as a dedicated safety project.
+
+### Pending Explorer sequence
+
+1. SQLite metadata SQL hardening.
+2. Schema-loading generation/race protection.
+3. Provider production of structured `RelationRef`.
+4. Views metadata.
+5. Explorer grouping/UI.
+6. Menu/search/i18n/accessibility.
+7. Full validation.
 
 ## Local test data
 
