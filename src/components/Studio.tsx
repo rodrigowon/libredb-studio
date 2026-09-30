@@ -89,6 +89,8 @@ const SchemaDiagram = React.lazy(
   lazyRetry(() => import("@/components/SchemaDiagram").then((m) => ({ default: m.SchemaDiagram }))),
 );
 
+const ignoreInlineEdit = () => {};
+
 export default function Studio() {
   const tEditor = useTranslations("Editor");
   const tStudio = useTranslations("Studio");
@@ -139,18 +141,10 @@ export default function Studio() {
     executeQuery: queryExec.executeQuery,
   });
 
-  // Inline row editing is offered only where the provider declares the row-update
-  // statement it needs (issue #269). Unknown hides it, like Explain below: metadata
-  // is also null when /api/db/provider-meta fails, and offering a control that can
-  // only error is the defect this gate exists to fix.
-  const canEditRows = metadata?.capabilities.supportsInlineRowEdit === true;
-  const editingEnabled = canEditRows && editing.editingEnabled;
-  const onToggleEditing = canEditRows
-    ? () => {
-        editing.setEditingEnabled(!editing.editingEnabled);
-        if (editing.editingEnabled) editing.handleDiscardChanges();
-      }
-    : undefined;
+  // Temporarily contain visual editing pending row-identity/data-integrity hardening.
+  // Keep the implementation dormant; this client boundary is not server authorization.
+  const editingEnabled = false;
+  const onToggleEditing = undefined;
 
   // The transaction trio and the sandbox toggle are offered only where the provider
   // declares it holds a transaction session (#464). The server's gate is
@@ -158,7 +152,7 @@ export default function Studio() {
   // both shells used to supply all four unconditionally and POST /api/db/transaction
   // answered 400 "Transaction control is not supported for this database type"
   // (measured 2026-08-19 on OpenSearch, for both begin and rollback). Unknown hides
-  // them, like the row-edit gate above: metadata is also null when
+  // them when metadata is also null because
   // /api/db/provider-meta fails.
   //
   // Supplied as one bundle because SANDBOX auto-rolls-back through the same route,
@@ -718,10 +712,10 @@ export default function Studio() {
                         userRole={user?.role}
                         maskingConfig={maskingConfig}
                         editingEnabled={editingEnabled}
-                        pendingChanges={editing.pendingChanges}
-                        onCellChange={editing.handleCellChange}
-                        onApplyChanges={editing.handleApplyChanges}
-                        onDiscardChanges={editing.handleDiscardChanges}
+                        pendingChanges={[]}
+                        onCellChange={ignoreInlineEdit}
+                        onApplyChanges={ignoreInlineEdit}
+                        onDiscardChanges={ignoreInlineEdit}
                         onLoadQuery={(q) => tabMgr.updateCurrentTab({ query: q })}
                         onLoadMore={
                           tabMgr.currentTab.result?.pagination?.hasMore ? queryExec.handleLoadMore : undefined

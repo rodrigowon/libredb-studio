@@ -1130,25 +1130,22 @@ describe("Studio", () => {
   });
 
   // --- QueryToolbar callbacks ---
-  test("QueryToolbar onToggleEditing enables editing", () => {
+  test("QueryToolbar does not offer visual editing", () => {
     render(<Studio />);
-    const fn = capturedQueryToolbarProps.onToggleEditing as () => void;
-    act(() => fn());
-    // editingEnabled is false by default → setEditingEnabled(true)
-    expect(mockSetEditingEnabled).toHaveBeenCalledWith(true);
+    expect(capturedQueryToolbarProps.onToggleEditing).toBeUndefined();
+    expect(capturedQueryToolbarProps.editingEnabled).toBe(false);
+    expect(mockSetEditingEnabled).not.toHaveBeenCalledWith(true);
     expect(mockHandleDiscardChanges).not.toHaveBeenCalled();
   });
 
-  test("QueryToolbar onToggleEditing disables editing and discards changes", () => {
+  test("QueryToolbar remains read-only even if the dormant hook is enabled", () => {
     editingOverride = { editingEnabled: true };
     render(<Studio />);
-    const fn = capturedQueryToolbarProps.onToggleEditing as () => void;
-    act(() => fn());
-    expect(mockSetEditingEnabled).toHaveBeenCalledWith(false);
-    expect(mockHandleDiscardChanges).toHaveBeenCalled();
+    expect(capturedQueryToolbarProps.onToggleEditing).toBeUndefined();
+    expect(capturedQueryToolbarProps.editingEnabled).toBe(false);
   });
 
-  // --- Inline-edit capability gate (#269) ---
+  // --- Temporary visual-editing containment, independent of provider capability ---
   test("withholds every editing affordance when supportsInlineRowEdit is false", () => {
     capabilitiesOverride = { supportsInlineRowEdit: false };
     // Even with editing already switched on in the hook, no editable cell wiring
@@ -1177,15 +1174,42 @@ describe("Studio", () => {
     expect(capturedBottomPanelProps.editingEnabled).toBe(false);
   });
 
-  test("passes the editing affordance through when supportsInlineRowEdit is true", () => {
+  test("contains enabled editing and pending changes even when the provider supports it", () => {
+    capabilitiesOverride = { supportsInlineRowEdit: true };
+    editingOverride = {
+      editingEnabled: true,
+      pendingChanges: [{ rowIndex: 0, columnId: "name", originalValue: "Alice", newValue: "Alicia" }],
+    };
+    render(<Studio />);
+
+    expect(capturedQueryToolbarProps.onToggleEditing).toBeUndefined();
+    expect(capturedMobileHeaderProps.onToggleEditing).toBeUndefined();
+    expect(capturedQueryToolbarProps.editingEnabled).toBe(false);
+    expect(capturedMobileHeaderProps.editingEnabled).toBe(false);
+    expect(capturedBottomPanelProps.editingEnabled).toBe(false);
+    expect(capturedBottomPanelProps.pendingChanges).toEqual([]);
+  });
+
+  test("BottomPanel cannot create, apply or discard inline changes through the Studio boundary", () => {
     editingOverride = { editingEnabled: true };
     render(<Studio />);
 
-    expect(typeof capturedQueryToolbarProps.onToggleEditing).toBe("function");
-    expect(typeof capturedMobileHeaderProps.onToggleEditing).toBe("function");
-    expect(capturedQueryToolbarProps.editingEnabled).toBe(true);
-    expect(capturedMobileHeaderProps.editingEnabled).toBe(true);
-    expect(capturedBottomPanelProps.editingEnabled).toBe(true);
+    act(() => {
+      (capturedBottomPanelProps.onCellChange as (change: unknown) => void)({
+        rowIndex: 0,
+        columnId: "name",
+        originalValue: "Alice",
+        newValue: "Alicia",
+      });
+      (capturedBottomPanelProps.onApplyChanges as () => void)();
+      (capturedBottomPanelProps.onDiscardChanges as () => void)();
+    });
+
+    expect(mockHandleCellChange).not.toHaveBeenCalled();
+    expect(mockHandleApplyChanges).not.toHaveBeenCalled();
+    expect(mockHandleDiscardChanges).not.toHaveBeenCalled();
+    expect(mockExecuteQuery).not.toHaveBeenCalled();
+    expect(mockSetEditingEnabled).not.toHaveBeenCalledWith(true);
   });
 
   // --- Transaction capability gate (#464) ---
@@ -1408,21 +1432,19 @@ describe("Studio", () => {
     expect(mockSetPlaygroundMode).toHaveBeenCalledWith(true);
   });
 
-  test("MobileHeader onToggleEditing enables editing when disabled", () => {
+  test("MobileHeader does not offer visual editing", () => {
     render(<Studio />);
-    const fn = capturedMobileHeaderProps.onToggleEditing as () => void;
-    act(() => fn());
-    expect(mockSetEditingEnabled).toHaveBeenCalledWith(true);
+    expect(capturedMobileHeaderProps.onToggleEditing).toBeUndefined();
+    expect(capturedMobileHeaderProps.editingEnabled).toBe(false);
+    expect(mockSetEditingEnabled).not.toHaveBeenCalledWith(true);
     expect(mockHandleDiscardChanges).not.toHaveBeenCalled();
   });
 
-  test("MobileHeader onToggleEditing disables editing and discards changes when enabled", () => {
+  test("MobileHeader remains read-only even if the dormant hook is enabled", () => {
     editingOverride = { editingEnabled: true };
     render(<Studio />);
-    const fn = capturedMobileHeaderProps.onToggleEditing as () => void;
-    act(() => fn());
-    expect(mockSetEditingEnabled).toHaveBeenCalledWith(false);
-    expect(mockHandleDiscardChanges).toHaveBeenCalled();
+    expect(capturedMobileHeaderProps.onToggleEditing).toBeUndefined();
+    expect(capturedMobileHeaderProps.editingEnabled).toBe(false);
   });
 
   test("MobileHeader onImport opens import modal", () => {
