@@ -7,6 +7,7 @@ export type {
   SSLConfig,
   SSHTunnelConfig,
   DatabaseConnection,
+  RelationRef,
   TableSchema,
   ColumnSchema,
   IndexSchema,

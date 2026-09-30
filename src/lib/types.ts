@@ -188,8 +188,17 @@ export interface DatabaseConnection {
   agentPassword?: string; // password for agentUser; secret-classified, sealed at rest by connection-secrets
 }
 
+/** Raw relation identity within a connection or snapshot; never a SQL fragment. */
+export interface RelationRef {
+  /** Explicit namespace, or explicit absence. Null does not request search_path resolution. */
+  namespace: string | null;
+  name: string;
+}
+
 export interface TableSchema {
   name: string;
+  /** Optional structured identity; legacy producers and consumers continue using name. */
+  ref?: RelationRef;
   columns: ColumnSchema[];
   indexes: IndexSchema[];
   foreignKeys?: ForeignKeySchema[];

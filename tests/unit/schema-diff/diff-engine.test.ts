@@ -20,6 +20,20 @@ function makeTable(overrides: Partial<TableSchema> & { name: string }): TableSch
 // ============================================================================
 
 describe("diffSchemas: basic", () => {
+  test("optional refs do not change legacy name matching or column differences", () => {
+    const source = [makeTable({ name: "users" })];
+    const target = [
+      makeTable({
+        name: "users",
+        columns: [{ name: "id", type: "integer", nullable: false, isPrimary: true }],
+      }),
+    ];
+    const withRefs = (schema: TableSchema[], namespace: string): TableSchema[] =>
+      schema.map((table) => ({ ...table, ref: { namespace, name: "different.raw.name" } }));
+    expect(diffSchemas(withRefs(source, "dev"), withRefs(source, "prod"))).toEqual(diffSchemas(source, source));
+    expect(diffSchemas(withRefs(source, "dev"), withRefs(target, "prod"))).toEqual(diffSchemas(source, target));
+  });
+
   test("identical schemas produce no changes", () => {
     const schema: TableSchema[] = [
       makeTable({

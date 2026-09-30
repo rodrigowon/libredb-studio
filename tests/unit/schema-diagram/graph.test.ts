@@ -114,6 +114,28 @@ describe("selectVisibleColumns", () => {
 });
 
 describe("buildGraph", () => {
+  test("optional refs do not change legacy graph identity, FK lookup or expansion", () => {
+    const schema = [users, orders];
+    const withRefs = schema.map((table) => ({
+      ...table,
+      ref: { namespace: "other.scope", name: `raw.${table.name}` },
+    }));
+    for (const compact of [false, true]) {
+      const options = { compact, expandedTables: new Set(["orders"]) };
+      const legacy = buildGraph(schema, options);
+      const structured = buildGraph(withRefs, options);
+      // Node data carries the original metadata; every other graph field stays identical.
+      const nodesWithoutRef = structured.nodes.map((node) => {
+        const table = { ...node.data.table };
+        delete table.ref;
+        return { ...node, data: { ...node.data, table } };
+      });
+      expect({ ...structured, nodes: nodesWithoutRef }).toEqual(legacy);
+      expect(graphSignature(structured, compact)).toBe(graphSignature(legacy, compact));
+      expect(computeFkColumnMap(withRefs)).toEqual(computeFkColumnMap(schema));
+    }
+  });
+
   test("creates one table node per schema table with grid positions", () => {
     const { nodes } = buildGraph([users, orders], { compact: false });
     expect(nodes.length).toBe(2);
