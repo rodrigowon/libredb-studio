@@ -84,3 +84,15 @@ specialized documents own technical details. Update a record explicitly when a d
 - **Rationale:** Individual tested controls are not an end-to-end safety guarantee.
 - **Consequences:** Document suitability and limits explicitly in [Current state](CURRENT_STATE.md#incomplete-and-unsafe-areas);
   close and validate the relevant gaps before changing that claim.
+
+## ADR-011 — Editable Results containment
+
+- **Status:** Accepted on 2026-09-30; temporary containment implemented, hardening pending.
+- **Decision:** Editable Results remains disabled in the primary Studio until data-integrity
+  guarantees are hardened.
+- **Rationale:** The existing visual editing flow can select the wrong physical row/table under
+  documented scenarios, so visual mutation is suspended while normal SQL execution remains available.
+- **Consequences:** This is temporary containment, not feature removal or a read-only product.
+  Preserve the internal implementation; do not re-enable only by restoring the toolbar toggle.
+  Reactivation requires dedicated safety design and the
+  [hardening work](CURRENT_STATE.md#editable-results-containment-and-hardening).

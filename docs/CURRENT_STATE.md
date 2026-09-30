@@ -1,7 +1,7 @@
 # Current state of the custom fork
 
-Snapshot refreshed on **2026-09-30**, after the reviewed Railway personal lab validation
-and before its documentation checkpoint.
+Snapshot refreshed on **2026-09-30**, after the approved Editable Results containment
+implementation and before its documentation checkpoint. Railway personal lab validation remains current.
 This is a handoff snapshot, not a live status page or changelog. Refresh it after reviewed
 checkpoints; verify Git and code on arrival. Git stores the history.
 
@@ -10,16 +10,17 @@ checkpoints; verify Git and code on arrival. Git stores the history.
 | Item | Observed value |
 | --- | --- |
 | Working branch | `feat/dbstudio-custom` |
-| HEAD before this documentation checkpoint / validated deployment commit | `439ae5b8d4fdc54ec8d32eb09c3ce4a92beae631` — `docs: align railway readiness state` |
+| HEAD before this documentation checkpoint | `6dd79546cc6adcf1db1c134e922e38cbbbc74112` — `fix: temporarily disable editable results` |
+| Validated Railway deployment commit | `439ae5b8d4fdc54ec8d32eb09c3ce4a92beae631` — `docs: align railway readiness state` |
 | Tracking branch | `origin/feat/dbstudio-custom` |
-| Divergence from local tracking ref | ahead 0 / behind 0 (before this documentation commit) |
+| Divergence from local tracking ref | ahead 1 / behind 0 (before this documentation commit) |
 | `origin` | `https://github.com/rodrigowon/libredb-studio.git` |
 | `upstream` | `https://github.com/libredb/libredb-studio.git` |
 | Local `main`, `origin/main`, `upstream/main` | `8266a9f1c4938d14d87c1472fada16c4ade86ab6` |
 | Merge-base of HEAD and `upstream/main` | `04fd78a4dfc828f636294ec33889c00b4abc774b` |
 | Working tree before this documentation checkpoint | No tracked or staged edits; only the two protected local historical documents were untracked |
 
-No fetch was performed for this audit: remote-tracking refs above are local observations, not a
+No fetch was performed for this checkpoint: remote-tracking refs above are local observations, not a
 claim about GitHub's current tip. The custom branch has selective adaptations after its baseline;
 an updated `main` does not mean those upstream changes are integrated into the product branch.
 See [Upstream strategy](UPSTREAM_STRATEGY.md).
@@ -115,7 +116,7 @@ The ERD styling checkpoint is `00306ea51adaf8248251b534acb496db3517a95e`. React 
 
 **VALIDATED FOR PERSONAL DOGFOODING**, with known warnings. The custom fork from
 `rodrigowon/libredb-studio`, branch `feat/dbstudio-custom`, was deployed and validated at
-the commit recorded in the Git snapshot above. The root Dockerfile build and standalone
+the validated deployment commit recorded in the Git snapshot above. The root Dockerfile build and standalone
 runtime succeeded; `GET /api/db/health` returned **200**, the public HTTPS Studio endpoint
 worked, and local admin authentication succeeded. No Railway-specific product code was required.
 
@@ -132,8 +133,9 @@ the browser automation could not access the downloaded files for independent ins
 
 This is ready for **personal dogfooding**, not production-ready, multi-user SaaS ready,
 production-hardened or Safe Mode complete. The [safety gaps below](#incomplete-and-unsafe-areas)
-remain, including full server-authoritative Safe Mode enforcement and the pending Editable
-Results Safety Audit. Additional known limitations are not blockers for personal dogfooding:
+remain, including full server-authoritative Safe Mode enforcement and Editable Results
+data-integrity hardening. The Railway validation predates the local containment below;
+no deployment was performed for this checkpoint. Additional known limitations are not blockers for personal dogfooding:
 
 - Connection credentials can still exist in browser localStorage in plaintext by current design.
 - The fixture's default `search_path` limitation remains as recorded under [Local test data](#local-test-data).
@@ -155,13 +157,45 @@ required guarantee is incomplete; **DEFERRED** = deliberately postponed; **NOT I
 | --- | --- |
 | Safe Mode — groundwork IMPLEMENTED; enforcement NOT IMPLEMENTED | [Corpus](../tests/unit/safe-mode/corpus.ts), [classifier](../src/lib/safe-mode/classify.ts) and [policy](../src/lib/safe-mode/policy.ts) exist. No authoritative execution coordinator applies that policy across query, multi-query, transaction and Agent routes. Read [Architecture](ARCHITECTURE.md#412-preparatory-safe-mode-components) and [policy details](SAFE_MODE_POLICY.md). UI confirmations, Query Safety and Agent execution profiles are separate mechanisms. |
 | Explicit disconnect / Connection Toolbar — PARTIAL backend primitive, toolbar DEFERRED | [Disconnect route](../src/app/api/db/disconnect/route.ts) calls `removeProvider`; [factory](../src/lib/db/factory.ts) catches disconnect failures and can create a provider again on a later request. Cache identity/creation, polling, transaction ownership and SSH teardown need coordinated semantics. Endpoint success does not establish a persistent disconnected state; do not fake one in UI. |
-| Editable results — feature IMPLEMENTED, safety review PARTIAL | The maintainer reports primary-key values can be edited. [Inline editing](../src/hooks/use-inline-editing.ts) heuristically chooses `id`/`*_id` and a table name, and generates updates. Parameter binding already exists for supported dialects, but row identity, actual PK/unique metadata, joins/views, composite keys, binding coverage and affected-row guarantees need an end-to-end audit. Do not infer production safety from feature availability. |
+| Editable Results — containment IMPLEMENTED; hardening NOT IMPLEMENTED | Visual editing is temporarily disabled in the primary Studio; internal implementation is preserved. [Containment and reactivation requirements](#editable-results-containment-and-hardening). |
 | Ctrl/Cmd+Enter — known limitation, fix DEFERRED | [QueryEditor tests](../tests/components/QueryEditor.test.tsx) characterize mount-time handlers retaining null Monaco: the shortcut dispatches the full buffer while the current editor ref resolves a statement/selection. Toolbar and shortcut can differ. Extend characterization before changing semantics; the execution-controls checkpoint did not fix it. |
 | Transactions — PARTIAL review | [Transaction API](../src/app/api/db/transaction/route.ts) and [multi-query API](../src/app/api/db/multi-query/route.ts) exist. Shared provider transaction state, ownership and batch/rollback behavior need further review. An upstream ownership change is a candidate, not integrated protection. |
 
 Current intended suitability is development, local/self-hosted testing and staging/lab use.
 Do not describe the fork as fully production-hardened. [Security](SECURITY.md) documents individual
 controls and their limits; their presence does not close the gaps above.
+
+### Editable Results containment and hardening
+
+Editable Results is **temporarily disabled in the primary Studio**, on desktop and mobile.
+The [Studio boundary](../src/components/Studio.tsx) forces editing off, withholds the toggle
+and pending changes, and disconnects mutation callbacks. StudioWorkspace already remained
+non-editable. The [inline-editing implementation](../src/hooks/use-inline-editing.ts), shared
+components, provider capabilities and tests are preserved for future hardening.
+Explicit SQL `UPDATE`/`INSERT`/`DELETE` through the SQL editor is **not disabled**;
+this client-flow containment does not make the product read-only or enforce server authorization.
+
+The completed safety/data-integrity audit found concrete risks: filtered-row index mismatch,
+pending changes surviving result/tab replacement, heuristic table selection and `id`/`*_id`
+row identity, incomplete composite primary-key handling, missing `affectedRows === 1`
+enforcement, and no authoritative mutation-policy/Safe Mode integration.
+
+Reactivation is a dedicated safety project, not a toolbar-toggle restoration. It requires at least:
+
+1. Authoritative row identity.
+2. Base-table eligibility.
+3. Complete composite primary-key support.
+4. Primary-key/identity fields read-only by default.
+5. Structured server-side mutation.
+6. Trusted metadata reconstruction.
+7. Exactly-one-row enforcement with rollback capability.
+8. User/connection binding.
+9. Mutation policy / Safe Mode integration.
+10. Stale-result and concurrency handling.
+11. Typed value round-trip.
+
+The [accepted decision](DECISIONS.md#adr-011--editable-results-containment) records why
+visual mutation remains suspended; none of the hardening above is implemented by this containment.
 
 ## Active UX backlog
 
@@ -173,7 +207,7 @@ delivery sequence.
   English under pt-BR. This is separate from the completed schema-tools ellipsis menu.
 - Restrained purple UI accents in place of blue; editor syntax theme later. Refine the light theme.
 - Connection reorder, favorite and duplicate UX, after reviewing upstream behavior.
-- Editable-results safety audit and query formatter output refinement.
+- Dedicated [Editable Results hardening](#editable-results-containment-and-hardening), plus query formatter output refinement.
 - Settings only when real settings exist; a future AI Side Panel shell (the inherited Agent rail
   already exists, so this is a UX follow-up, not a claim that Agent is absent).
 - Custom public README: English canonical `README.md`, future `README.pt-BR.md` translation.
@@ -183,10 +217,11 @@ delivery sequence.
 
 Update this sequence as checkpoints are approved; do not treat it as permanent scheduling.
 
-1. Personal dogfooding on Railway.
-2. Review remaining product/safety gaps locally.
-3. Continue local development through explicitly approved checkpoints.
-4. Publish approved checkpoints as needed.
+1. Continue personal dogfooding on Railway.
+2. Selectively adapt upstream Explorer improvements through an approved checkpoint.
+3. Review/update the upstream reference branch through an approved checkpoint.
+4. Continue local product development through explicitly approved checkpoints.
+5. Return to Editable Results hardening as a dedicated safety project.
 
 ## Local test data
 
