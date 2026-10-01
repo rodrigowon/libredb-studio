@@ -656,6 +656,7 @@ export class SQLiteProvider extends SQLBaseProvider {
 
       schemas.push({
         name: tableName,
+        ref: { namespace: "main", name: tableName },
         rowCount,
         size: formatBytes(sizeBytes),
         columns: columns.map((col) => ({

@@ -1159,6 +1159,7 @@ export class PostgresProvider extends SQLBaseProvider {
 
         return {
           name: displayName,
+          ref: { namespace: schemaName, name: tableName },
           rowCount,
           size: formatBytes(sizeBytes),
           columns,
@@ -1197,6 +1198,7 @@ export class PostgresProvider extends SQLBaseProvider {
         }));
         return {
           name: displayName,
+          ref: { namespace: row.table_schema, name: row.table_name },
           rowCount: Math.max(0, parseInt(row.row_count || "0")),
           size: formatBytes(parseInt(row.total_size || "0")),
           columns,

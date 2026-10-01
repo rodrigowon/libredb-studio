@@ -37,6 +37,24 @@ function makeSnapshot(overrides: Partial<SchemaSnapshot> = {}): SchemaSnapshot {
 
 // ── MongoDB JSON round-trip ─────────────────────────────────────────────────
 
+test("schema snapshots round-trip old tables and new raw refs without migration", () => {
+  const legacy = makeSnapshot({ id: "old", schema: [{ name: "legacy.a.b", columns: [], indexes: [] }] });
+  const current = makeSnapshot({
+    id: "new",
+    schema: [{ name: ' a.b" ', ref: { namespace: "库存", name: ' a.b" ' }, columns: [], indexes: [] }],
+  });
+  // Simulate an existing saved snapshot; reading it must not rewrite storage.
+  const oldJSON = JSON.stringify([legacy]);
+  localStorage.setItem("libredb_schema_snapshots", oldJSON);
+  expect(storage.getSchemaSnapshots()[0].schema).toEqual(legacy.schema);
+  expect(localStorage.getItem("libredb_schema_snapshots")).toBe(oldJSON);
+  storage.saveSchemaSnapshot(current);
+  const loaded = storage.getSchemaSnapshots();
+  expect(loaded.map((snapshot) => snapshot.schema)).toEqual([legacy.schema, current.schema]);
+  expect(Object.hasOwn(loaded[0].schema[0], "ref")).toBe(false);
+  expect(JSON.parse(localStorage.getItem("libredb_schema_snapshots")!)[1].schema).toEqual(current.schema);
+});
+
 describe("storage facade: MongoDB JSON round-trip", () => {
   beforeEach(() => {
     localStorage.clear();

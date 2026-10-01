@@ -134,6 +134,21 @@ describe("POST /api/db/schema-snapshot", () => {
     expect(data.timestamp).toBeDefined();
   });
 
+  test("snapshot JSON retains optional provider refs alongside legacy tables", async () => {
+    const schema = [
+      { name: "a.b", columns: [], indexes: [], ref: { namespace: "public", name: "a.b" } },
+      { name: "legacy", columns: [], indexes: [] },
+    ];
+    (mockProvider.getSchema as ReturnType<typeof mock>).mockResolvedValueOnce(schema);
+    const req = createMockRequest("/api/db/schema-snapshot", {
+      method: "POST",
+      body: { connection: validConnection },
+    });
+    const res = await POST(req as never);
+    expect(res.status).toBe(200);
+    expect((await parseResponseJSON<{ schema: unknown[] }>(res)).schema).toEqual(schema);
+  });
+
   test("returns 400 when connection is missing", async () => {
     const req = createMockRequest("/api/db/schema-snapshot", {
       method: "POST",

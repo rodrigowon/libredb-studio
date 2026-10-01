@@ -151,6 +151,24 @@ describe("POST /api/db/schema/list", () => {
     expect(mockProvider.getSchema as ReturnType<typeof mock>).toHaveBeenCalledTimes(1);
   });
 
+  for (const fastPath of [true, false]) {
+    test(`transports provider refs unchanged through the ${fastPath ? "fast" : "fallback"} path`, async () => {
+      const schema: TableSchema[] = [
+        { ...listSchema[0], name: "a.b.c", ref: { namespace: "a", name: "b.c" } },
+        { ...listSchema[0], name: "a.b.c", ref: { namespace: "a.b", name: "c" } },
+      ];
+      if (fastPath) mockProvider.getSchemaList = mock(async () => schema);
+      else {
+        delete mockProvider.getSchemaList;
+        (mockProvider.getSchema as ReturnType<typeof mock>).mockResolvedValueOnce(schema);
+      }
+      const req = createMockRequest("/api/db/schema/list", { method: "POST", body: validConnection });
+      const res = await POST(req as never);
+      expect(res.status).toBe(200);
+      expect(await parseResponseJSON<TableSchema[]>(res)).toEqual(schema);
+    });
+  }
+
   test("returns 400 for empty request body", async () => {
     const req = new Request("http://localhost:3000/api/db/schema/list", {
       method: "POST",

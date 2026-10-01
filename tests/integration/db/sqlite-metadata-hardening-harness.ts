@@ -65,6 +65,8 @@ export async function runMetadataHardeningFixture(databasePath: string) {
     const tableStats = await provider.getTableStats();
     const indexStats = await provider.getIndexStats();
     assert.deepEqual(schema.map((table) => table.name).sort(), [...tableNames, parent, "x"].sort());
+    assert.deepEqual(schema.find((table) => table.name === parent)?.ref, { namespace: "main", name: parent });
+    assert.deepEqual(schema.find((table) => table.name === "x")?.ref, { namespace: "main", name: "x" });
     assert.equal(tableStats.length, schema.length);
     assert.equal(indexStats.length, indexNames.length + 1);
     assert.equal(schema.find((table) => table.name === parent)?.rowCount, 2);
@@ -74,7 +76,7 @@ export async function runMetadataHardeningFixture(databasePath: string) {
     for (const [i, name] of tableNames.entries()) {
       const table = schema.find((item) => item.name === name);
       assert.ok(table, `Missing table ${name}`);
-      assert.equal("ref" in table, false);
+      assert.deepEqual(table.ref, { namespace: "main", name });
       assert.equal(table.rowCount, i + 1);
       assert.equal(tableStats.find((item) => item.tableName === name)?.rowCount, i + 1);
       assert.deepEqual(table.columns, [

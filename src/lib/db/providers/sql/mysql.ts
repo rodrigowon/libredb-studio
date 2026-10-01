@@ -175,6 +175,7 @@ const unique = (values: string[]): string[] => [...new Set(values)];
 
 const SCHEMA_TABLES_SQL = `
         SELECT
+          TABLE_SCHEMA as table_schema,
           TABLE_NAME as table_name,
           TABLE_ROWS as row_count,
           DATA_LENGTH + INDEX_LENGTH as total_size
@@ -933,6 +934,7 @@ export class MySQLProvider extends SQLBaseProvider {
 
         schemas.push({
           name: tableName,
+          ref: { namespace: row.table_schema, name: tableName },
           rowCount,
           size: formatBytes(sizeBytes),
           columns: columnsRows.map((col) => ({

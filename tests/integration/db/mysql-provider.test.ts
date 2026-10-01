@@ -365,6 +365,7 @@ function defaultMockExecute(sql: string): Promise<[unknown[], unknown[]]> {
         [
           {
             table_name: "users",
+            table_schema: "testdb",
             row_count: "100",
             total_size: "8192",
             table_size_bytes: "4096",
@@ -375,6 +376,7 @@ function defaultMockExecute(sql: string): Promise<[unknown[], unknown[]]> {
           },
           {
             table_name: "orders",
+            table_schema: "testdb",
             row_count: "50",
             total_size: "4096",
             table_size_bytes: "2048",
@@ -969,6 +971,35 @@ describe("MySQLProvider", () => {
   // --------------------------------------------------------------------------
 
   describe("getSchema()", () => {
+    for (const useUri of [false, true]) {
+      test(`raw catalog identity is preserved with ${useUri ? "URI" : "field"} connection config`, async () => {
+        const namespace = 'Catalog_库存"Mixed';
+        const names = ["users", "a.b", ' Table" ', "cliente_ação", "cafe\u0301", "ORDER", "MixedCase"];
+        mockExecuteFn = (sql, params) => {
+          if (sql.includes("TABLE_SCHEMA as table_schema")) {
+            // Keep the existing configured metadata scope, even when a URI is present.
+            expect(params).toEqual(['catalog_库存"mixed']);
+            return Promise.resolve([
+              names.map((name) => ({ table_schema: namespace, table_name: name, row_count: "3", total_size: "0" })),
+              [],
+            ]);
+          }
+          return defaultMockExecute(sql);
+        };
+        provider = new MySQLProvider(
+          makeMySQLConfig({
+            database: 'catalog_库存"mixed',
+            ...(useUri ? { connectionString: "mysql://fixture@localhost/uri_database" } : {}),
+          }),
+        );
+        await provider.connect();
+        const schema = await provider.getSchema();
+        expect(schema.map((table) => table.name)).toEqual(names);
+        expect(schema.map((table) => table.ref)).toEqual(names.map((name) => ({ namespace, name })));
+        expect(schema.every((table) => table.rowCount === 3)).toBe(true);
+      });
+    }
+
     test("returns TableSchema array with columns, indexes, foreignKeys", async () => {
       provider = new MySQLProvider(makeMySQLConfig());
       await provider.connect();
@@ -978,6 +1009,7 @@ describe("MySQLProvider", () => {
 
       for (const table of schema) {
         expect(typeof table.name).toBe("string");
+        expect(table.ref).toEqual({ namespace: "testdb", name: table.name });
         expect(Array.isArray(table.columns)).toBe(true);
         expect(table.columns.length).toBeGreaterThan(0);
         expect(Array.isArray(table.indexes)).toBe(true);

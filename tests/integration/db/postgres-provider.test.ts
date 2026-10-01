@@ -1015,6 +1015,44 @@ describe("PostgresProvider", () => {
   // Schema
   // --------------------------------------------------------------------------
 
+  for (const method of ["getSchema", "getSchemaList"] as const) {
+    test(`${method} preserves raw relation segments and legacy labels`, async () => {
+      const identities = [
+        { namespace: "public", name: "users", legacy: "users" },
+        { namespace: "audit", name: "users", legacy: "audit.users" },
+        { namespace: "public", name: "a.b", legacy: "a.b" },
+        { namespace: "a", name: "b.c", legacy: "a.b.c" },
+        { namespace: "a.b", name: "c", legacy: "a.b.c" },
+        { namespace: ' Schema" ', name: ' Table" ', legacy: ' Schema" . Table" ' },
+        { namespace: "库存", name: "cafe\u0301", legacy: "库存.cafe\u0301" },
+        { namespace: "MixedCase", name: "ORDER", legacy: "MixedCase.ORDER" },
+      ];
+      mockQueryFn = (sql) => {
+        if (!sql.includes("table_type = 'BASE TABLE'")) return defaultMockQuery(sql);
+        return Promise.resolve({
+          rows: identities.map(({ namespace, name }) => ({
+            table_schema: namespace,
+            table_name: name,
+            row_count: "3",
+            total_size: "0",
+            pk_columns: [],
+            columns: [],
+            indexes: [],
+            foreign_keys: [],
+          })),
+        });
+      };
+      provider = new PostgresProvider(makePgConfig());
+      await provider.connect();
+      const schema = await provider[method]();
+      expect(schema.map((table) => table.name)).toEqual(identities.map(({ legacy }) => legacy));
+      expect(schema.map((table) => table.ref)).toEqual(identities.map(({ namespace, name }) => ({ namespace, name })));
+      expect(schema.every((table) => table.rowCount === 3)).toBe(true);
+      expect(schema[3].name).toBe(schema[4].name);
+      expect(schema[3].ref).not.toEqual(schema[4].ref);
+    });
+  }
+
   describe("getSchema()", () => {
     test("returns TableSchema array with columns, indexes, foreignKeys", async () => {
       provider = new PostgresProvider(makePgConfig());

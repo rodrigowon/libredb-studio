@@ -28,7 +28,9 @@ const connection = (id = "a", database = id): DatabaseConnection => ({
   type: "postgres",
   createdAt: new Date(0),
 });
-const schema = (rowCount: number): TableSchema[] => [{ name: "shared", columns: [], indexes: [], rowCount }];
+const schema = (rowCount: number): TableSchema[] => [
+  { name: "shared", ref: { namespace: "public", name: "shared" }, columns: [], indexes: [], rowCount },
+];
 const relations: TableRelations[] = [
   {
     name: "shared",
@@ -305,6 +307,7 @@ describe("PostgreSQL enrichment belongs to the list generation", () => {
     expect(result.current.schema).toEqual([
       { ...schema(2)[0], foreignKeys: relations[0].foreignKeys, indexes: relations[0].indexes },
     ]);
+    expect(JSON.parse(result.current.schemaContext)[0].ref).toEqual({ namespace: "public", name: "shared" });
   });
 
   test("obsolete enrichment errors after unmount are not logged", async () => {
