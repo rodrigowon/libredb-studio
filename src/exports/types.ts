@@ -9,6 +9,7 @@ export type {
   DatabaseConnection,
   RelationRef,
   TableSchema,
+  ViewSchema,
   ColumnSchema,
   IndexSchema,
   ForeignKeySchema,

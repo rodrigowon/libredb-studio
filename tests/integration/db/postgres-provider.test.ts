@@ -1015,6 +1015,73 @@ describe("PostgresProvider", () => {
   // Schema
   // --------------------------------------------------------------------------
 
+  describe("getViews()", () => {
+    for (const count of [0, 1, 8]) {
+      test(`ordinary view identity/columns use one metadata query for ${count} views`, async () => {
+        const identities = [
+          { namespace: "public", name: "users", display: "users" },
+          { namespace: "audit", name: "users", display: "audit.users" },
+          { namespace: "public", name: "a.b", display: "a.b" },
+          { namespace: "a", name: "b.c", display: "a.b.c" },
+          { namespace: "a.b", name: "c", display: "a.b.c" },
+          { namespace: ' Schema" ', name: ' View" ', display: ' Schema" . View" ' },
+          { namespace: "库存", name: "cafe\u0301", display: "库存.cafe\u0301" },
+          { namespace: "MixedCase", name: "ORDER", display: "MixedCase.ORDER" },
+        ].slice(0, count);
+        const statements: string[] = [];
+        provider = new PostgresProvider(makePgConfig());
+        await provider.connect();
+        mockQueryFn = async (sql) => {
+          statements.push(sql);
+          expect(sql).toContain("v.table_type = 'VIEW'");
+          expect(sql).toContain("NOT IN ('pg_catalog', 'information_schema', 'pg_toast')");
+          expect(sql).toContain("c.ordinal_position <= 100");
+          expect(sql).not.toMatch(/count\(\*\)|view_definition|pg_get_viewdef|relkind\s*=\s*'m'/i);
+          return {
+            rows: identities.map(({ namespace, name }, i) => ({
+              table_schema: namespace,
+              table_name: name,
+              columns: i === 1 ? null : [{ name: ' Col." ', type: "integer", nullable: false, defaultValue: "0" }],
+            })),
+          };
+        };
+        const views = await provider.getViews();
+        expect(statements).toHaveLength(1);
+        expect(views).toEqual(
+          identities.map(({ namespace, name, display }, i) => ({
+            name: display,
+            ref: { namespace, name },
+            columns:
+              i === 1
+                ? []
+                : [{ name: ' Col." ', type: "integer", nullable: false, isPrimary: false, defaultValue: "0" }],
+          })),
+        );
+        expect(views.every((view) => Object.keys(view).sort().join() === "columns,name,ref")).toBe(true);
+      });
+    }
+
+    test("view catalog error releases the client and does not invent an empty result", async () => {
+      provider = new PostgresProvider(makePgConfig());
+      await provider.connect();
+      const release = spyOn(mockClient, "release");
+      mockQueryFn = async () => {
+        throw new Error("view catalog denied");
+      };
+      try {
+        await expect(provider.getViews()).rejects.toThrow("view catalog denied");
+        expect(release).toHaveBeenCalledTimes(1);
+      } finally {
+        release.mockRestore();
+      }
+    });
+
+    test("view inventory requires a connected provider", async () => {
+      provider = new PostgresProvider(makePgConfig());
+      await expect(provider.getViews()).rejects.toThrow();
+    });
+  });
+
   for (const method of ["getSchema", "getSchemaList"] as const) {
     test(`${method} preserves raw relation segments and legacy labels`, async () => {
       const identities = [

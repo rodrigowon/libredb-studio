@@ -40,6 +40,7 @@ const mockSetConnections = mock(() => {});
 const mockSetActiveConnection = mock(() => {});
 const mockSetSchema = mock(() => {});
 const mockFetchSchema = mock(() => {});
+const mockFetchViews = mock(() => {});
 // Tab Manager
 const mockSetTabs = mock(() => {});
 const mockUpdateCurrentTab = mock(() => {});
@@ -109,6 +110,8 @@ mock.module("@/hooks/use-connection-manager", () => ({
     setActiveConnection: mockSetActiveConnection,
     setSchema: mockSetSchema,
     fetchSchema: mockFetchSchema,
+    fetchViews: mockFetchViews,
+    views: { status: "idle" },
     ...connMgrOverride,
   })),
 }));
@@ -529,6 +532,7 @@ describe("Studio", () => {
     mockSetActiveConnection.mockClear();
     mockSetSchema.mockClear();
     mockFetchSchema.mockClear();
+    mockFetchViews.mockClear();
     mockSetTabs.mockClear();
     mockUpdateCurrentTab.mockClear();
     mockUpdateTabById.mockClear();
@@ -1331,6 +1335,7 @@ describe("Studio", () => {
     expect(mockSetEditingEnabled).toHaveBeenCalledWith(false);
     expect(mockHandleDiscardChanges).toHaveBeenCalled();
     expect(mockFetchSchema).toHaveBeenCalledWith(pgConn);
+    expect(mockFetchViews).toHaveBeenCalledWith(pgConn);
     expect(mockSetTabs).toHaveBeenCalled();
   });
 

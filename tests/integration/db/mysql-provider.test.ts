@@ -1031,6 +1031,82 @@ describe("MySQLProvider", () => {
     });
   });
 
+  describe("getViews()", () => {
+    for (const count of [0, 1, 7]) {
+      test(`ordinary view columns use one metadata query for ${count} views`, async () => {
+        const names = ["users", "a.b", ' View" ', "cliente_ação", "cafe\u0301", "ORDER", "MixedCase"].slice(0, count);
+        const namespace = 'Catalog_库存"Mixed';
+        provider = new MySQLProvider(
+          makeMySQLConfig({ database: "configured", connectionString: "mysql://fixture@localhost/uri_db" }),
+        );
+        await provider.connect();
+        const statements: string[] = [];
+        mockExecuteFn = async (sql, params) => {
+          statements.push(sql);
+          expect(params).toEqual(["configured"]);
+          expect(sql).toContain("t.TABLE_TYPE = 'VIEW'");
+          expect(sql).toContain("c.ORDINAL_POSITION <= 100");
+          expect(sql).not.toMatch(/count\(\*\)|view_definition|column_key/i);
+          return [
+            names.flatMap<Record<string, unknown>>((name, i) =>
+              i === 1
+                ? [{ table_schema: namespace, table_name: name, column_name: null }]
+                : [
+                    {
+                      table_schema: namespace,
+                      table_name: name,
+                      column_name: ' Col." ',
+                      data_type: "int",
+                      is_nullable: "NO",
+                      column_default: "0",
+                    },
+                    {
+                      table_schema: namespace,
+                      table_name: name,
+                      column_name: "optional",
+                      data_type: "varchar",
+                      is_nullable: "YES",
+                      column_default: null,
+                    },
+                  ],
+            ),
+            [],
+          ];
+        };
+        const views = await provider.getViews();
+        expect(statements).toHaveLength(1);
+        expect(views).toEqual(
+          names.map((name, i) => ({
+            name,
+            ref: { namespace, name },
+            columns:
+              i === 1
+                ? []
+                : [
+                    { name: ' Col." ', type: "int", nullable: false, isPrimary: false, defaultValue: "0" },
+                    { name: "optional", type: "varchar", nullable: true, isPrimary: false, defaultValue: undefined },
+                  ],
+          })),
+        );
+        expect(views.every((view) => Object.keys(view).sort().join() === "columns,name,ref")).toBe(true);
+      });
+    }
+
+    test("view catalog error remains an error", async () => {
+      provider = new MySQLProvider(makeMySQLConfig());
+      await provider.connect();
+      mockExecuteFn = async () => {
+        throw new Error("view catalog denied");
+      };
+      await expect(provider.getViews()).rejects.toThrow("view catalog denied");
+    });
+
+    test("view inventory requires a connected provider", async () => {
+      provider = new MySQLProvider(makeMySQLConfig());
+      await expect(provider.getViews()).rejects.toThrow();
+    });
+  });
+
   // --------------------------------------------------------------------------
   // Health
   // --------------------------------------------------------------------------

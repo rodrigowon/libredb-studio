@@ -1,5 +1,5 @@
 // src/workspace/types.ts
-import type { DatabaseType, TableSchema, SavedQuery, QueryWarning } from "@/lib/types";
+import type { DatabaseType, TableSchema, ViewSchema, SavedQuery, QueryWarning } from "@/lib/types";
 import type { ProviderCapabilities, ProviderLabels } from "@/lib/db/types";
 
 // === Connection (platform → studio) ===
@@ -170,6 +170,8 @@ export interface StudioWorkspaceProps {
     },
   ) => Promise<WorkspaceQueryResult>;
   onSchemaFetch: (connectionId: string) => Promise<TableSchema[]>;
+  /** Ordinary views and columns. Omit when unsupported; [] means supported with no views. */
+  onViewsFetch?: (connectionId: string) => Promise<ViewSchema[]>;
 
   onTestConnection?: (config: {
     type: DatabaseType;

@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { SQLiteProvider } from "../../../src/lib/db/providers/sql/sqlite";
+import type { SQLiteDatabase } from "../../../src/lib/db/providers/sql/sqlite-driver";
+import type { ViewSchema } from "../../../src/lib/types";
 
 // oxlint-disable no-await-in-loop -- One handle; preserve fixture dependencies and ordered PRAGMA comparisons.
 
@@ -36,6 +38,7 @@ export async function runMetadataHardeningFixture(databasePath: string) {
 
   try {
     await provider.connect();
+    assert.deepEqual(await provider.getViews(), []);
     const version = (await provider.query("SELECT sqlite_version() AS version")).rows[0].version;
     await provider.query(
       `CREATE TABLE ${identifier(parent)} (${identifier(parentKey)} INTEGER PRIMARY KEY AUTOINCREMENT)`,
@@ -60,6 +63,58 @@ export async function runMetadataHardeningFixture(databasePath: string) {
         await provider.query(`INSERT INTO ${identifier(name)} VALUES (?, ?, ?)`, [row, (row % 2) + 1, `value-${row}`]);
       }
     }
+
+    const viewNames = [
+      "simple_view",
+      "view space",
+      "view.a.b",
+      'view"quote',
+      "客户_ação",
+      "select",
+      "MixedCase_View",
+      ' view padded" ',
+    ];
+    for (const name of viewNames) {
+      await provider.query(
+        `CREATE VIEW ${identifier(name)} AS SELECT ${identifier(parentKey)} FROM ${identifier(parent)}`,
+      );
+    }
+    // A count/data read would fail, while pure column discovery is valid.
+    await provider.query("CREATE VIEW no_data_read AS SELECT json_extract('invalid-json', '$') AS danger");
+    await provider.query(
+      `CREATE VIEW wide_view AS SELECT ${Array.from({ length: 101 }, (_, i) => `${i} AS c${i}`).join(", ")}`,
+    );
+    await provider.query(`CREATE TEMP VIEW ${identifier(viewNames[2])} AS SELECT 1 AS wrong_temp_column`);
+    await provider.query("ATTACH DATABASE ':memory:' AS secondary");
+    await provider.query("CREATE VIEW secondary.attached_view AS SELECT 1 AS wrong_attached_column");
+
+    // Observe actual prepare calls under both runtimes, independently of view count.
+    const db = (provider as unknown as { db: SQLiteDatabase }).db;
+    const prepare = db.prepare.bind(db);
+    const statements: string[] = [];
+    db.prepare = (sql) => {
+      statements.push(sql);
+      return prepare(sql);
+    };
+    let views: ViewSchema[];
+    try {
+      views = await provider.getViews();
+    } finally {
+      db.prepare = prepare;
+    }
+    assert.equal(statements.length, 1);
+    assert.ok(!/count\(\*\)|SELECT\s+sql\b/i.test(statements[0]));
+    assert.deepEqual(views.map((view) => view.name).sort(), [...viewNames, "no_data_read", "wide_view"].sort());
+    for (const name of viewNames) {
+      const view = views.find((item) => item.name === name);
+      assert.deepEqual(view, {
+        name,
+        ref: { namespace: "main", name },
+        columns: [{ name: parentKey, type: "INTEGER", nullable: true, isPrimary: false, defaultValue: undefined }],
+      });
+    }
+    assert.equal(views.find((view) => view.name === "wide_view")?.columns.length, 101);
+    assert.ok(views.every((view) => Object.keys(view).sort().join() === "columns,name,ref"));
 
     const schema = await provider.getSchema();
     const tableStats = await provider.getTableStats();

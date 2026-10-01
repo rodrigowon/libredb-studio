@@ -8,6 +8,7 @@ import { SQLBaseProvider } from "./sql-base";
 import {
   type DatabaseConnection,
   type TableSchema,
+  type ViewSchema,
   type TableRelations,
   type QueryResult,
   type HealthInfo,
@@ -126,6 +127,17 @@ const CTE_COLUMNS_INFO = `
           WHERE c.table_schema NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
           GROUP BY c.table_schema, c.table_name
         )`;
+
+// Ordinary views only; reuse the table column policy (first 100 ordinal positions).
+const SCHEMA_VIEWS_SQL = `
+        WITH ${CTE_COLUMNS_INFO}
+        SELECT v.table_schema, v.table_name, COALESCE(ci.columns, '[]'::json) as columns
+        FROM information_schema.tables v
+        LEFT JOIN columns_info ci ON ci.table_schema = v.table_schema AND ci.table_name = v.table_name
+        WHERE v.table_type = 'VIEW'
+          AND v.table_schema NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+        ORDER BY v.table_schema, v.table_name;
+      `;
 
 const CTE_PK_INFO = `
         pk_info AS MATERIALIZED (
@@ -1167,6 +1179,30 @@ export class PostgresProvider extends SQLBaseProvider {
           foreignKeys,
         };
       });
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Ordinary view identity and columns, separate from table/relationship metadata.
+   */
+  public async getViews(): Promise<ViewSchema[]> {
+    this.ensureConnected();
+    const client = await this.pool!.connect();
+    try {
+      const result = await client.query(SCHEMA_VIEWS_SQL);
+      return result.rows.map((row: Pick<SchemaRow, "table_schema" | "table_name" | "columns">) => ({
+        name: row.table_schema === "public" ? row.table_name : `${row.table_schema}.${row.table_name}`,
+        ref: { namespace: row.table_schema, name: row.table_name },
+        columns: (row.columns || []).map((col) => ({
+          name: col.name,
+          type: col.type,
+          nullable: col.nullable,
+          isPrimary: false,
+          defaultValue: col.defaultValue ?? undefined,
+        })),
+      }));
     } finally {
       client.release();
     }

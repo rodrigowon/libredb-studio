@@ -8,13 +8,14 @@ export type {
   DatabaseType,
   DatabaseConnection,
   TableSchema,
+  ViewSchema,
   TableRelations,
   ColumnSchema,
   QueryResult,
   QueryWarning,
 } from "../types";
 
-import type { DatabaseType, DatabaseConnection, TableSchema, TableRelations, QueryResult } from "../types";
+import type { DatabaseType, DatabaseConnection, TableSchema, TableRelations, ViewSchema, QueryResult } from "../types";
 
 // ============================================================================
 // Pool Configuration
@@ -595,6 +596,9 @@ export interface DatabaseProvider {
    * display name, for async merge into getSchemaList() results. Optional.
    */
   getSchemaRelations?(): Promise<TableRelations[]>;
+
+  /** Ordinary views and columns only. Absence means unsupported, not an empty inventory. */
+  getViews?(): Promise<ViewSchema[]>;
 
   /**
    * Get list of table names

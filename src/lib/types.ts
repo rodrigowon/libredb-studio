@@ -206,6 +206,13 @@ export interface TableSchema {
   size?: string;
 }
 
+/** Ordinary view metadata, kept separate from the table inventory. */
+export interface ViewSchema {
+  name: string;
+  ref: RelationRef;
+  columns: ColumnSchema[];
+}
+
 export interface ForeignKeySchema {
   columnName: string;
   referencedTable: string;

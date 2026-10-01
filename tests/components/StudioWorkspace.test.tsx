@@ -22,6 +22,7 @@ let capturedTestDataGeneratorProps: Record<string, unknown> = {};
 // The arguments StudioWorkspace hands the shared tab manager. `metadata` used to
 // be hardcoded `null` here, which made the whole of #427 inert in this surface.
 let capturedTabManagerArgs: Record<string, unknown> = {};
+let capturedConnectionAdapterArgs: Record<string, unknown> = {};
 
 // ---- Trackable mock functions (shared across mocks + assertions) ----
 
@@ -30,6 +31,7 @@ const mockSetConnections = mock(() => {});
 const mockSetActiveConnection = mock(() => {});
 const mockSetSchema = mock(() => {});
 const mockFetchSchema = mock(() => {});
+const mockFetchViews = mock(() => {});
 // Tab manager
 const mockSetTabs = mock(() => {});
 const mockUpdateCurrentTab = mock(() => {});
@@ -80,20 +82,25 @@ const usersTable = { name: "users", columns: [{ name: "id", type: "integer" }] }
 // ---- Mock the workspace adapter hooks ----
 
 mock.module("@/workspace/hooks/use-connection-adapter", () => ({
-  useConnectionAdapter: mock(() => ({
-    connections: [dbConn],
-    setConnections: mockSetConnections,
-    activeConnection: dbConn,
-    setActiveConnection: mockSetActiveConnection,
-    schema: [usersTable],
-    setSchema: mockSetSchema,
-    isLoadingSchema: false,
-    connectionPulse: null,
-    fetchSchema: mockFetchSchema,
-    schemaContext: JSON.stringify([usersTable]),
-    metadata: null,
-    ...connAdapterOverride,
-  })),
+  useConnectionAdapter: mock((args: Record<string, unknown>) => {
+    capturedConnectionAdapterArgs = args;
+    return {
+      connections: [dbConn],
+      setConnections: mockSetConnections,
+      activeConnection: dbConn,
+      setActiveConnection: mockSetActiveConnection,
+      schema: [usersTable],
+      setSchema: mockSetSchema,
+      isLoadingSchema: false,
+      connectionPulse: null,
+      fetchSchema: mockFetchSchema,
+      fetchViews: mockFetchViews,
+      views: { status: "unsupported" },
+      schemaContext: JSON.stringify([usersTable]),
+      metadata: null,
+      ...connAdapterOverride,
+    };
+  }),
 }));
 
 mock.module("@/workspace/hooks/use-query-adapter", () => ({
@@ -368,6 +375,7 @@ describe("StudioWorkspace", () => {
     mockSetActiveConnection.mockClear();
     mockSetSchema.mockClear();
     mockFetchSchema.mockClear();
+    mockFetchViews.mockClear();
     mockSetTabs.mockClear();
     mockUpdateCurrentTab.mockClear();
     mockUpdateTabById.mockClear();
@@ -497,13 +505,24 @@ describe("StudioWorkspace", () => {
   test("fetches schema when an active connection exists", () => {
     renderWorkspace();
     expect(mockFetchSchema).toHaveBeenCalledWith(dbConn);
+    expect(mockFetchViews).toHaveBeenCalledWith(dbConn);
     expect(mockSetSchema).not.toHaveBeenCalled();
+  });
+
+  test("forwards optional host views callback without changing onSchemaFetch", () => {
+    const onViewsFetch = mock(async () => []);
+    renderWorkspace({ onViewsFetch });
+    expect(capturedConnectionAdapterArgs.onViewsFetch).toBe(onViewsFetch);
+    expect(capturedConnectionAdapterArgs.onSchemaFetch).toBe(mockOnSchemaFetch);
+    expect(capturedSidebarProps).not.toHaveProperty("views");
+    expect(capturedBottomPanelProps).not.toHaveProperty("views");
   });
 
   test("clears schema when there is no active connection", () => {
     connAdapterOverride = { activeConnection: null, connections: [], schema: [], schemaContext: "[]" };
     renderWorkspace({ connections: [] });
     expect(mockFetchSchema).not.toHaveBeenCalled();
+    expect(mockFetchViews).not.toHaveBeenCalled();
     expect(mockSetSchema).toHaveBeenCalledWith([]);
   });
 

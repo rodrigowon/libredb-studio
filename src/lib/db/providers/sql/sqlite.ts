@@ -14,6 +14,7 @@ import { SQLBaseProvider } from "./sql-base";
 import {
   type DatabaseConnection,
   type TableSchema,
+  type ViewSchema,
   type QueryResult,
   type HealthInfo,
   type MaintenanceType,
@@ -90,6 +91,16 @@ const SCHEMA_TABLES_SQL = `
       WHERE type = 'table'
       AND name NOT LIKE 'sqlite_%'
       ORDER BY name;
+    `;
+
+// The explicit main argument prevents temp/attached objects from shadowing lookup.
+const SCHEMA_VIEWS_SQL = `
+      SELECT v.name as view_name, c.name as column_name, c.type,
+        c."notnull" as not_null, c.dflt_value
+      FROM main.sqlite_master v
+      LEFT JOIN pragma_table_info(v.name, 'main') c ON 1 = 1
+      WHERE v.type = 'view' AND v.name NOT LIKE 'sqlite_%'
+      ORDER BY v.name, c.cid;
     `;
 
 const DB_PAGE_SIZE_SQL = `
@@ -676,6 +687,35 @@ export class SQLiteProvider extends SQLBaseProvider {
     }
 
     return schemas;
+  }
+
+  public async getViews(): Promise<ViewSchema[]> {
+    this.ensureConnected();
+    const rows = this.db!.prepare(SCHEMA_VIEWS_SQL).all() as Array<{
+      view_name: string;
+      column_name: string | null;
+      type: string;
+      not_null: number;
+      dflt_value: string | null;
+    }>;
+    const byName = new Map<string, ViewSchema>();
+    for (const row of rows) {
+      let view = byName.get(row.view_name);
+      if (!view) {
+        view = { name: row.view_name, ref: { namespace: "main", name: row.view_name }, columns: [] };
+        byName.set(row.view_name, view);
+      }
+      if (row.column_name !== null) {
+        view.columns.push({
+          name: row.column_name,
+          type: row.type || "TEXT",
+          nullable: row.not_null === 0,
+          isPrimary: false,
+          defaultValue: row.dflt_value ?? undefined,
+        });
+      }
+    }
+    return [...byName.values()];
   }
 
   // ============================================================================

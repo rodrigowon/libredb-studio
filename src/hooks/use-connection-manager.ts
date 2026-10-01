@@ -7,6 +7,8 @@ import { storage } from "@/lib/storage";
 import { logger } from "@/lib/logger";
 import { filterEnabledDatabaseConnections } from "@/lib/database-visibility";
 import { useTranslations } from "next-intl";
+import { useViewMetadata } from "./use-view-metadata";
+import type { ViewMetadataResult } from "@/lib/view-metadata";
 import {
   buildConnectionPayload,
   NO_SERVED_SEEDS,
@@ -19,6 +21,19 @@ import {
  * shortens the tick in source builds and tests only — NEXT_PUBLIC_ values are
  * inlined at build time, so packaged artifacts always use the default. */
 const MANAGED_POLL_MAX_ATTEMPTS = 30;
+
+async function loadViewMetadata(connection: DatabaseConnection): Promise<ViewMetadataResult> {
+  const response = await fetch("/api/db/schema/views", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(buildConnectionPayload(connection)),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || "Failed to fetch view metadata");
+  }
+  return response.json();
+}
 
 export function useConnectionManager(storageReady = false) {
   const t = useTranslations("Studio.sidebar");
@@ -48,6 +63,7 @@ export function useConnectionManager(storageReady = false) {
   const [pulseState, setConnectionPulse] = useState<"healthy" | "degraded" | "error" | null>(null);
 
   const { toast } = useToast();
+  const { views, fetchViews } = useViewMetadata(activeConnection, loadViewMetadata);
 
   const schemaGeneration = useRef(0);
   // Invalidate at commit, before the shell's passive effect starts the next load.
@@ -350,6 +366,8 @@ export function useConnectionManager(storageReady = false) {
     // there is nothing to report on, and the render already knows that.
     connectionPulse: activeConnection === null ? null : pulseState,
     fetchSchema,
+    views,
+    fetchViews,
     schemaContext,
   };
 }

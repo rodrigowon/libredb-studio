@@ -175,6 +175,7 @@ export default function Studio() {
       editing.setEditingEnabled(false);
       editing.handleDiscardChanges();
       conn.fetchSchema(conn.activeConnection);
+      conn.fetchViews(conn.activeConnection);
       const tabType = resolveTabType(metadata?.capabilities);
       tabMgr.setTabs((prev) =>
         prev.map((t) => {

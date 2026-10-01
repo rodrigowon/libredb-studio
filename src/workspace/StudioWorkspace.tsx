@@ -168,6 +168,7 @@ export function StudioWorkspace({
   currentUser,
   onQueryExecute,
   onSchemaFetch,
+  onViewsFetch,
   onSaveQuery: onSaveQueryProp,
   // onLoadSavedQueries — reserved for future saved-queries panel integration
   features: featuresProp,
@@ -184,6 +185,7 @@ export function StudioWorkspace({
   const conn = useConnectionAdapter({
     connections: externalConnections,
     onSchemaFetch,
+    onViewsFetch,
   });
 
   // 2. Tab Manager (pure UI state, reused as-is)
@@ -212,6 +214,7 @@ export function StudioWorkspace({
   useEffect(() => {
     if (conn.activeConnection) {
       conn.fetchSchema(conn.activeConnection);
+      conn.fetchViews(conn.activeConnection);
     } else {
       conn.setSchema([]);
     }

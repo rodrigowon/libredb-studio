@@ -9,6 +9,7 @@ import { mysqlColumnTypes } from "./column-types";
 import {
   type DatabaseConnection,
   type TableSchema,
+  type ViewSchema,
   type QueryResult,
   type HealthInfo,
   type MaintenanceType,
@@ -198,6 +199,19 @@ const SCHEMA_COLUMNS_SQL = `
           ORDER BY ORDINAL_POSITION
           LIMIT 100;
         `;
+
+// One catalog read for all ordinary views and their first 100 columns.
+const SCHEMA_VIEWS_SQL = `
+        SELECT t.TABLE_SCHEMA as table_schema, t.TABLE_NAME as table_name,
+          c.COLUMN_NAME as column_name, c.DATA_TYPE as data_type,
+          c.IS_NULLABLE as is_nullable, c.COLUMN_DEFAULT as column_default
+        FROM information_schema.TABLES t
+        LEFT JOIN information_schema.COLUMNS c
+          ON c.TABLE_SCHEMA = t.TABLE_SCHEMA AND c.TABLE_NAME = t.TABLE_NAME
+          AND c.ORDINAL_POSITION <= 100
+        WHERE t.TABLE_SCHEMA = ? AND t.TABLE_TYPE = 'VIEW'
+        ORDER BY t.TABLE_NAME, c.ORDINAL_POSITION;
+      `;
 
 const SCHEMA_FOREIGN_KEYS_SQL = `
           SELECT
@@ -958,6 +972,41 @@ export class MySQLProvider extends SQLBaseProvider {
       }
 
       return schemas;
+    } finally {
+      conn.release();
+    }
+  }
+
+  public async getViews(): Promise<ViewSchema[]> {
+    this.ensureConnected();
+    const conn = await this.pool!.getConnection();
+    try {
+      const [rows] = await runStatement(conn, SCHEMA_VIEWS_SQL, [this.config.database]);
+      const namespaces = new Map<string, Map<string, ViewSchema>>();
+      const views: ViewSchema[] = [];
+      for (const row of rows) {
+        let namespace = namespaces.get(row.table_schema);
+        if (!namespace) {
+          namespace = new Map();
+          namespaces.set(row.table_schema, namespace);
+        }
+        let view = namespace.get(row.table_name);
+        if (!view) {
+          view = { name: row.table_name, ref: { namespace: row.table_schema, name: row.table_name }, columns: [] };
+          namespace.set(row.table_name, view);
+          views.push(view);
+        }
+        if (row.column_name !== null) {
+          view.columns.push({
+            name: row.column_name,
+            type: row.data_type,
+            nullable: row.is_nullable === "YES",
+            isPrimary: false,
+            defaultValue: row.column_default ?? undefined,
+          });
+        }
+      }
+      return views;
     } finally {
       conn.release();
     }

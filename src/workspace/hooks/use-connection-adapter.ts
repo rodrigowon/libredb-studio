@@ -1,16 +1,22 @@
 "use client";
 
 import { useState, useLayoutEffect, useRef, useCallback, useMemo } from "react";
-import type { DatabaseConnection, TableSchema } from "@/lib/types";
+import type { DatabaseConnection, TableSchema, ViewSchema } from "@/lib/types";
 import type { ProviderMetadata } from "@/hooks/use-provider-metadata";
 import type { WorkspaceConnection } from "@/workspace/types";
+import { useViewMetadata } from "@/hooks/use-view-metadata";
 
 interface UseConnectionAdapterParams {
   connections: WorkspaceConnection[];
   onSchemaFetch: (connectionId: string) => Promise<TableSchema[]>;
+  onViewsFetch?: (connectionId: string) => Promise<ViewSchema[]>;
 }
 
-export function useConnectionAdapter({ connections: externalConnections, onSchemaFetch }: UseConnectionAdapterParams) {
+export function useConnectionAdapter({
+  connections: externalConnections,
+  onSchemaFetch,
+  onViewsFetch,
+}: UseConnectionAdapterParams) {
   const connections: DatabaseConnection[] = useMemo(
     () =>
       externalConnections.map((c) => ({
@@ -62,6 +68,17 @@ export function useConnectionAdapter({ connections: externalConnections, onSchem
   // Keep the host's existing ID-based load trigger; same-ID prop changes are not
   // a new request. Cleanup also invalidates all pending callbacks on unmount.
   const selectedId = activeConnection?.id;
+  const loadViews = useMemo(
+    () =>
+      onViewsFetch
+        ? async (connection: DatabaseConnection) => ({
+            status: "ready" as const,
+            data: await onViewsFetch(connection.id),
+          })
+        : undefined,
+    [onViewsFetch],
+  );
+  const { views, fetchViews } = useViewMetadata(selectedId ?? null, loadViews);
   useLayoutEffect(() => {
     // oxlint-disable-next-line react/set-state-in-effect -- Host removal invalidates external work; no replacement callback can clear loading.
     if (!selectedId) setIsLoadingSchema(false);
@@ -116,6 +133,8 @@ export function useConnectionAdapter({ connections: externalConnections, onSchem
     isLoadingSchema,
     connectionPulse: null as "healthy" | "degraded" | "error" | null,
     fetchSchema,
+    views,
+    fetchViews,
     schemaContext,
   };
 }
