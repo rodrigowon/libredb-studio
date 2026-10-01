@@ -1,6 +1,6 @@
 # Current state of the custom fork
 
-Snapshot refreshed on **2026-10-01**, after the approved schema metadata generation protection
+Snapshot refreshed on **2026-10-01**, after the approved provider RelationRef production
 implementation and before its documentation checkpoint. Railway personal lab validation remains current.
 This is a handoff snapshot, not a live status page or changelog. Refresh it after reviewed
 checkpoints; verify Git and code on arrival. Git stores the history.
@@ -10,7 +10,7 @@ checkpoints; verify Git and code on arrival. Git stores the history.
 | Item | Observed value |
 | --- | --- |
 | Working branch | `feat/dbstudio-custom` |
-| HEAD before this documentation checkpoint | `12567d611af90dde17c48fa22102fb339ad752b4` — `fix: guard schema loading generations` |
+| HEAD before this documentation checkpoint | `977980e5456cd125df9a293145f7f1fc0e922e17` — `feat: produce structured relation refs` |
 | Validated Railway deployment commit | `439ae5b8d4fdc54ec8d32eb09c3ce4a92beae631` — `docs: align railway readiness state` |
 | Tracking branch | `origin/feat/dbstudio-custom` |
 | Divergence from local tracking ref | ahead 1 / behind 0 (before this documentation commit) |
@@ -67,7 +67,7 @@ Their presence does not imply every inherited feature has been audited or transl
 | Results on Demand (Phase 7B.6C) | Implemented in Studio and StudioWorkspace; compact initial panel with explicit expansion. [Central controller](../src/hooks/use-bottom-panel.ts), [controller tests](../tests/hooks/use-bottom-panel.test.ts). |
 | Login and header | Refined login and desktop/mobile top chrome, without new branding or auth semantics. [Login](../src/app/login/page.tsx), [desktop header](../src/components/studio/StudioDesktopHeader.tsx), [mobile header](../src/components/studio/StudioMobileHeader.tsx). |
 | Explorer sidebar | Initial width 20%, minimum 15%, manual resize retained; duplicate Studio footer GitHub/version removed. Schema tools live in the Explorer bar's vertical ellipsis menu. [Layout constants](../src/components/sidebar/layout.ts), [Sidebar](../src/components/sidebar/Sidebar.tsx), [SchemaTools](../src/components/sidebar/SchemaTools.tsx). |
-| Explorer V1 Phase 1 | Structured relation identity foundation completed; runtime integration remains pending. [Contract](../src/lib/types.ts), [normalization](../src/lib/relation-ref.ts), [tests](../tests/unit/relation-ref.test.ts), [decision](DECISIONS.md#adr-012--explorer-relation-identity-foundation). |
+| Explorer V1 identity | Structured relation identity foundation and V1 provider production completed; consumer migration remains pending. [Contract](../src/lib/types.ts), [normalization](../src/lib/relation-ref.ts), [tests](../tests/unit/relation-ref.test.ts), [decision](DECISIONS.md#adr-012--explorer-relation-identity-foundation), [provider rollout](#provider-relationref-production). |
 | SQLite metadata identifier hardening | Completed for the affected introspection paths; [scope and validation limits](#sqlite-metadata-identifier-hardening). |
 | Schema metadata generation protection | Completed in standalone and embedded schema controllers; [ownership and embedded limit](#schema-metadata-generation-protection). |
 | ERD | Fork-specific canvas and relationship styling; details in the next section. |
@@ -95,16 +95,39 @@ presentation is unchanged, including toasts for single-query execution failures.
 
 ### Explorer V1 identity foundation
 
-**Foundation only — Explorer V1 is not implemented as a complete product feature.**
+**Explorer V1 is not implemented as a complete product feature.**
 `RelationRef` is an additive `namespace: string | null` + `name: string` contract;
 `TableSchema.ref` remains optional for backward compatibility. Normalization explicitly
 distinguishes resolved from legacy identity, without heuristically parsing legacy names.
 A deterministic tuple-key helper exists, and `RelationRef` is publicly exported through
 the existing type barrels; the helpers are not public package exports.
 
-Runtime behavior is unchanged: providers do not populate ref and Explorer UI does not
-consume it yet. ERD, Schema Diff, persistence and StudioWorkspace behavior remain unchanged.
-Product-wide schema identity is not resolved by this foundation.
+The V1 providers now populate ref as described below; Explorer UI does not consume it yet.
+The tuple-key helper has not been adopted by runtime consumers. Product-wide schema identity
+is not resolved by this foundation. ADR-012 remains the canonical identity decision;
+this section and the provider rollout below own implementation status.
+
+### Provider RelationRef production
+
+Provider production is completed for PostgreSQL, MySQL and SQLite. PostgreSQL full-schema
+and fast-list producers emit the original metadata schema/table segments, with `public`
+explicitly represented as `"public"`. MySQL emits catalog `TABLE_SCHEMA`/`TABLE_NAME` values
+using one added SELECT projection column and no extra query or round-trip. Its existing
+connection-string/configuration metadata database resolution was not redesigned. SQLite's
+current table-only inventory emits `"main"` and the raw table name; temp, ATTACH and views
+remain outside this checkpoint. All three preserve legacy `TableSchema.name` without parsing
+or normalizing its segments. [Provider implementations](../src/lib/db/providers/sql/).
+
+Ref remains optional. New snapshots may store it additively; old snapshots remain readable
+without rewriting stored objects or requiring migration/backfill. Embedded hosts and hidden
+providers may still supply schemas without ref. ERD, Schema Diff, FK identity and SQL generation
+continue using legacy paths. PostgreSQL list refs survive relations enrichment; existing
+generation protection and SQLite identifier hardening remain intact.
+
+Targeted validation covered providers, routes, storage, generation, embedded, ERD and Schema Diff
+compatibility. PostgreSQL/MySQL unusual-name cases used mocked catalog results, not live servers;
+SQLite exercised real disposable databases under Bun and native Node. The known three Windows
+SQLite `EBUSY` cleanup failures remain unrelated and unresolved, as documented below.
 
 ### SQLite metadata identifier hardening
 
@@ -280,13 +303,15 @@ Update this sequence as checkpoints are approved; do not treat it as permanent s
 
 Completed: [structured relation identity foundation](#explorer-v1-identity-foundation),
 [SQLite metadata identifier hardening](#sqlite-metadata-identifier-hardening)
-and [schema-loading generation protection](#schema-metadata-generation-protection).
+and [schema-loading generation protection](#schema-metadata-generation-protection), followed by
+[provider RelationRef production](#provider-relationref-production).
 
-1. Provider production of structured `RelationRef`.
-2. Views metadata.
-3. Explorer grouping/UI.
-4. Menu/search/i18n/accessibility, with Generate Test Data review required before menu migration.
-5. Full validation.
+Next checkpoints:
+
+5. Views metadata.
+6. Explorer grouping/UI.
+7. Menu/search/i18n/accessibility, with Generate Test Data review required before menu migration.
+8. Full validation.
 
 ## Local test data
 
