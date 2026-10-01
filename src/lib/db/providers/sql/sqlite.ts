@@ -618,25 +618,25 @@ export class SQLiteProvider extends SQLBaseProvider {
     const schemas: TableSchema[] = [];
 
     for (const { name: tableName } of tables) {
-      const countStmt = this.db!.prepare(`SELECT COUNT(*) as count FROM "${tableName}"`);
+      const countStmt = this.db!.prepare(`SELECT COUNT(*) as count FROM ${this.escapeIdentifier(tableName)}`);
       const countResult = countStmt.get() as { count: number };
       const rowCount = countResult?.count || 0;
 
-      const columnsStmt = this.db!.prepare(`PRAGMA table_info("${tableName}")`);
-      const columns = columnsStmt.all() as SQLiteColumnInfoRow[];
+      const columnsStmt = this.db!.prepare("SELECT * FROM pragma_table_info(?)");
+      const columns = columnsStmt.all(tableName) as SQLiteColumnInfoRow[];
 
-      const fkStmt = this.db!.prepare(`PRAGMA foreign_key_list("${tableName}")`);
-      const foreignKeys = fkStmt.all() as SQLiteForeignKeyRow[];
+      const fkStmt = this.db!.prepare("SELECT * FROM pragma_foreign_key_list(?)");
+      const foreignKeys = fkStmt.all(tableName) as SQLiteForeignKeyRow[];
 
-      const indexStmt = this.db!.prepare(`PRAGMA index_list("${tableName}")`);
-      const indexList = indexStmt.all() as SQLiteIndexListRow[];
+      const indexStmt = this.db!.prepare("SELECT * FROM pragma_index_list(?)");
+      const indexList = indexStmt.all(tableName) as SQLiteIndexListRow[];
 
       const indexes = [];
       for (const idx of indexList) {
         if (idx.name.startsWith("sqlite_")) continue;
 
-        const indexInfoStmt = this.db!.prepare(`PRAGMA index_info("${idx.name}")`);
-        const indexCols = indexInfoStmt.all() as Array<{ seqno: number; cid: number; name: string }>;
+        const indexInfoStmt = this.db!.prepare("SELECT * FROM pragma_index_info(?)");
+        const indexCols = indexInfoStmt.all(idx.name) as Array<{ seqno: number; cid: number; name: string }>;
 
         indexes.push({
           name: idx.name,
@@ -934,7 +934,7 @@ export class SQLiteProvider extends SQLBaseProvider {
 
     for (const { name: tableName } of tables) {
       // Get row count
-      const countStmt = this.db!.prepare(`SELECT COUNT(*) as count FROM "${tableName}"`);
+      const countStmt = this.db!.prepare(`SELECT COUNT(*) as count FROM ${this.escapeIdentifier(tableName)}`);
       const countResult = countStmt.get() as { count: number };
       const rowCount = countResult?.count || 0;
 
@@ -954,12 +954,12 @@ export class SQLiteProvider extends SQLBaseProvider {
 
     for (const { name: indexName, tbl_name: tableName } of indexes) {
       // Get index info
-      const indexInfoStmt = this.db!.prepare(`PRAGMA index_info("${indexName}")`);
-      const indexCols = indexInfoStmt.all() as { seqno: number; cid: number; name: string }[];
+      const indexInfoStmt = this.db!.prepare("SELECT * FROM pragma_index_info(?)");
+      const indexCols = indexInfoStmt.all(indexName) as { seqno: number; cid: number; name: string }[];
 
       // Get index uniqueness
-      const indexListStmt = this.db!.prepare(`PRAGMA index_list("${tableName}")`);
-      const indexList = indexListStmt.all() as { name: string; unique: number }[];
+      const indexListStmt = this.db!.prepare("SELECT * FROM pragma_index_list(?)");
+      const indexList = indexListStmt.all(tableName) as { name: string; unique: number }[];
       const indexMeta = indexList.find((i) => i.name === indexName);
 
       stats.push({
