@@ -1,6 +1,6 @@
 # Current state of the custom fork
 
-Snapshot refreshed on **2026-10-01**, after the approved SQLite metadata identifier hardening
+Snapshot refreshed on **2026-10-01**, after the approved schema metadata generation protection
 implementation and before its documentation checkpoint. Railway personal lab validation remains current.
 This is a handoff snapshot, not a live status page or changelog. Refresh it after reviewed
 checkpoints; verify Git and code on arrival. Git stores the history.
@@ -10,7 +10,7 @@ checkpoints; verify Git and code on arrival. Git stores the history.
 | Item | Observed value |
 | --- | --- |
 | Working branch | `feat/dbstudio-custom` |
-| HEAD before this documentation checkpoint | `991e271e65683716e84c36fbbc4beff5b2f61b71` — `fix: harden sqlite metadata identifiers` |
+| HEAD before this documentation checkpoint | `12567d611af90dde17c48fa22102fb339ad752b4` — `fix: guard schema loading generations` |
 | Validated Railway deployment commit | `439ae5b8d4fdc54ec8d32eb09c3ce4a92beae631` — `docs: align railway readiness state` |
 | Tracking branch | `origin/feat/dbstudio-custom` |
 | Divergence from local tracking ref | ahead 1 / behind 0 (before this documentation commit) |
@@ -69,6 +69,7 @@ Their presence does not imply every inherited feature has been audited or transl
 | Explorer sidebar | Initial width 20%, minimum 15%, manual resize retained; duplicate Studio footer GitHub/version removed. Schema tools live in the Explorer bar's vertical ellipsis menu. [Layout constants](../src/components/sidebar/layout.ts), [Sidebar](../src/components/sidebar/Sidebar.tsx), [SchemaTools](../src/components/sidebar/SchemaTools.tsx). |
 | Explorer V1 Phase 1 | Structured relation identity foundation completed; runtime integration remains pending. [Contract](../src/lib/types.ts), [normalization](../src/lib/relation-ref.ts), [tests](../tests/unit/relation-ref.test.ts), [decision](DECISIONS.md#adr-012--explorer-relation-identity-foundation). |
 | SQLite metadata identifier hardening | Completed for the affected introspection paths; [scope and validation limits](#sqlite-metadata-identifier-hardening). |
+| Schema metadata generation protection | Completed in standalone and embedded schema controllers; [ownership and embedded limit](#schema-metadata-generation-protection). |
 | ERD | Fork-specific canvas and relationship styling; details in the next section. |
 | Server-side EXPLAIN | Server chooses the strategy from connected provider capabilities; estimate and explicit analyze are distinct. [API contract](API_DOCS.md#structured-explain-requests), [checkpoint detail](EXPLAIN_SERVER_SIDE.md). |
 | Dialect-aware Schema Diff | Migration SQL generation adapted by engine; a reviewable artifact, not an automatic migration runner. [Reference](SCHEMA_DIFF.md), [tests](../tests/unit/schema-diff/). |
@@ -119,6 +120,27 @@ Known validation limitation: the full SQLite suite has three pre-existing Window
 `afterAll` cleanup failures in [sqlite-provider.test.ts](../tests/integration/db/sqlite-provider.test.ts).
 They reproduce independently of this hardening; this checkpoint does not claim that
 suite is fully green. The existing cleanup test remains unchanged.
+
+### Schema metadata generation protection
+
+Standalone and embedded schema controllers now use request generations: latest generation wins.
+Stale success cannot replace current schema; stale errors cannot overwrite newer state or emit
+obsolete standalone error effects; stale finally cannot end loading for a newer request.
+Concurrent refreshes for the same connection are protected, and connection switches and unmount
+invalidate previous work. PostgreSQL relations enrichment belongs to the same generation as
+its list request; the existing merge by table name remains unchanged.
+
+`AbortController` is intentionally not required for correctness: obsolete requests may finish
+in the background but cannot mutate current schema-loading state. No provider, SQL or UI behavior
+was otherwise redesigned. [ADR-013](DECISIONS.md#adr-013--schema-metadata-uses-latest-generation-wins-ownership)
+records the ownership decision; deterministic race tests cover
+[standalone](../tests/hooks/use-connection-manager-generation.test.ts) and
+[embedded](../tests/hooks/use-connection-adapter-generation.test.ts) controllers.
+
+StudioWorkspace automatic reload still follows its existing active-connection ID trigger.
+A host-side mutation preserving the same ID without invoking a new load is not automatically
+detected; any new `fetchSchema` invocation gets a new generation. No revision/fingerprint or
+public host API was introduced.
 
 ## Current ERD state
 
@@ -190,7 +212,6 @@ required guarantee is incomplete; **DEFERRED** = deliberately postponed; **NOT I
 | Editable Results — containment IMPLEMENTED; hardening NOT IMPLEMENTED | Visual editing is temporarily disabled in the primary Studio; internal implementation is preserved. [Containment and reactivation requirements](#editable-results-containment-and-hardening). |
 | Ctrl/Cmd+Enter — known limitation, fix DEFERRED | [QueryEditor tests](../tests/components/QueryEditor.test.tsx) characterize mount-time handlers retaining null Monaco: the shortcut dispatches the full buffer while the current editor ref resolves a statement/selection. Toolbar and shortcut can differ. Extend characterization before changing semantics; the execution-controls checkpoint did not fix it. |
 | Transactions — PARTIAL review | [Transaction API](../src/app/api/db/transaction/route.ts) and [multi-query API](../src/app/api/db/multi-query/route.ts) exist. Shared provider transaction state, ownership and batch/rollback behavior need further review. An upstream ownership change is a candidate, not integrated protection. |
-| Schema-loading generation protection — DEFERRED | Standalone loading, PostgreSQL enrichment and embedded schema loading have stale-response race risks requiring generation/invalidation protection. |
 | Generate Test Data review — DEFERRED | This remains a separate write path requiring review before Explorer menu migration. |
 
 Current intended suitability is development, local/self-hosted testing and staging/lab use.
@@ -257,15 +278,15 @@ Update this sequence as checkpoints are approved; do not treat it as permanent s
 
 ### Pending Explorer sequence
 
-Completed: [structured relation identity foundation](#explorer-v1-identity-foundation)
-and [SQLite metadata identifier hardening](#sqlite-metadata-identifier-hardening).
+Completed: [structured relation identity foundation](#explorer-v1-identity-foundation),
+[SQLite metadata identifier hardening](#sqlite-metadata-identifier-hardening)
+and [schema-loading generation protection](#schema-metadata-generation-protection).
 
-1. Schema-loading generation/stale-response protection.
-2. Provider production of structured `RelationRef`.
-3. Views metadata.
-4. Explorer grouping/UI.
-5. Menu/search/i18n/accessibility.
-6. Full validation.
+1. Provider production of structured `RelationRef`.
+2. Views metadata.
+3. Explorer grouping/UI.
+4. Menu/search/i18n/accessibility, with Generate Test Data review required before menu migration.
+5. Full validation.
 
 ## Local test data
 

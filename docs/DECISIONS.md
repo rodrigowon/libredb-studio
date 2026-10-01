@@ -110,3 +110,18 @@ specialized documents own technical details. Update a record explicitly when a d
 - **Consequences:** New structured paths can adopt `RelationRef` incrementally; legacy consumers
   remain unchanged until separately migrated. Providers do not populate ref yet and the
   helpers have no runtime consumers. [Rollout state](CURRENT_STATE.md#explorer-v1-identity-foundation).
+
+## ADR-013 — Schema metadata uses latest-generation-wins ownership
+
+- **Status:** Accepted on 2026-10-01; implemented in standalone and embedded schema controllers.
+- **Decision:** Each schema-loading controller owns a monotonically increasing local request
+  generation. Every load receives a generation; only the current generation may mutate
+  schema-loading state. Post-list relations enrichment belongs to the generation of its list.
+- **Rationale:** Connection ID alone cannot distinguish overlapping refreshes or a connection
+  replaced with the same ID. Older lists/enrichment may finish after newer loads, and stale
+  error/finally paths can corrupt current error/loading state.
+- **Consequences:** Obsolete requests may finish but become state-inert; correctness does not
+  depend on `AbortController`. Provider cache identity remains a separate concern. Embedded
+  same-ID host changes still need an actual new load invocation to advance request ownership.
+  No generalized async-task framework is introduced.
+  [Rollout and embedded limit](CURRENT_STATE.md#schema-metadata-generation-protection).
