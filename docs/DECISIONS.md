@@ -125,3 +125,18 @@ specialized documents own technical details. Update a record explicitly when a d
   same-ID host changes still need an actual new load invocation to advance request ownership.
   No generalized async-task framework is introduced.
   [Rollout and embedded limit](CURRENT_STATE.md#schema-metadata-generation-protection).
+
+## ADR-014 — Views metadata is a separate relation inventory
+
+- **Status:** Accepted on 2026-10-01; metadata foundation implemented, Explorer UI pending.
+- **Decision:** Keep ordinary views separate from `TableSchema[]`. `ViewSchema` represents
+  identity (with required structured ref) and columns independently. Provider support is
+  optional; supported empty inventory (`ready []`) is distinct from unsupported metadata.
+- **Rationale:** ERD, Schema Diff, FK logic, generators and table operations already consume
+  table-specific semantics. Mixing views into their inventory would imply false capabilities.
+  An empty supported inventory and unsupported metadata also have different product meanings.
+- **Consequences:** View failures do not invalidate table metadata. Providers and embedded
+  hosts can support views independently; hidden providers are not forced to implement them.
+  A future Views group can represent support honestly, but ERD/Schema Diff remain table-only
+  until separately designed. Materialized views, triggers and source remain separate future
+  concerns. [Rollout state](CURRENT_STATE.md#views-metadata-foundation).

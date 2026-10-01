@@ -1,6 +1,6 @@
 # Current state of the custom fork
 
-Snapshot refreshed on **2026-10-01**, after the approved provider RelationRef production
+Snapshot refreshed on **2026-10-01**, after the approved Views Metadata Foundation
 implementation and before its documentation checkpoint. Railway personal lab validation remains current.
 This is a handoff snapshot, not a live status page or changelog. Refresh it after reviewed
 checkpoints; verify Git and code on arrival. Git stores the history.
@@ -10,7 +10,7 @@ checkpoints; verify Git and code on arrival. Git stores the history.
 | Item | Observed value |
 | --- | --- |
 | Working branch | `feat/dbstudio-custom` |
-| HEAD before this documentation checkpoint | `977980e5456cd125df9a293145f7f1fc0e922e17` — `feat: produce structured relation refs` |
+| HEAD before this documentation checkpoint | `1e4e7660f9b250270ce709973ba157a77bd932bc` — `feat: add views metadata foundation` |
 | Validated Railway deployment commit | `439ae5b8d4fdc54ec8d32eb09c3ce4a92beae631` — `docs: align railway readiness state` |
 | Tracking branch | `origin/feat/dbstudio-custom` |
 | Divergence from local tracking ref | ahead 1 / behind 0 (before this documentation commit) |
@@ -70,6 +70,7 @@ Their presence does not imply every inherited feature has been audited or transl
 | Explorer V1 identity | Structured relation identity foundation and V1 provider production completed; consumer migration remains pending. [Contract](../src/lib/types.ts), [normalization](../src/lib/relation-ref.ts), [tests](../tests/unit/relation-ref.test.ts), [decision](DECISIONS.md#adr-012--explorer-relation-identity-foundation), [provider rollout](#provider-relationref-production). |
 | SQLite metadata identifier hardening | Completed for the affected introspection paths; [scope and validation limits](#sqlite-metadata-identifier-hardening). |
 | Schema metadata generation protection | Completed in standalone and embedded schema controllers; [ownership and embedded limit](#schema-metadata-generation-protection). |
+| Views Metadata Foundation | Separate ordinary-view identity/columns inventory for V1 providers and optional embedded hosts; not displayed in Explorer yet. [Runtime scope and validation limits](#views-metadata-foundation). |
 | ERD | Fork-specific canvas and relationship styling; details in the next section. |
 | Server-side EXPLAIN | Server chooses the strategy from connected provider capabilities; estimate and explicit analyze are distinct. [API contract](API_DOCS.md#structured-explain-requests), [checkpoint detail](EXPLAIN_SERVER_SIDE.md). |
 | Dialect-aware Schema Diff | Migration SQL generation adapted by engine; a reviewable artifact, not an automatic migration runner. [Reference](SCHEMA_DIFF.md), [tests](../tests/unit/schema-diff/). |
@@ -128,6 +129,33 @@ Targeted validation covered providers, routes, storage, generation, embedded, ER
 compatibility. PostgreSQL/MySQL unusual-name cases used mocked catalog results, not live servers;
 SQLite exercised real disposable databases under Bun and native Node. The known three Windows
 SQLite `EBUSY` cleanup failures remain unrelated and unresolved, as documented below.
+
+### Views Metadata Foundation
+
+Completed as runtime metadata, **not a completed Explorer V1 UI**. The separate
+[`ViewSchema`](../src/lib/types.ts) contract contains name, required structured `RelationRef`
+and columns. PostgreSQL, MySQL and SQLite expose ordinary views through optional provider
+`getViews`; each uses one aggregated metadata statement, with no application-level per-view
+N+1 queries. No rowCount, data SELECT, source/DDL, materialized views or triggers are included.
+PostgreSQL/MySQL retain the 100-column policy; SQLite retains its uncapped column inventory.
+
+The authenticated standalone [views route](../src/app/api/db/schema/views/route.ts) and
+[controller](../src/hooks/use-view-metadata.ts) distinguish unsupported from supported empty
+(`ready []`), alongside idle/loading/error. Views own independent latest-generation-wins
+requests; same-scope refresh can retain previous data, while connection changes invalidate it.
+View failures do not affect tables or PostgreSQL relations enrichment. Table snapshots, Agent
+context, ERD and Schema Diff remain table-only.
+
+Embedded hosts may opt in with optional `onViewsFetch` in
+[StudioWorkspaceProps](../src/workspace/types.ts); old hosts remain compatible and unsupported.
+The existing same-ID host-change limitation remains: a new explicit load advances generation,
+but same-ID prop mutation alone does not automatically reload. **Views are not displayed in
+Explorer**, and no view SQL actions were added. [ADR-014](DECISIONS.md#adr-014--views-metadata-is-a-separate-relation-inventory)
+records the inventory decision.
+
+PostgreSQL/MySQL provider validation used mocked catalog drivers, not live servers; SQLite
+used real disposable Bun/Node databases. The known three Windows SQLite `EBUSY` cleanup
+failures remain separate, as [documented below](#sqlite-metadata-identifier-hardening).
 
 ### SQLite metadata identifier hardening
 
@@ -214,8 +242,8 @@ no deployment was performed for this checkpoint. Additional known limitations ar
 
 - Connection credentials can still exist in browser localStorage in plaintext by current design.
 - The fixture's default `search_path` limitation remains as recorded under [Local test data](#local-test-data).
-- Explorer row counts may be approximate; views are not currently enumerated alongside base
-  tables in Explorer introspection. EXPLAIN estimate presentation has minor UI inconsistencies.
+- Explorer row counts may be approximate; views are not displayed in Explorer, despite the
+  separate metadata foundation now implemented locally. EXPLAIN estimate presentation has minor UI inconsistencies.
 - Remote SQLite paths refer to the server filesystem, not the browser's local files;
   a SQLite upload/import flow remains future work.
 - Long-running/load validation has not been performed.
@@ -301,14 +329,16 @@ Update this sequence as checkpoints are approved; do not treat it as permanent s
 
 ### Pending Explorer sequence
 
-Completed: [structured relation identity foundation](#explorer-v1-identity-foundation),
-[SQLite metadata identifier hardening](#sqlite-metadata-identifier-hardening)
-and [schema-loading generation protection](#schema-metadata-generation-protection), followed by
-[provider RelationRef production](#provider-relationref-production).
+Completed:
+
+1. [Structured relation identity foundation](#explorer-v1-identity-foundation).
+2. [SQLite metadata SQL hardening](#sqlite-metadata-identifier-hardening).
+3. [Schema-loading generation protection](#schema-metadata-generation-protection).
+4. [Provider RelationRef production](#provider-relationref-production).
+5. [Views Metadata Foundation](#views-metadata-foundation).
 
 Next checkpoints:
 
-5. Views metadata.
 6. Explorer grouping/UI.
 7. Menu/search/i18n/accessibility, with Generate Test Data review required before menu migration.
 8. Full validation.
