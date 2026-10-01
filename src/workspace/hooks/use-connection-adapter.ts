@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useLayoutEffect, useRef, useCallback, useMemo } from "react";
 import type { DatabaseConnection, TableSchema } from "@/lib/types";
 import type { ProviderMetadata } from "@/hooks/use-provider-metadata";
 import type { WorkspaceConnection } from "@/workspace/types";
@@ -58,16 +58,30 @@ export function useConnectionAdapter({ connections: externalConnections, onSchem
     setActiveConnectionId(conn?.id ?? null);
   }, []);
 
+  const schemaGeneration = useRef(0);
+  // Keep the host's existing ID-based load trigger; same-ID prop changes are not
+  // a new request. Cleanup also invalidates all pending callbacks on unmount.
+  const selectedId = activeConnection?.id;
+  useLayoutEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- Host removal invalidates external work; no replacement callback can clear loading.
+    if (!selectedId) setIsLoadingSchema(false);
+    return () => {
+      schemaGeneration.current += 1;
+    };
+  }, [selectedId]);
+
   const fetchSchema = useCallback(
     async (conn: DatabaseConnection) => {
+      const generation = ++schemaGeneration.current;
+      const isCurrent = () => generation === schemaGeneration.current;
       setIsLoadingSchema(true);
       try {
         const result = await onSchemaFetch(conn.id);
-        setSchema(result);
+        if (isCurrent()) setSchema(result);
       } catch {
-        setSchema([]);
+        if (isCurrent()) setSchema([]);
       } finally {
-        setIsLoadingSchema(false);
+        if (isCurrent()) setIsLoadingSchema(false);
       }
     },
     [onSchemaFetch],

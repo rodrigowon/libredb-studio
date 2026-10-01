@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
 import type { DatabaseConnection, TableSchema, TableRelations } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { storage } from "@/lib/storage";
@@ -49,12 +49,25 @@ export function useConnectionManager(storageReady = false) {
 
   const { toast } = useToast();
 
+  const schemaGeneration = useRef(0);
+  // Invalidate at commit, before the shell's passive effect starts the next load.
+  // Object identity deliberately includes standalone edits that retain the ID.
+  useLayoutEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- Invalidate external work: an empty selection has no replacement request to clear loading.
+    if (!activeConnection) setIsLoadingSchema(false);
+    return () => {
+      schemaGeneration.current += 1;
+    };
+  }, [activeConnection]);
+
   // Fetch schema for a connection — two phases so a slow/failing stats query
   // never blocks the table list:
   //   1. /api/db/schema/list      → tables + columns + PKs (fast)  → render tree
   //   2. /api/db/schema/relations → foreign keys + indexes (heavy) → async merge
   const fetchSchema = useCallback(
     async (conn: DatabaseConnection) => {
+      const generation = ++schemaGeneration.current;
+      const isCurrent = () => generation === schemaGeneration.current;
       setIsLoadingSchema(true);
 
       const payload = conn.managed && conn.seedId ? { connectionId: `seed:${conn.seedId}` } : conn; // bare conn for backward compat with schema route
@@ -71,9 +84,11 @@ export function useConnectionManager(storageReady = false) {
           throw new Error(errorData.error || t("schemaFetchFailed"));
         }
         const list: TableSchema[] = await response.json();
+        if (!isCurrent()) return;
         setSchema(list);
         setSchemaError(null);
       } catch (error) {
+        if (!isCurrent()) return;
         const errorMessage = error instanceof Error ? error.message : t("unknownError");
         // Nothing read for THIS connection, so nothing may stay on screen as its
         // tables — the previous connection's list is not evidence about this one.
@@ -82,10 +97,11 @@ export function useConnectionManager(storageReady = false) {
         toast({ title: t("schemaError"), description: errorMessage, variant: "destructive" });
         return; // finally still clears the loading flag; skip relations
       } finally {
-        setIsLoadingSchema(false);
+        if (isCurrent()) setIsLoadingSchema(false);
       }
 
       // Phase 2 — relationships + indexes (best-effort; never breaks the list)
+      if (!isCurrent()) return;
       try {
         const relRes = await fetch(...init("/api/db/schema/relations"));
         if (!relRes.ok) {
@@ -93,14 +109,18 @@ export function useConnectionManager(storageReady = false) {
           throw new Error(errorData.error || "Failed to fetch schema relations");
         }
         const relations: TableRelations[] = await relRes.json();
+        if (!isCurrent()) return;
         const byName = new Map(relations.map((r) => [r.name, r]));
         setSchema((prev) =>
-          prev.map((t) => {
-            const r = byName.get(t.name);
-            return r ? { ...t, foreignKeys: r.foreignKeys, indexes: r.indexes } : t;
-          }),
+          isCurrent()
+            ? prev.map((t) => {
+                const r = byName.get(t.name);
+                return r ? { ...t, foreignKeys: r.foreignKeys, indexes: r.indexes } : t;
+              })
+            : prev,
         );
       } catch (error) {
+        if (!isCurrent()) return;
         // Foreign keys / indexes are non-essential for browsing — log and move on.
         logger.error("Failed to load schema relations (FK/indexes); table list unaffected", error, {
           route: "use-connection-manager",
